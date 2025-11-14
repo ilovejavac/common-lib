@@ -1,0 +1,169 @@
+spring:
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    cache-duration: 3600
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5GB
+      max-request-size: 5GB
+
+  config:
+    import: optional:nacos:${spring.application.name}.${app.cloud.file-extension}
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${app.cloud.hostport}
+        group: ${app.cloud.group}
+        namespace: ${app.cloud.namespace}
+        watch:
+          enabled: false
+      config:
+        server-addr: ${app.cloud.hostport}
+        group: ${app.cloud.group}
+        namespace: ${app.cloud.namespace}
+        file-extension: ${app.cloud.file-extension}
+        timeout: 5000
+        max-retry: 3
+        config-long-poll-timeout: 30000
+
+  web:
+    resources:
+      add-mappings: false
+
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+      connection-timeout: 10000
+      validation-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      keepalive-time: 300000
+      leak-detection-threshold: 0
+      auto-commit: true
+      pool-name: HikariPool-${spring.application.name}
+
+  jpa:
+    open-in-view: false
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+server:
+  tomcat:
+    max-http-form-post-size: 10MB
+    max-swallow-size: -1
+  http2:
+    enabled: true
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-exception: false
+    whitelabel:
+      enabled: false
+  compression:
+    enabled: true
+    mime-types:
+      - application/json
+      - text/html
+      - text/css
+      - application/javascript
+      - image/svg+xml
+    min-response-size: 1KB
+
+dubbo:
+  consumer:
+    lazy: false
+    timeout: 5000
+    check: false
+    retries: 0
+  application:
+    name: dubbo-${spring.application.name}
+    qos-enable: false
+    qos-accept-foreign-ip: false
+  protocol:
+    name: dubbo
+    port: -1
+    threads: 200
+    threadpool: fixed
+  registry:
+    address: nacos://${app.cloud.hostport}?namespace=${app.cloud.namespace}&group=${app.cloud.group}
+  scan:
+    base-packages: ${app.dubbo.scan-packages}
+
+logging:
+  config: classpath:logback-spring.xml
+  file:
+    path: log
+    name: ${spring.application.name}
+  level:
+    root: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+
+app:
+  dubbo:
+    scan-packages: /
+  cloud:
+    hostport: localhost:8848
+    namespace: public
+    file-extension: yaml
+    group: dev
+  security:
+    # 密钥必须至少256位（32字节）
+    secret: your-256-bit-secret-key-change-this-in-production-environment-must-be-at-least-256-bits
+    # 过期时间（毫秒）：2400小时
+    expiration: 8640000000
+    encrypt-version: v1
+  cors:
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+      - OPTIONS
+    max-age: 3600
+    allow-credentials: true
+  opensearch:
+    enabled: false
+    hosts: localhost:9200
+    index-prefix: ${spring.application.name}
+  storage:
+    max-size: 999999
+    allowed-extensions:
+      - pdf
+      - png
+      - jpg
+      - jpeg
+      - gif
+      - doc
+      - docx
+      - ppt
+      - pptx
+      - xls
+      - xlsx
+      - txt
+    type: local
+    local:
+      path: storage
+  sql:
+    enabled: true
+    save-enabled: true

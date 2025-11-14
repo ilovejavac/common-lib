@@ -1,0 +1,25 @@
+package com.dev.lib.schedule;
+
+import com.dev.lib.entity.BaseEntity;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+@Entity
+@Table(name = "sys_scheduled_task")
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class ScheduledTask extends BaseEntity {
+
+    private String taskName;        // 任务名称
+    private String beanName;        // Bean名称
+    private String methodName;      // 方法名
+    private String params;          // 参数(JSON)
+    private String cronExpression;  // Cron表达式
+    private String description;     // 描述
+    private Boolean enabled;        // 是否启用
+    private String lastExecuteTime; // 最后执行时间
+    private String lastExecuteStatus; // 最后执行状态
+    private String lastExecuteMessage; // 最后执行消息
+}
