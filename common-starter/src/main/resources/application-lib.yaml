@@ -50,10 +50,13 @@ spring:
     open-in-view: false
     show-sql: false
     properties:
+      type:
+        preferred_java_type_jdbc_code_for_enum: 24
       hibernate:
         format_sql: true
         jdbc:
-          batch_size: 50
+          batch_size: 1000
+          use_enum_ordinal_type: false
         order_inserts: true
         order_updates: true
 

@@ -3,11 +3,7 @@ package com.dev.lib.entity.id;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -19,15 +15,11 @@ public class SnowflakeConfig {
 
     private static volatile SnowflakeConfig instance;
 
-    private final RedissonClient redissonClient;
+    //    private final RedissonClient redissonClient;
     private SnowflakeDistributeId snowflakeWorker;
-    private RLock workerLock;
+
     private long acquiredWorkerId = -1;
     private long acquiredDatacenterId = -1;
-
-    public SnowflakeConfig(RedissonClient redissonClient) {
-        this.redissonClient = redissonClient;
-    }
 
     public static SnowflakeDistributeId getWorker() {
         if (instance == null || instance.snowflakeWorker == null) {
@@ -39,13 +31,10 @@ public class SnowflakeConfig {
     @PostConstruct
     public void init() {
         log.info("=".repeat(60));
-        log.info("Initializing Snowflake with Redisson");
+        log.info("Initializing Snowflake");
         log.info("=".repeat(60));
 
         try {
-            redissonClient.getKeys().count();
-            log.info("✓ Redisson connection verified");
-
             long datacenterId = getDatacenterId();
             long workerId = acquireWorkerId(datacenterId);
 
@@ -76,53 +65,54 @@ public class SnowflakeConfig {
     }
 
     private long acquireWorkerId(long datacenterId) {
-        Exception lastException = null;
-
-        for (int attempt = 0; attempt < MAX_RETRY_TIMES; attempt++) {
-            try {
-                for (long workerId = 0; workerId <= 15; workerId++) {
-                    String lockKey = LOCK_KEY_PREFIX + datacenterId + ":" + workerId;
-                    RLock lock = redissonClient.getLock(lockKey);
-
-                    if (lock.tryLock(0, TimeUnit.SECONDS)) {
-                        workerLock = lock;
-                        log.info("✓ Acquired workerId={} (attempt {}/{})", workerId, attempt + 1, MAX_RETRY_TIMES);
-                        return workerId;
-                    }
-                }
-
-                log.warn("All worker IDs occupied (attempt {}/{})", attempt + 1, MAX_RETRY_TIMES);
-
-            } catch (Exception e) {
-                lastException = e;
-                log.error("Failed to acquire workerId (attempt {}/{})", attempt + 1, MAX_RETRY_TIMES, e);
-            }
-
-            if (attempt < MAX_RETRY_TIMES - 1) {
-                try {
-                    Thread.sleep(RETRY_DELAY_MS);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted while retrying", ie);
-                }
-            }
-        }
-
-        throw new RuntimeException("Failed to acquire worker ID after " + MAX_RETRY_TIMES + " attempts", lastException);
+//        Exception lastException = null;
+//
+//        for (int attempt = 0; attempt < MAX_RETRY_TIMES; attempt++) {
+//            try {
+//                for (long workerId = 0; workerId <= 15; workerId++) {
+//                    String lockKey = LOCK_KEY_PREFIX + datacenterId + ":" + workerId;
+//                    RLock lock = redissonClient.getLock(lockKey);
+//
+//                    if (lock.tryLock(0, TimeUnit.SECONDS)) {
+//                        workerLock = lock;
+//                        log.info("✓ Acquired workerId={} (attempt {}/{})", workerId, attempt + 1, MAX_RETRY_TIMES);
+//                        return workerId;
+//                    }
+//                }
+//
+//                log.warn("All worker IDs occupied (attempt {}/{})", attempt + 1, MAX_RETRY_TIMES);
+//
+//            } catch (Exception e) {
+//                lastException = e;
+//                log.error("Failed to acquire workerId (attempt {}/{})", attempt + 1, MAX_RETRY_TIMES, e);
+//            }
+//
+//            if (attempt < MAX_RETRY_TIMES - 1) {
+//                try {
+//                    Thread.sleep(RETRY_DELAY_MS);
+//                } catch (InterruptedException ie) {
+//                    Thread.currentThread().interrupt();
+//                    throw new RuntimeException("Interrupted while retrying", ie);
+//                }
+//            }
+//        }
+//
+//        throw new RuntimeException("Failed to acquire worker ID after " + MAX_RETRY_TIMES + " attempts", lastException);
+        return 0;
     }
 
     @PreDestroy
     public void destroy() {
         log.info("Shutting down Snowflake, releasing workerId...");
-
-        try {
-            if (workerLock != null && workerLock.isHeldByCurrentThread()) {
-                workerLock.unlock();
-                log.info("✓ Released workerId={}", acquiredWorkerId);
-            }
-        } catch (Exception e) {
-            log.error("Failed to release workerId", e);
-        }
+//
+//        try {
+//            if (workerLock != null && workerLock.isHeldByCurrentThread()) {
+//                workerLock.unlock();
+//                log.info("✓ Released workerId={}", acquiredWorkerId);
+//            }
+//        } catch (Exception e) {
+//            log.error("Failed to release workerId", e);
+//        }
 
         instance = null;
     }

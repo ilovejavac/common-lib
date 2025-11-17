@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
@@ -13,7 +14,7 @@ import java.util.function.Supplier;
 
 @Slf4j
 @Component
-@ConditionalOnBean(RedissonClient.class)
+@ConditionalOnClass(name = "org.redisson.api.RedissonClient")
 @RequiredArgsConstructor
 public class RedisDistributedLock {
 

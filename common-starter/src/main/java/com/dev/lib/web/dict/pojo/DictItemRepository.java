@@ -1,18 +1,23 @@
 package com.dev.lib.web.dict.pojo;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import com.dev.lib.entity.BaseRepository;
+import com.dev.lib.web.dict.model.dto.DictItemRequest;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
-@Repository
-public interface DictItemRepository extends JpaRepository<DictItemEntity, Long> {
+public interface DictItemRepository extends BaseRepository<DictItemEntity> {
 
-    Optional<DictItemEntity> findByItemCodeAndStatus(String itemCode, Integer status);
+    default DictItemEntity getItem(String code) {
+        DictItemRequest.GetItem getItem = new DictItemRequest.GetItem(code);
 
-    List<DictItemEntity> findByItemCodeInAndStatus(Collection<String> itemCodes, Integer status);
+        return fetchOne(getItem).orElse(null);
+    }
 
-    List<DictItemEntity> findByDictType_TypeCodeAndStatusOrderBySort(String typeCode, Integer status);
+    default List<DictItemEntity> listItem(Collection<String> codes) {
+        DictItemRequest.ListItem listItem = new DictItemRequest.ListItem(codes.stream().toList());
+
+        return fetch(listItem);
+    }
+
 }

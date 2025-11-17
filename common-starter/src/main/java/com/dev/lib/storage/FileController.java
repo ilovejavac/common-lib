@@ -30,7 +30,7 @@ public class FileController {
      * 文件上传
      */
     @PostMapping("/upload")
-    @OperateLog(module = "文件管理", type = "上传", description = "上传文件")
+    @OperateLog(module = "file", type = "upload", description = "上传文件")
     public SysFile upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "document") String category
@@ -56,7 +56,7 @@ public class FileController {
      * 文件删除
      */
     @PostMapping("/{id}")
-    @OperateLog(module = "文件管理", type = "删除", description = "删除文件")
+    @OperateLog(module = "file", type = "delete", description = "删除文件")
     public void delete(@PathVariable Long id) {
         fileService.delete(id);
     }

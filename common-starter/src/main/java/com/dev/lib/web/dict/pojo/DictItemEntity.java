@@ -4,6 +4,8 @@ import com.dev.lib.entity.BaseEntity;
 import com.dev.lib.entity.EntityStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -20,9 +22,6 @@ import org.hibernate.annotations.Comment;
         @Index(columnList = "dict_id", unique = true)
 })
 public class DictItemEntity extends BaseEntity {
-    @Column(length = 12)
-    private String dictId;
-
     @Comment("字典项编码")
     @Column(name = "item_code", nullable = false, unique = true, length = 50)
     private String itemCode;
@@ -39,8 +38,9 @@ public class DictItemEntity extends BaseEntity {
     @Column(nullable = false)
     private Integer sort = 0;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EntityStatus status;
+    private EntityStatus status = EntityStatus.ENABLE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "type_id", nullable = false)

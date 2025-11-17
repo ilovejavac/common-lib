@@ -1,11 +1,18 @@
 package com.dev.lib.web.dict.pojo;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.dev.lib.entity.BaseRepository;
+import com.dev.lib.web.dict.model.dto.DictTypeRequest;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface DictTypeRepository extends JpaRepository<DictType, Long> {
-    Optional<DictType> findByTypeCode(String typeCode);
+public interface DictTypeRepository extends BaseRepository<DictType> {
+
+    default Optional<DictType> getType(String id) {
+        DictTypeRequest.GetType getType = new DictTypeRequest.GetType(id);
+
+        return fetchOne(getType);
+    }
+
 }

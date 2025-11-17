@@ -7,6 +7,7 @@ import com.dev.lib.config.properties.AppSqlMonitorProperties;
 import com.dev.lib.config.properties.AppStorageProperties;
 import com.dev.lib.security.InternalService;
 import com.dev.lib.security.UserDetailService;
+import io.github.linpeilie.annotations.ComponentModelConfig;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -21,6 +22,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @ComponentScan("com.dev.lib")
 @EntityScan("com.dev.lib")  // 添加
 @EnableJpaRepositories(basePackages = "com.dev.lib")  // 添加
+@ComponentModelConfig
 public class CommonAutoConfiguration {
 
     @Bean

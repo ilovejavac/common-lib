@@ -26,4 +26,5 @@ public class OperateLogEntity extends BaseEntity {
     private LocalDateTime operateTime;
     private Boolean success;
     private String errorMsg;
+    private Long deptId;
 }

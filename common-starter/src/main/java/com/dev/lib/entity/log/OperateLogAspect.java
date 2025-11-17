@@ -37,6 +37,9 @@ public class OperateLogAspect {
         log.setIp(getIpAddress());
         log.setUserAgent(request.getHeader("User-Agent"));
         log.setOperateTime(LocalDateTime.now());
+        log.setDeptId(SecurityContextHolder.get().getDeptId());
+        log.setCreatedBy(SecurityContextHolder.getUsername());
+        log.setUpdatedBy(SecurityContextHolder.getUsername());
 
         if (operateLog.recordParams()) {
             log.setRequestParams(JSON.toJSONString(point.getArgs()));

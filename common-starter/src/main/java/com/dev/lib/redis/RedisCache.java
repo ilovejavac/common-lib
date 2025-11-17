@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -15,7 +16,7 @@ import java.util.function.Supplier;
 
 @Slf4j
 @Component
-@ConditionalOnBean(RedissonClient.class)
+@ConditionalOnClass(name = "org.redisson.api.RedissonClient")
 @RequiredArgsConstructor
 public class RedisCache {
 
