@@ -27,19 +27,17 @@ public class QueryRequest<T extends DslQuery<?>> {
     @Min(1)
     private Integer size = 20;
 
-    private List<Orders> orders;
-
-    public QueryRequest(T query) {
-        this.query = query;
-    }
+    private List<Orders> orders = List.of(new Orders("createdAt", Sort.Direction.DESC));
 
     @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class Orders {
         private String property;
         private Sort.Direction direction;
     }
 
-    public Predicate toPredicate(BooleanExpression...expressions) {
+    public Predicate toPredicate(BooleanExpression... expressions) {
         return DslQuery.toPredicate(query, expressions);
     }
 
