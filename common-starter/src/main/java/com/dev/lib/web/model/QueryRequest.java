@@ -2,6 +2,7 @@ package com.dev.lib.web.model;
 
 import com.dev.lib.entity.dsl.DslQuery;
 import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -38,8 +39,8 @@ public class QueryRequest<T extends DslQuery<?>> {
         private Sort.Direction direction;
     }
 
-    public Predicate toPredicate() {
-        return query.toPredicate();
+    public Predicate toPredicate(BooleanExpression...expressions) {
+        return DslQuery.toPredicate(query, expressions);
     }
 
     public Sort toSort() {

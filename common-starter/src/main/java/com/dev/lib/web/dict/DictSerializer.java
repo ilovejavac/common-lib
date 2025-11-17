@@ -26,11 +26,7 @@ public class DictSerializer extends JsonSerializer<String> {
         try {
             DictItem item = dictService.getItem(value);
             if (item != null) {
-                gen.writeStartObject();
-                gen.writeStringField("code", item.getCode());
-                gen.writeStringField("label", item.getLabel());
-                gen.writeStringField("css", item.getCss());
-                gen.writeEndObject();
+                gen.writeObject(item);
             } else {
                 gen.writeString(value);
             }

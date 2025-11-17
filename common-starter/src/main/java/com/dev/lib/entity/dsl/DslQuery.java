@@ -7,6 +7,7 @@ import com.querydsl.core.types.dsl.EntityPathBase;
 import com.querydsl.core.types.dsl.PathBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ReflectionUtils;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 public abstract class DslQuery<T> {
     private static final Map<Class<?>, EntityPathBase<?>> ENTITY_PATH_CACHE = new ConcurrentHashMap<>();
 
@@ -62,21 +64,27 @@ public abstract class DslQuery<T> {
     /**
      * 构建 Predicate
      */
-    public BooleanBuilder toPredicate() {
+    public static <T> BooleanBuilder toPredicate(DslQuery<?> q, BooleanExpression... expressions) {
         BooleanBuilder builder = new BooleanBuilder();
 
-        PathBuilder<T> pathBuilder = new PathBuilder<>(
-                entityPath.getType(),
-                entityPath.getMetadata()
-        );
+        if (q != null) {
+            PathBuilder<?> pathBuilder = new PathBuilder<>(
+                    q.entityPath.getType(),
+                    q.entityPath.getMetadata()
+            );
 
-        Arrays.stream(getClass().getDeclaredFields())
-                .forEach(field -> processField(field, pathBuilder, builder));
+            Arrays.stream(q.getClass().getDeclaredFields())
+                    .forEach(field -> q.processField(field, pathBuilder, builder));
+        }
+
+        for (BooleanExpression expression : expressions) {
+            builder.and(expression);
+        }
 
         return builder;
     }
 
-    private void processField(Field field, PathBuilder<T> pathBuilder, BooleanBuilder builder) {
+    private void processField(Field field, PathBuilder<?> pathBuilder, BooleanBuilder builder) {
         Condition condition = field.getAnnotation(Condition.class);
         ReflectionUtils.makeAccessible(field);
 
@@ -112,7 +120,7 @@ public abstract class DslQuery<T> {
     }
 
     private BooleanExpression buildExpression(
-            PathBuilder<T> pathBuilder,
+            PathBuilder<?> pathBuilder,
             String field,
             QueryType type,
             Object value

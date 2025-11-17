@@ -2,6 +2,7 @@ package com.dev.lib.entity;
 
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.web.model.QueryRequest;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.querydsl.ListQuerydslPredicateExecutor;
@@ -10,37 +11,30 @@ import org.springframework.data.repository.NoRepositoryBean;
 import java.util.List;
 import java.util.Optional;
 
+import static com.dev.lib.entity.dsl.DslQuery.toPredicate;
+
 @NoRepositoryBean
 public interface BaseRepository<T> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
 
-    default Optional<T> fetchOne(DslQuery<T> dslQuery) {
-        if (dslQuery == null) {
-            return Optional.empty();
-        }
-        return findOne(dslQuery.toPredicate());
+    default Optional<T> fetchOne(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        return findOne(toPredicate(dslQuery, expressions));
     }
 
-    default List<T> fetch(DslQuery<T> dslQuery) {
-        if (dslQuery == null) {
-            return findAll();
-        }
-        return findAll(dslQuery.toPredicate());
+    default List<T> fetch(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        return findAll(toPredicate(dslQuery, expressions));
     }
 
-    default <Q extends DslQuery<T>> List<T> fetch(QueryRequest<Q> qry) {
-        if (qry == null || qry.getQuery() == null) {
-            return qry == null ? List.of() : findAll(qry.toSort());
+    default <Q extends DslQuery<T>> List<T> fetch(QueryRequest<Q> qry, BooleanExpression... expressions) {
+        if (qry == null) {
+            return List.of();
         }
-        return findAll(qry.toPredicate(), qry.toSort());
+        return findAll(qry.toPredicate(expressions), qry.toSort());
     }
 
-    default <Q extends DslQuery<T>> Page<T> page(QueryRequest<Q> qry) {
+    default <Q extends DslQuery<T>> Page<T> page(QueryRequest<Q> qry, BooleanExpression... expressions) {
         if (qry == null) {
             return Page.empty();
         }
-        if (qry.getQuery() == null) {
-            return findAll(qry.toPageable());
-        }
-        return findAll(qry.toPredicate(), qry.toPageable());
+        return findAll(qry.toPredicate(expressions), qry.toPageable());
     }
 }
