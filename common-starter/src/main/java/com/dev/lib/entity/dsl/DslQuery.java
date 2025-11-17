@@ -1,7 +1,9 @@
 package com.dev.lib.entity.dsl;
 
+import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.EntityPathBase;
 import com.querydsl.core.types.dsl.PathBuilder;
@@ -12,12 +14,14 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -28,6 +32,16 @@ public abstract class DslQuery<T> {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private final EntityPathBase<T> entityPath;
+
+    @JsonIgnore
+    protected LogicalOperator selfOperator = LogicalOperator.AND;
+
+    // 新增: 嵌套子查询
+    @JsonIgnore
+    protected List<DslQuery<T>> orQueries = new ArrayList<>();
+
+    @JsonIgnore
+    protected List<DslQuery<T>> andQueries = new ArrayList<>();
 
     @SuppressWarnings("unchecked")
     protected DslQuery() {
@@ -73,8 +87,10 @@ public abstract class DslQuery<T> {
                     q.entityPath.getMetadata()
             );
 
-            Arrays.stream(q.getClass().getDeclaredFields())
-                    .forEach(field -> q.processField(field, pathBuilder, builder));
+            Predicate result = processFieldsWithPrecedence(q, pathBuilder);
+            if (result != null) {
+                builder.and(result);
+            }
         }
 
         for (BooleanExpression expression : expressions) {
@@ -84,38 +100,129 @@ public abstract class DslQuery<T> {
         return builder;
     }
 
-    private void processField(Field field, PathBuilder<?> pathBuilder, BooleanBuilder builder) {
-        Condition condition = field.getAnnotation(Condition.class);
-        ReflectionUtils.makeAccessible(field);
+    private static Predicate processFieldsWithPrecedence(
+            DslQuery<?> q,
+            PathBuilder<?> pathBuilder
+    ) {
+        List<Field> fields = Arrays.asList(q.getClass().getDeclaredFields());
+        List<ExpressionItem> items = new ArrayList<>();
 
-        Object value;
-        try {
-            value = field.get(this);
-        } catch (IllegalAccessException e) {
-            return;
+        // 按声明顺序收集表达式
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(JsonIgnore.class)
+                    || field.getName().equals("entityPath")
+                    || Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+
+            ReflectionUtils.makeAccessible(field);
+            Object value;
+            try {
+                value = field.get(q);
+            } catch (IllegalAccessException e) {
+                continue;
+            }
+
+            if (value == null) continue;
+
+            // 处理嵌套 DslQuery 对象
+            if (value instanceof DslQuery<?> nestedQuery) {
+                Predicate nestedExpr = toPredicate(nestedQuery).getValue();
+                if (nestedExpr != null) {
+                    Condition condition = field.getAnnotation(Condition.class);
+                    LogicalOperator operator = condition != null
+                            ? condition.operator()
+                            : LogicalOperator.AND;
+                    items.add(new ExpressionItem(nestedExpr, operator));
+                }
+                continue;
+            }
+
+            // 处理普通字段
+            Condition condition = field.getAnnotation(Condition.class);
+            if (condition == null) continue;
+
+            String targetField = condition.field().isEmpty()
+                    ? field.getName()
+                    : condition.field();
+
+            BooleanExpression expr = q.buildExpression(
+                    pathBuilder,
+                    targetField,
+                    condition.type(),
+                    value
+            );
+
+            if (expr != null) {
+                items.add(new ExpressionItem(expr, condition.operator()));
+            }
         }
 
-        if (value == null) {
-            return;
+        if (items.isEmpty()) return null;
+
+        // AND 优先级: 先处理所有 AND,再用 OR 连接
+        return buildWithPrecedence(items);
+    }
+
+    // 新增: 按优先级构建表达式
+    private static Predicate buildWithPrecedence(List<ExpressionItem> items) {
+        if (items.isEmpty()) return null;
+        if (items.size() == 1) return items.get(0).expression;
+
+        // 分割成 AND 组 (遇到 OR 就分割)
+        List<List<ExpressionItem>> andGroups = new ArrayList<>();
+        List<ExpressionItem> currentGroup = new ArrayList<>();
+
+        for (ExpressionItem item : items) {
+            currentGroup.add(item);
+
+            // 如果当前项标记为 OR,则分割
+            if (item.operator == LogicalOperator.OR) {
+                andGroups.add(new ArrayList<>(currentGroup));
+                currentGroup.clear();
+            }
         }
 
-        String targetField;
-        if (condition == null) {
-            targetField = field.getName();
-        } else {
-            targetField = condition.field().isEmpty() ?
-                    field.getName() : condition.field();
+        // 最后一组
+        if (!currentGroup.isEmpty()) {
+            andGroups.add(currentGroup);
         }
 
-        BooleanExpression expression = buildExpression(
-                pathBuilder,
-                targetField,
-                Optional.ofNullable(condition).map(Condition::type).orElse(QueryType.EQ),
-                value
-        );
+        // 构建每个 AND 组
+        List<Predicate> groupExpressions = new ArrayList<>();
+        for (List<ExpressionItem> group : andGroups) {
+            if (group.isEmpty()) continue;
 
-        if (expression != null) {
-            builder.and(expression);
+            BooleanBuilder andBuilder = new BooleanBuilder();
+            for (ExpressionItem item : group) {
+                andBuilder.and(item.expression);
+            }
+
+            if (andBuilder.getValue() != null) {
+                groupExpressions.add(andBuilder.getValue());
+            }
+        }
+
+        // OR 连接所有 AND 组
+        if (groupExpressions.isEmpty()) return null;
+        if (groupExpressions.size() == 1) return groupExpressions.get(0);
+
+        BooleanBuilder result = new BooleanBuilder();
+        for (var expr : groupExpressions) {
+            result.or(expr);
+        }
+
+        return result.getValue();
+    }
+
+    // 辅助类: 表达式项
+    private static class ExpressionItem {
+        Predicate expression;
+        LogicalOperator operator;  // 此项与下一项的关系
+
+        ExpressionItem(Predicate expression, LogicalOperator operator) {
+            this.expression = expression;
+            this.operator = operator;
         }
     }
 

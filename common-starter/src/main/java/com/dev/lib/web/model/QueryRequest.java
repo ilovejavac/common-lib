@@ -3,6 +3,7 @@ package com.dev.lib.web.model;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,6 +26,7 @@ public class QueryRequest<T extends DslQuery<?>> {
     private Integer page = 1;
 
     @Min(1)
+    @Max(1000)
     private Integer size = 20;
 
     private List<Orders> orders = List.of(new Orders("createdAt", Sort.Direction.DESC));
@@ -50,8 +52,10 @@ public class QueryRequest<T extends DslQuery<?>> {
     }
 
     public Pageable toPageable() {
-        Sort sort = toSort();
-
-        return PageRequest.of(page - 1, size, sort);
+        return PageRequest.of(
+                Math.max(0, page - 1),
+                Math.min(size, 1000),
+                toSort()
+        );
     }
 }
