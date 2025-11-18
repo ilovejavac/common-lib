@@ -18,8 +18,7 @@ import org.hibernate.annotations.Comment;
 @Entity
 @Table(name = "sys_dict_item", indexes = {
         @Index(name = "idx_item_code", columnList = "item_code", unique = true),
-        @Index(name = "idx_type_id", columnList = "type_id"),
-        @Index(columnList = "dict_id", unique = true)
+        @Index(name = "idx_type_id", columnList = "type_id")
 })
 public class DictItemEntity extends BaseEntity {
     @Comment("字典项编码")

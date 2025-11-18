@@ -21,12 +21,13 @@ public class ServerResponse<T> {
 
     private Long timestamp = System.currentTimeMillis();
     private String traceId = MDC.get("trace_id");
+    private static final String SUCCESS = "success";
 
     public static <T> ServerResponse<T> ok() {
         ServerResponse<T> result = new ServerResponse<>();
 
         result.setCode(200);
-        result.setMessage("success");
+        result.setMessage(SUCCESS);
         result.setData(null);
 
         return result;
@@ -36,7 +37,7 @@ public class ServerResponse<T> {
         ServerResponse<T> result = new ServerResponse<>();
 
         result.setCode(200);
-        result.setMessage("success");
+        result.setMessage(SUCCESS);
         result.setData(data);
 
         return result;
@@ -46,7 +47,7 @@ public class ServerResponse<T> {
         ServerResponse<List<T>> result = new ServerResponse<>();
 
         result.setCode(200);
-        result.setMessage("success");
+        result.setMessage(SUCCESS);
         result.setData(page.getContent());
 
         PageResult pager = new PageResult();

@@ -21,8 +21,7 @@ import java.util.List;
 @Data
 @Entity
 @Table(name = "sys_dict_type", indexes = {
-        @Index(name = "idx_type_code", columnList = "type_code", unique = true),
-        @Index(columnList = "type_id", unique = true)
+        @Index(name = "idx_type_code", columnList = "type_code", unique = true)
 })
 public class DictType extends BaseEntity {
     @Comment("字典类型编码")
