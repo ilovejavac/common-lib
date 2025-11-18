@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
@@ -22,7 +24,6 @@ import org.springframework.context.annotation.Primary;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,15 +41,19 @@ public class JacksonConfig {
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
 
+        // === 基础配置 ===
+        mapper.enable(JsonReadFeature.ALLOW_JAVA_COMMENTS.mappedFeature());
+        mapper.enable(JsonReadFeature.ALLOW_SINGLE_QUOTES.mappedFeature());
+
         // === 数字处理 ===
         mapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
         mapper.configure(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS, true);
-        mapper.enable(DeserializationFeature.USE_BIG_INTEGER_FOR_INTS);
+        mapper.disable(DeserializationFeature.USE_BIG_INTEGER_FOR_INTS);
 
         // === 日期时间 ===
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         mapper.registerModule(new JavaTimeModule());
-        mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
+        // 移除SimpleDateFormat，使用JavaTimeModule的默认格式
         mapper.setTimeZone(TimeZone.getTimeZone(timeZone));
 
         // === 容错处理 ===
@@ -58,6 +63,8 @@ public class JacksonConfig {
         mapper.enable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT);
         mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
         mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL);
+        mapper.enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY); // 防止重复key
+        mapper.enable(SerializationFeature.FAIL_ON_SELF_REFERENCES); // 防止自引用
 
         // === null处理 ===
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -80,6 +87,13 @@ public class JacksonConfig {
 
         mapper.registerModule(module);
 
+        // === 性能优化 ===
+        mapper.enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+        mapper.enable(JsonGenerator.Feature.ESCAPE_NON_ASCII);
+
+        // === 默认类型信息（可选，用于多态类型）===
+        mapper.setPolymorphicTypeValidator(LaissezFaireSubTypeValidator.instance);
+
         return mapper;
     }
 
@@ -97,8 +111,12 @@ public class JacksonConfig {
             // BigDecimal处理
             builder.serializerByType(BigDecimal.class, new BigDecimalSerializer());
             builder.deserializerByType(BigDecimal.class, new BigDecimalDeserializer());
+            builder.featuresToEnable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+
 
             // 时间类型处理
+            builder.modulesToInstall(new JavaTimeModule());
+
             builder.serializerByType(LocalDateTime.class, new LocalDateTimeSerializer());
             builder.deserializerByType(LocalDateTime.class, new LocalDateTimeDeserializer());
 
@@ -113,10 +131,22 @@ public class JacksonConfig {
             builder.failOnEmptyBeans(false);
             builder.indentOutput(false);
 
+            // 空值容错
+            builder.featuresToEnable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
+            builder.featuresToEnable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT);
+            builder.featuresToEnable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+            builder.featuresToEnable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL);
+
             builder.featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
             builder.featuresToEnable(JsonParser.Feature.ALLOW_SINGLE_QUOTES);
             builder.featuresToEnable(JsonParser.Feature.ALLOW_COMMENTS);
             builder.featuresToEnable(SerializationFeature.WRITE_ENUMS_USING_TO_STRING);
+            builder.featuresToEnable(DeserializationFeature.READ_ENUMS_USING_TO_STRING);
+            builder.featuresToEnable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+
+            // 递归防护
+            builder.featuresToEnable(SerializationFeature.FAIL_ON_SELF_REFERENCES);
+            builder.featuresToEnable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
 
             builder.postConfigurer(mapper ->
                     mapper.setTimeZone(java.util.TimeZone.getTimeZone(timeZone))
