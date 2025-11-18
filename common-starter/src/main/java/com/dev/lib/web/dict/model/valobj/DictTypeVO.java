@@ -1,9 +1,7 @@
 package com.dev.lib.web.dict.model.valobj;
 
 import com.dev.lib.entity.EntityStatus;
-import jakarta.persistence.Column;
 import lombok.Data;
-import org.hibernate.annotations.Comment;
 
 import java.util.ArrayList;
 import java.util.List;
