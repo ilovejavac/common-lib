@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.TimeZone;
 
 @Configuration
 public class JacksonConfig {
@@ -37,27 +39,44 @@ public class JacksonConfig {
         ObjectMapper mapper = new ObjectMapper();
 
         // === 数字处理 ===
-        mapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);  // BigDecimal不用科学计数法
-        mapper.configure(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS, true); // float/double转BigDecimal
+        mapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
+        mapper.configure(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS, true);
+        mapper.enable(DeserializationFeature.USE_BIG_INTEGER_FOR_INTS);
 
-        // === 日期处理 ===
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);  // 日期不转时间戳
-        mapper.registerModule(new JavaTimeModule());  // 支持LocalDateTime等
-        mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")); // Date格式
+        // === 日期时间 ===
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.registerModule(new JavaTimeModule());
+        mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
+        mapper.setTimeZone(TimeZone.getTimeZone(timeZone));
 
         // === 容错处理 ===
-        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES); // 忽略未知字段
-        mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);  // 允许空对象
-        mapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT); // 空字符串转null
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+        mapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
+        mapper.enable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT);
+        mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL);
 
         // === null处理 ===
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL); // null字段不序列化
-        // mapper.setSerializationInclusion(JsonInclude.Include.ALWAYS); // 包含null
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-        // === 其他 ===
-        mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS); // 枚举忽略大小写
-        mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true); // 允许JSON注释
-        mapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true); // 允许单引号
+        // === 字符串 ===
+        mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
+        mapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
+
+        // === 枚举 ===
+        mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        mapper.enable(SerializationFeature.WRITE_ENUMS_USING_TO_STRING);
+        mapper.enable(DeserializationFeature.READ_ENUMS_USING_TO_STRING);
+
+        // === 自定义序列化器（保留4位小数）===
+        SimpleModule module = new SimpleModule();
+
+        // BigDecimal保留4位
+        module.addSerializer(BigDecimal.class, new BigDecimalSerializer());
+        module.addDeserializer(BigDecimal.class, new BigDecimalDeserializer());
+
+        mapper.registerModule(module);
 
         return mapper;
     }
@@ -148,7 +167,7 @@ public class JacksonConfig {
             if (value == null) {
                 gen.writeNull();
             } else {
-                gen.writeNumber(value.setScale(2, RoundingMode.HALF_UP).toString());
+                gen.writeNumber(value.setScale(4, RoundingMode.HALF_UP).toPlainString());
             }
         }
     }
