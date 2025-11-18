@@ -37,20 +37,12 @@ public class RedisStore {
 
     // ============ 静态方法 - 单对象 ============
 
-    public static <T> void store(Object... keys) {
-        if (keys.length < 2) {
-            throw new IllegalArgumentException("至少需要 key 和 value");
-        }
-        Object value = keys[keys.length - 1];
+    public static <T> void store(Object value, Object... keys) {
         Object[] keyParts = Arrays.copyOf(keys, keys.length - 1);
         instance.storeValue(null, keyParts, value);
     }
 
-    public static <T> void store(Duration ttl, Object... keysAndValue) {
-        if (keysAndValue.length < 2) {
-            throw new IllegalArgumentException("至少需要 key 和 value");
-        }
-        Object value = keysAndValue[keysAndValue.length - 1];
+    public static <T> void store(Duration ttl,Object value, Object... keysAndValue) {
         Object[] keyParts = Arrays.copyOf(keysAndValue, keysAndValue.length - 1);
         instance.storeValue(ttl, keyParts, value);
     }
@@ -79,7 +71,12 @@ public class RedisStore {
         return instance.getOrLoadList(elementClass, null, loader, keys);
     }
 
-    public static <T> List<T> getIfPresentList(Class<T> elementClass, Duration ttl, Supplier<List<T>> loader, Object... keys) {
+    public static <T> List<T> getIfPresentList(
+            Class<T> elementClass,
+            Duration ttl,
+            Supplier<List<T>> loader,
+            Object... keys
+    ) {
         return instance.getOrLoadList(elementClass, ttl, loader, keys);
     }
 

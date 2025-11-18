@@ -5,10 +5,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +20,7 @@ import org.springframework.context.annotation.Configuration;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,6 +31,36 @@ import java.time.format.DateTimeFormatter;
 public class JacksonConfig {
 
     private static final String timeZone = "Asia/Shanghai";
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+
+        // === 数字处理 ===
+        mapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);  // BigDecimal不用科学计数法
+        mapper.configure(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS, true); // float/double转BigDecimal
+
+        // === 日期处理 ===
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);  // 日期不转时间戳
+        mapper.registerModule(new JavaTimeModule());  // 支持LocalDateTime等
+        mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")); // Date格式
+
+        // === 容错处理 ===
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES); // 忽略未知字段
+        mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);  // 允许空对象
+        mapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT); // 空字符串转null
+
+        // === null处理 ===
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL); // null字段不序列化
+        // mapper.setSerializationInclusion(JsonInclude.Include.ALWAYS); // 包含null
+
+        // === 其他 ===
+        mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS); // 枚举忽略大小写
+        mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true); // 允许JSON注释
+        mapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true); // 允许单引号
+
+        return mapper;
+    }
 
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
