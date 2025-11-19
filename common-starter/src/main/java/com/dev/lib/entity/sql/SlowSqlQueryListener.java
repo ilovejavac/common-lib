@@ -32,7 +32,7 @@ public class SlowSqlQueryListener implements QueryExecutionListener {
         }
 
         long duration = execInfo.getElapsedTime();
-        
+
         if (duration > properties.getSlowThreshold()) {
             String sql = queryInfoList.stream()
                     .map(QueryInfo::getQuery)
@@ -86,7 +86,7 @@ public class SlowSqlQueryListener implements QueryExecutionListener {
             if (!className.startsWith("java.lang.Thread") &&
                     !className.startsWith("net.ttddyy") &&
                     !className.contains("SlowSql")) {
-                sb.append(element.toString()).append("\n");
+                sb.append(element).append("\n");
                 if (++count >= 10) break;
             }
         }

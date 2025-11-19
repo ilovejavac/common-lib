@@ -7,7 +7,8 @@ import java.util.Set;
 public class SecurityContextHolder {
     private static final ThreadLocal<UserDetails> holder = new ThreadLocal<>();
 
-    private SecurityContextHolder() {}
+    private SecurityContextHolder() {
+    }
 
     // ===== 基础方法 =====
 

@@ -11,6 +11,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Condition {
     QueryType type() default QueryType.EQ;
+
     String field() default "";  // 空则用字段名
+
     LogicalOperator operator() default LogicalOperator.AND;  // 新增
 }

@@ -42,7 +42,7 @@ public class RedisStore {
         instance.storeValue(null, keyParts, value);
     }
 
-    public static <T> void store(Duration ttl,Object value, Object... keysAndValue) {
+    public static <T> void store(Duration ttl, Object value, Object... keysAndValue) {
         Object[] keyParts = Arrays.copyOf(keysAndValue, keysAndValue.length - 1);
         instance.storeValue(ttl, keyParts, value);
     }

@@ -8,6 +8,9 @@ spring:
       enabled: true
       max-file-size: 5GB
       max-request-size: 5GB
+      file-size-threshold: 2MB
+      location: ${UPLOAD_TEMP_DIR:/tmp}
+      resolve-lazily: false
 
   config:
     import: optional:nacos:${spring.application.name}.${app.cloud.file-extension}
@@ -28,6 +31,7 @@ spring:
         timeout: 5000
         max-retry: 3
         config-long-poll-timeout: 30000
+        refresh-enabled: true
 
   web:
     resources:
@@ -35,8 +39,8 @@ spring:
 
   datasource:
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 10
+      maximum-pool-size: 31
+      minimum-idle: 7
       connection-timeout: 10000
       validation-timeout: 5000
       idle-timeout: 600000
@@ -46,6 +50,8 @@ spring:
       auto-commit: true
       pool-name: HikariPool-${spring.application.name}
 
+      connection-test-query: SELECT 1                    # 连接测试查询
+      initialization-fail-timeout: 1                      # 快速失败
   jpa:
     open-in-view: false
     show-sql: false
@@ -53,16 +59,35 @@ spring:
       type:
         preferred_java_type_jdbc_code_for_enum: 24
       hibernate:
+        use_sql_comments: false
+        highlight_sql: true
+        naming:
+          # 驼峰转下划线
+          physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+          implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
+
         format_sql: true
         jdbc:
-          batch_size: 1000
+          batch_size: 50
+          fetch_size: 500
+          time_zone: Asia/Shanghai
           use_enum_ordinal_type: false
+          batch_versioned_data: true
         order_inserts: true
         order_updates: true
+        query:
+          in_clause_parameter_padding: true
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+        generate_statistics: false
 
 server:
   tomcat:
-    max-http-form-post-size: 10MB
+    threads:
+      max: 200
+      min-spare: 10
+    max-http-form-post-size: 20MB
     max-swallow-size: -1
   http2:
     enabled: true
@@ -97,6 +122,11 @@ dubbo:
     port: -1
     threads: 200
     threadpool: fixed
+    accepts: 1000
+    payload: 8388608
+    buffer: 8192
+    heartbeat: 60000
+
   registry:
     address: nacos://${app.cloud.hostport}?namespace=${app.cloud.namespace}&group=${app.cloud.group}
   scan:
@@ -115,11 +145,17 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
+        exclude: shutdown
       base-path: /actuator
   endpoint:
     health:
       show-details: always
       show-components: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 app:
   dubbo:
@@ -134,7 +170,7 @@ app:
     secret: your-256-bit-secret-key-change-this-in-production-environment-must-be-at-least-256-bits
     # 过期时间（毫秒）：2400小时
     expiration: 8640000000
-    encrypt-version: v1
+    encrypt-version: base64
   cors:
     allowed-methods:
       - GET

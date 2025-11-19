@@ -5,12 +5,12 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.PathBuilder;
 import org.springframework.util.CollectionUtils;
 
-import java.time.LocalDateTime;
 import java.util.Collection;
 
 public class ExpressionBuilder {
-    private ExpressionBuilder() {}
-    
+    private ExpressionBuilder() {
+    }
+
     public static BooleanExpression build(
             PathBuilder<?> pathBuilder,
             String field,
@@ -20,13 +20,13 @@ public class ExpressionBuilder {
         // 处理嵌套字段: user.profile.name
         PathBuilder<?> currentPath = pathBuilder;
         String[] fieldParts = field.split("\\.");
-        
+
         for (int i = 0; i < fieldParts.length - 1; i++) {
             currentPath = currentPath.get(fieldParts[i]);
         }
-        
+
         String finalField = fieldParts[fieldParts.length - 1];
-        
+
         return switch (type) {
             case EQ -> eq(currentPath, finalField, value);
             case NE -> ne(currentPath, finalField, value);
@@ -44,15 +44,15 @@ public class ExpressionBuilder {
             default -> null;
         };
     }
-    
+
     private static BooleanExpression eq(PathBuilder<?> path, String field, Object value) {
         return path.get(field).eq(value);
     }
-    
+
     private static BooleanExpression ne(PathBuilder<?> path, String field, Object value) {
         return path.get(field).ne(value);
     }
-    
+
     @SuppressWarnings("unchecked")
     private static BooleanExpression gt(PathBuilder<?> path, String field, Object value) {
         if (!(value instanceof Comparable)) {
@@ -61,7 +61,7 @@ public class ExpressionBuilder {
         return path.getComparable(field, (Class<Comparable>) value.getClass())
                 .gt((Comparable<?>) value);
     }
-    
+
     @SuppressWarnings("unchecked")
     private static BooleanExpression goe(PathBuilder<?> path, String field, Object value) {
         if (!(value instanceof Comparable)) {
@@ -70,7 +70,7 @@ public class ExpressionBuilder {
         return path.getComparable(field, (Class<Comparable>) value.getClass())
                 .goe((Comparable<?>) value);
     }
-    
+
     @SuppressWarnings("unchecked")
     private static BooleanExpression lt(PathBuilder<?> path, String field, Object value) {
         if (!(value instanceof Comparable)) {
@@ -79,7 +79,7 @@ public class ExpressionBuilder {
         return path.getComparable(field, (Class<Comparable>) value.getClass())
                 .lt((Comparable<?>) value);
     }
-    
+
     @SuppressWarnings("unchecked")
     private static BooleanExpression loe(PathBuilder<?> path, String field, Object value) {
         if (!(value instanceof Comparable)) {
@@ -88,19 +88,19 @@ public class ExpressionBuilder {
         return path.getComparable(field, (Class<Comparable>) value.getClass())
                 .loe((Comparable<?>) value);
     }
-    
+
     private static BooleanExpression like(PathBuilder<?> path, String field, Object value) {
         return path.getString(field).containsIgnoreCase(value.toString());
     }
-    
+
     private static BooleanExpression startWith(PathBuilder<?> path, String field, Object value) {
         return path.getString(field).startsWithIgnoreCase(value.toString());
     }
-    
+
     private static BooleanExpression endWith(PathBuilder<?> path, String field, Object value) {
         return path.getString(field).endsWithIgnoreCase(value.toString());
     }
-    
+
     private static BooleanExpression in(PathBuilder<?> path, String field, Object value) {
         if (!(value instanceof Collection)) {
             throw new IllegalArgumentException("IN 操作要求值必须是 Collection 类型");
@@ -110,7 +110,7 @@ public class ExpressionBuilder {
         }
         return path.get(field).in((Collection<?>) value);
     }
-    
+
     private static BooleanExpression notIn(PathBuilder<?> path, String field, Object value) {
         if (!(value instanceof Collection)) {
             throw new IllegalArgumentException("NOT_IN 操作要求值必须是 Collection 类型");

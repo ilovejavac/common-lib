@@ -23,9 +23,11 @@ public class EncryptionStrategyFactory {
                         EncryptService::getVersion,
                         s -> s,
                         (existing, replacement) -> {
-                            log.warn("发现重复的加密策略版本: {}, 使用: {}",
+                            log.warn(
+                                    "发现重复的加密策略版本: {}, 使用: {}",
                                     existing.getVersion(),
-                                    existing.getClass().getSimpleName());
+                                    existing.getClass().getSimpleName()
+                            );
                             return existing;  // 保留第一个
                         }
                 ));

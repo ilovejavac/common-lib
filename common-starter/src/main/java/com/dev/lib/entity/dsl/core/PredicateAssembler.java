@@ -6,7 +6,6 @@ import com.dev.lib.entity.dsl.ConditionIgnore;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.entity.sass.TenantBaseEntity;
-import com.dev.lib.security.util.SecurityContextHolder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
@@ -23,7 +22,8 @@ import java.util.List;
 import java.util.Map;
 
 public class PredicateAssembler {
-    private PredicateAssembler() {}
+    private PredicateAssembler() {
+    }
 
     public static <E extends BaseEntity> BooleanBuilder assemble(
             DslQuery<E> query,

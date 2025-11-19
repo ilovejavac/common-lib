@@ -27,12 +27,12 @@ public interface BaseRepository<T extends BaseEntity> extends JpaRepository<T, L
         return findAll(toPredicate(dslQuery, expressions), dslQuery.toPageable());
     }
 
-    default boolean exists(DslQuery<T> dslQuery) {
-        return exists(toPredicate(dslQuery));
+    default boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        return exists(toPredicate(dslQuery, expressions));
     }
 
-    default long count(DslQuery<T> dslQuery) {
-        return count(toPredicate(dslQuery));
+    default long count(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        return count(toPredicate(dslQuery, expressions));
     }
 
 }
