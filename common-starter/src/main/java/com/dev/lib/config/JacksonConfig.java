@@ -37,71 +37,8 @@ public class JacksonConfig {
     private static final String timeZone = "Asia/Shanghai";
 
     @Bean
-    @Primary
-    public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-
-        // === 基础配置 ===
-        mapper.enable(JsonReadFeature.ALLOW_JAVA_COMMENTS.mappedFeature());
-        mapper.enable(JsonReadFeature.ALLOW_SINGLE_QUOTES.mappedFeature());
-
-        // === 数字处理 ===
-        mapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
-        mapper.configure(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS, true);
-        mapper.disable(DeserializationFeature.USE_BIG_INTEGER_FOR_INTS);
-
-        // === 日期时间 ===
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.registerModule(new JavaTimeModule());
-        // 移除SimpleDateFormat，使用JavaTimeModule的默认格式
-        mapper.setTimeZone(TimeZone.getTimeZone(timeZone));
-
-        // === 容错处理 ===
-        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-        mapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
-        mapper.enable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT);
-        mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
-        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL);
-        mapper.enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY); // 防止重复key
-        mapper.enable(SerializationFeature.FAIL_ON_SELF_REFERENCES); // 防止自引用
-
-        // === null处理 ===
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-
-        // === 字符串 ===
-        mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
-        mapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
-
-        // === 枚举 ===
-        mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
-        mapper.enable(SerializationFeature.WRITE_ENUMS_USING_TO_STRING);
-        mapper.enable(DeserializationFeature.READ_ENUMS_USING_TO_STRING);
-
-        // === 自定义序列化器（保留4位小数）===
-        SimpleModule module = new SimpleModule();
-
-        // BigDecimal保留4位
-        module.addSerializer(BigDecimal.class, new BigDecimalSerializer());
-        module.addDeserializer(BigDecimal.class, new BigDecimalDeserializer());
-
-        mapper.registerModule(module);
-
-        // === 性能优化 ===
-        mapper.enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
-        mapper.enable(JsonGenerator.Feature.ESCAPE_NON_ASCII);
-
-        // === 默认类型信息（可选，用于多态类型）===
-        mapper.setPolymorphicTypeValidator(LaissezFaireSubTypeValidator.instance);
-
-        return mapper;
-    }
-
-    @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
         return builder -> {
-            builder.mixIn(Object.class, BaseEntityMixIn.class);
-
             // Long转String
             builder.serializerByType(Long.class, new LongToStringSerializer());
             builder.serializerByType(Long.TYPE, new LongToStringSerializer());
@@ -112,7 +49,6 @@ public class JacksonConfig {
             builder.serializerByType(BigDecimal.class, new BigDecimalSerializer());
             builder.deserializerByType(BigDecimal.class, new BigDecimalDeserializer());
             builder.featuresToEnable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-
 
             // 时间类型处理
             builder.modulesToInstall(new JavaTimeModule());
@@ -151,18 +87,27 @@ public class JacksonConfig {
             builder.postConfigurer(mapper ->
                     mapper.setTimeZone(java.util.TimeZone.getTimeZone(timeZone))
             );
+
+            // 1. 允许Java注释（JsonReadFeature）
+            builder.featuresToEnable(JsonReadFeature.ALLOW_JAVA_COMMENTS.mappedFeature());
+            builder.featuresToEnable(JsonReadFeature.ALLOW_SINGLE_QUOTES.mappedFeature());
+
+            // 2. BigDecimal处理增强
+            builder.featuresToEnable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
+            builder.featuresToDisable(DeserializationFeature.USE_BIG_INTEGER_FOR_INTS);
+
+            // 3. 安全和性能优化
+            builder.featuresToEnable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+            builder.featuresToEnable(JsonGenerator.Feature.ESCAPE_NON_ASCII);
+
+            // 4. 多态类型安全（防止反序列化攻击）
+            builder.postConfigurer(mapper ->
+                    mapper.setPolymorphicTypeValidator(LaissezFaireSubTypeValidator.instance)
+            );
+
+            // 5. 确保枚举处理的一致性
+            builder.featuresToEnable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL);
         };
-    }
-
-    interface BaseEntityMixIn {
-        @JsonIgnore
-        Long getId();
-
-        @JsonIgnore
-        String getVersion();
-
-        @JsonIgnore
-        Boolean getDeleted();
     }
 
     // ============ 序列化器实现 ============

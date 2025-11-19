@@ -1,7 +1,6 @@
 package com.dev.lib.entity;
 
 import com.dev.lib.entity.dsl.DslQuery;
-import com.dev.lib.web.model.QueryRequest;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,27 +13,26 @@ import java.util.Optional;
 import static com.dev.lib.entity.dsl.DslQuery.toPredicate;
 
 @NoRepositoryBean
-public interface BaseRepository<T> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
+public interface BaseRepository<T extends BaseEntity> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
 
-    default Optional<T> fetchOne(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    default Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions) {
         return findOne(toPredicate(dslQuery, expressions));
     }
 
-    default List<T> fetch(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-        return findAll(toPredicate(dslQuery, expressions));
+    default List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        return findAll(toPredicate(dslQuery, expressions), dslQuery.toSort());
     }
 
-    default <Q extends DslQuery<T>> List<T> fetch(QueryRequest<Q> qry, BooleanExpression... expressions) {
-        if (qry == null) {
-            return List.of();
-        }
-        return findAll(qry.toPredicate(expressions), qry.toSort());
+    default Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        return findAll(toPredicate(dslQuery, expressions), dslQuery.toPageable());
     }
 
-    default <Q extends DslQuery<T>> Page<T> page(QueryRequest<Q> qry, BooleanExpression... expressions) {
-        if (qry == null) {
-            return Page.empty();
-        }
-        return findAll(qry.toPredicate(expressions), qry.toPageable());
+    default boolean exists(DslQuery<T> dslQuery) {
+        return exists(toPredicate(dslQuery));
     }
+
+    default long count(DslQuery<T> dslQuery) {
+        return count(toPredicate(dslQuery));
+    }
+
 }

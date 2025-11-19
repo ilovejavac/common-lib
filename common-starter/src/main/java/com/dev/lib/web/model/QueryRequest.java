@@ -1,8 +1,5 @@
 package com.dev.lib.web.model;
 
-import com.dev.lib.entity.dsl.DslQuery;
-import com.querydsl.core.types.Predicate;
-import com.querydsl.core.types.dsl.BooleanExpression;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
@@ -19,7 +16,7 @@ import java.util.List;
 @Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class QueryRequest<T extends DslQuery<?>> {
+public class QueryRequest<T> {
     private T query;
 
     @Min(1)
@@ -29,19 +26,15 @@ public class QueryRequest<T extends DslQuery<?>> {
     @Max(1000)
     private Integer size = 20;
 
-    private List<Orders> orders = List.of(new Orders("createdAt", Sort.Direction.DESC));
-
     @Data
-    @AllArgsConstructor
     @NoArgsConstructor
-    public static class Orders {
+    @AllArgsConstructor
+    public static class Order {
         private String property;
         private Sort.Direction direction;
     }
 
-    public Predicate toPredicate(BooleanExpression... expressions) {
-        return DslQuery.toPredicate(query, expressions);
-    }
+    private List<Order> orders = List.of(new Order("createdAt", Sort.Direction.DESC));
 
     public Sort toSort() {
         return orders == null || orders.isEmpty()

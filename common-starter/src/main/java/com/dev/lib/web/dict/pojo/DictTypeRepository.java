@@ -2,7 +2,10 @@ package com.dev.lib.web.dict.pojo;
 
 import com.dev.lib.entity.BaseRepository;
 import com.dev.lib.entity.EntityStatus;
-import com.dev.lib.web.dict.model.dto.DictTypeRequest;
+import com.dev.lib.entity.dsl.DslQuery;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -11,10 +14,18 @@ import java.util.Optional;
 public interface DictTypeRepository extends BaseRepository<DictType> {
     QDictType q = QDictType.dictType;
 
-    default Optional<DictType> getType(String id) {
-        DictTypeRequest.GetType getType = new DictTypeRequest.GetType(id);
+    @EqualsAndHashCode(callSuper = true)
+    @Data
+    @Accessors(chain = true)
+    class Query extends DslQuery<DictType> {
 
-        return fetchOne(getType, q.status.eq(EntityStatus.ENABLE));
+    }
+
+    default Optional<DictType> getType(String id) {
+        Query query = new Query();
+        query.id = id;
+
+        return load(query, q.status.eq(EntityStatus.ENABLE));
     }
 
 }
