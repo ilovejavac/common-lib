@@ -64,6 +64,7 @@ public abstract class DslQuery<E extends BaseEntity> {
     @ConditionIgnore
     protected LogicalOperator selfOperator = LogicalOperator.AND;
 
+    @SuppressWarnings("unchecked")
     protected DslQuery() {
         Type genericSuperclass = getClass().getGenericSuperclass();
         if (genericSuperclass instanceof ParameterizedType parameterizedType) {

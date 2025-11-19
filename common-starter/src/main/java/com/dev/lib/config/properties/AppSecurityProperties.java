@@ -11,4 +11,7 @@ public class AppSecurityProperties {
     private String secret;
     private Long expiration;
     private Set<String> whiteListRequest;
+
+    private String rsaPublicKey;
+    private String rsaPrivateKey;
 }

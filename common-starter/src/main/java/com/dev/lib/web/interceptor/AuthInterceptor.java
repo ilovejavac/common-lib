@@ -95,7 +95,7 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
                 throw new BizException(403, "服务认证失败");
             }
             if (!SecurityContextHolder.isLogin()) {
-                SecurityContextHolder.set(UserDetails.internal().setTokenId(token));
+                SecurityContextHolder.set(UserDetails.Internal.setTokenId(token));
             }
             return true;
         }

@@ -1,4 +1,4 @@
-package com.dev.lib.entity.encrypt.impl;
+package com.dev.lib.entity.encrypt;
 
 public interface CustomEncryptor {
     String doEncrypt(String value);

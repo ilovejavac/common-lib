@@ -2,6 +2,7 @@ package com.dev.lib.entity.encrypt.impl;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.entity.encrypt.EncryptService;
+import com.dev.lib.entity.encrypt.EncryptVersion;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
@@ -16,7 +17,7 @@ import java.util.Base64;
  */
 @Component
 @RequiredArgsConstructor
-public class V2EncryptionStrategy implements EncryptService, InitializingBean {
+public class AesEncryptionStrategy implements EncryptService, InitializingBean {
 
     private final AppSecurityProperties securityProperties;
 
@@ -31,7 +32,7 @@ public class V2EncryptionStrategy implements EncryptService, InitializingBean {
 
     @Override
     public String getVersion() {
-        return "v2";
+        return EncryptVersion.AES.getMsg();
     }
 
     @Override

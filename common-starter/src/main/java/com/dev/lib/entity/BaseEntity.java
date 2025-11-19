@@ -1,10 +1,6 @@
 package com.dev.lib.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.Version;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
@@ -21,7 +17,7 @@ import java.time.LocalDateTime;
 @Setter
 @Where(clause = "deleted = false")
 @MappedSuperclass
-@EntityListeners({AuditingEntityListener.class, BaseEntityListener.class, EncryptionListener.class})
+@EntityListeners({BaseEntityListener.class, EncryptionListener.class})
 public abstract class BaseEntity implements Serializable {
 
     @Id
@@ -30,21 +26,23 @@ public abstract class BaseEntity implements Serializable {
     @Column(nullable = false, length = 12, unique = true)
     private String bizId;
 
-    @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @LastModifiedDate
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @CreatedBy
     @Column(length = 64, updatable = false)
     private String createdBy;
 
-    @LastModifiedBy
     @Column(length = 64)
     private String updatedBy;
+
+    @Column(name = "created_by_id", updatable = false)
+    private Long createdById;
+
+    @Column(name = "updated_by_id")
+    private Long updatedById;
 
     @Column(nullable = false)
     private Boolean deleted = false;

@@ -5,6 +5,8 @@ import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.ConditionIgnore;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
+import com.dev.lib.entity.sass.TenantBaseEntity;
+import com.dev.lib.security.util.SecurityContextHolder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
@@ -48,7 +50,22 @@ public class PredicateAssembler {
             builder.and(expression);
         }
 
+//        if (query != null && isTenantEntity(query.getEntityPath().getType())) {
+//            Long tenantId = SecurityContextHolder.current().getTenant();
+//            if (tenantId != null) {
+//                PathBuilder<?> pathBuilder = new PathBuilder<>(
+//                        query.getEntityPath().getType(),
+//                        query.getEntityPath().getMetadata()
+//                );
+//                builder.and(pathBuilder.get("tenantId").eq(tenantId));
+//            }
+//        }
+
         return builder;
+    }
+
+    private static boolean isTenantEntity(Class<?> entityClass) {
+        return TenantBaseEntity.class.isAssignableFrom(entityClass);
     }
 
     private static <E extends BaseEntity> List<ExpressionItem> collectExpressions(

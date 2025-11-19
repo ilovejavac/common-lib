@@ -15,15 +15,15 @@ public class EncryptionService {
         EncryptVersion encryptVersion = securityProperties.getEncryptVersion();
         if (isEncrypted(dbValue)) {
             String version = extractVersion(dbValue);
-            if (version.equals(encryptVersion.name().toLowerCase())) {
+            if (version.equals(encryptVersion.getMsg().toLowerCase())) {
                 // 已用当前版本加密，不重复
                 return dbValue;
             }
             // 解密后重新加密
             String plainText = decrypt(dbValue);
-            return encryptWithVersion(plainText, version);
+            return encryptWithVersion(plainText, encryptVersion);
         }
-        return encryptWithVersion(dbValue, encryptVersion.name().toLowerCase());
+        return encryptWithVersion(dbValue, encryptVersion);
     }
 
     public String decrypt(String dbValue) {
@@ -43,7 +43,7 @@ public class EncryptionService {
         return value.substring(0, value.indexOf(':'));
     }
 
-    private String encryptWithVersion(String plainText, String version) {
+    private String encryptWithVersion(String plainText, EncryptVersion version) {
         String encrypted = factory.getStrategy(version).encrypt(plainText);
         return version + ":" + encrypted;
     }

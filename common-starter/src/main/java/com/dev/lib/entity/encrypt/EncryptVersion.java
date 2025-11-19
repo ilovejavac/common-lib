@@ -6,11 +6,23 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum EncryptVersion {
-    V1("Base64"),
-    V2("AES"),
-    V3("SM4"),
+    BASE64("v1"),
+    AES("v2"),
 
-    V10("custom");
+    RSA("v3"),
+    SM4("v4"),
+
+    CUSTOM("v10");
 
     private final String msg;
+
+    public static EncryptVersion from(String msg) {
+        for (EncryptVersion value : values()) {
+            if (value.msg.equals(msg)) {
+                return value;
+            }
+        }
+
+        return EncryptVersion.BASE64;
+    }
 }

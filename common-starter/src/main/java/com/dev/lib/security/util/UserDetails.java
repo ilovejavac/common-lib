@@ -19,37 +19,38 @@ import java.util.Set;
 @Accessors(chain = true)
 public class UserDetails implements Serializable {
 
-    public static final UserDetails Anonymous;
     private static final String INTERNAL = "INTERNAL";
     private static final String ANONYMOUS = "ANONYMOUS";
+    private static final Long ANONYMOUS_USER_ID = -1L;
+    private static final Long INTERNAL_USER_ID = -2L;  // ✅ 区分 Internal
 
-    // 外部用户
-    public static UserDetails internal() {
-        return UserDetails.builder().id(20L)
-                .roles(Set.of(INTERNAL))
-                .status(EntityStatus.ENABLE)
-                .realName(INTERNAL.toLowerCase())
-                .username(INTERNAL.toLowerCase())
-                .userType(INTERNAL)
-                .tenant(0L)
-                .deptId(0L)
-                .deptName(INTERNAL)
-                .deptIds(Collections.emptySet())
-                .build();
-    }
+    public static final UserDetails Anonymous;
+    public static final UserDetails Internal;  // ✅ 改为静态常量
 
     static {
-        // 匿名访问
         Anonymous = UserDetails.builder()
-                .id(10L)
+                .id(ANONYMOUS_USER_ID)
                 .roles(Set.of(ANONYMOUS))
                 .status(EntityStatus.ENABLE)
-                .realName(ANONYMOUS.toLowerCase())
-                .username(ANONYMOUS.toLowerCase())
+                .realName("Anonymous")
+                .username("anonymous")
                 .userType(ANONYMOUS)
-                .tenant(0L)
-                .deptId(0L)
-                .deptName(ANONYMOUS)
+                .tenant(ANONYMOUS_USER_ID)
+                .deptId(ANONYMOUS_USER_ID)
+                .deptName("Anonymous")
+                .deptIds(Collections.emptySet())
+                .build();
+
+        Internal = UserDetails.builder()
+                .id(INTERNAL_USER_ID)
+                .roles(Set.of(INTERNAL))
+                .status(EntityStatus.ENABLE)
+                .realName("Internal")
+                .username("internal")
+                .userType(INTERNAL)
+                .tenant(INTERNAL_USER_ID)
+                .deptId(INTERNAL_USER_ID)
+                .deptName("Internal")
                 .deptIds(Collections.emptySet())
                 .build();
     }
@@ -58,6 +59,8 @@ public class UserDetails implements Serializable {
     private Long id;
     private String username;
     private Long tenant;  // 租户 ID
+    private String email;
+    private String phone;
 
     // ===== 权限信息 =====
     private Set<String> permissions;
@@ -122,4 +125,26 @@ public class UserDetails implements Serializable {
     public boolean isExpired() {
         return expireTime != null && System.currentTimeMillis() > expireTime;
     }
+
+    /**
+     * 是否匿名用户
+     */
+    public boolean isAnonymous() {
+        return ANONYMOUS_USER_ID.equals(this.id);
+    }
+
+    /**
+     * 是否内部用户
+     */
+    public boolean isInternal() {
+        return INTERNAL_USER_ID.equals(this.id);
+    }
+
+    /**
+     * 是否真实用户
+     */
+    public boolean isRealUser() {
+        return this.id != null && this.id > 0;
+    }
+
 }

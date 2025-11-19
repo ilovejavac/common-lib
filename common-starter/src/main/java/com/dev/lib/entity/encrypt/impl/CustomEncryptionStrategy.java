@@ -1,6 +1,8 @@
 package com.dev.lib.entity.encrypt.impl;
 
+import com.dev.lib.entity.encrypt.CustomEncryptor;
 import com.dev.lib.entity.encrypt.EncryptService;
+import com.dev.lib.entity.encrypt.EncryptVersion;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -12,14 +14,14 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnBean(CustomEncryptor.class)
-public class V10EncryptionStrategy implements EncryptService {
+public class CustomEncryptionStrategy implements EncryptService {
 
     @Resource
     private CustomEncryptor customEncryptor;
 
     @Override
     public String getVersion() {
-        return "v10";
+        return EncryptVersion.CUSTOM.getMsg();
     }
 
     @Override

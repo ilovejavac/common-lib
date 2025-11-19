@@ -1,6 +1,7 @@
 package com.dev.lib.entity.encrypt.impl;
 
 import com.dev.lib.entity.encrypt.EncryptService;
+import com.dev.lib.entity.encrypt.EncryptVersion;
 import org.springframework.stereotype.Component;
 
 import java.util.Base64;
@@ -9,10 +10,10 @@ import java.util.Base64;
  * base64加密
  */
 @Component
-public class V1EncryptionStrategy implements EncryptService {
+public class Base64EncryptionStrategy implements EncryptService {
     @Override
     public String getVersion() {
-        return "v1";
+        return EncryptVersion.BASE64.getMsg();
     }
 
     @Override

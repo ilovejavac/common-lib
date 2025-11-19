@@ -14,6 +14,9 @@ import org.springframework.util.ReflectionUtils;
 
 import java.util.Arrays;
 
+/**
+ * 多版本数据库加密解密
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
