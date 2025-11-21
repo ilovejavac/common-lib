@@ -21,11 +21,14 @@ public class UserDetails implements Serializable {
 
     private static final String INTERNAL = "INTERNAL";
     private static final String ANONYMOUS = "ANONYMOUS";
+    private static final String SYSTEM = "SYSTEM";
     private static final Long ANONYMOUS_USER_ID = -1L;
-    private static final Long INTERNAL_USER_ID = -2L;  // ✅ 区分 Internal
+    private static final Long INTERNAL_USER_ID = -2L;
+    private static final Long SYSTEM_USER_ID = -3L;
 
     public static final UserDetails Anonymous;
-    public static final UserDetails Internal;  // ✅ 改为静态常量
+    public static final UserDetails Internal;
+    public static final UserDetails System;
 
     static {
         Anonymous = UserDetails.builder()
@@ -53,6 +56,19 @@ public class UserDetails implements Serializable {
                 .deptName("Internal")
                 .deptIds(Collections.emptySet())
                 .build();
+
+        System = UserDetails.builder()
+                .id(SYSTEM_USER_ID)
+                .roles(Set.of(SYSTEM))
+                .status(EntityStatus.ENABLE)
+                .realName("System")
+                .username("system")
+                .userType(SYSTEM)
+                .tenant(SYSTEM_USER_ID)
+                .deptId(SYSTEM_USER_ID)
+                .deptName("System")
+                .deptIds(Collections.emptySet())
+                .build();
     }
 
     // ===== 基础信息 =====
@@ -71,15 +87,15 @@ public class UserDetails implements Serializable {
     private String deptName;          // 部门名称(可选,方便日志)
     private Set<Long> deptIds;        // 数据权限范围内的所有部门 ID
 
-    // ===== Token  =====
-    private String tokenId;           // Token 唯一标识(用于踢人/单点登录)
-    private Long loginTime = System.currentTimeMillis();           // 登录时间戳
-    private Long expireTime;          // 过期时间戳
-
     // ===== 用户状态  =====
     private String realName;          // 真实姓名(用于日志/审计)
     private String userType;          // 用户类型: EMPLOYEE, ADMIN, SYSTEM 等
     private EntityStatus status;           // 用户状态
+
+    // ===== Token  =====
+    private String tokenId;           // Token 唯一标识(用于踢人/单点登录)
+    private Long loginTime;           // 登录时间戳
+    private Long expireTime;          // 过期时间戳
 
     // ===== 客户端信息 (审计/安全) =====
     private String clientIp;          // 客户端 IP
@@ -123,7 +139,7 @@ public class UserDetails implements Serializable {
      * Token 是否过期
      */
     public boolean isExpired() {
-        return expireTime != null && System.currentTimeMillis() > expireTime;
+        return expireTime != null && java.lang.System.currentTimeMillis() > expireTime;
     }
 
     /**

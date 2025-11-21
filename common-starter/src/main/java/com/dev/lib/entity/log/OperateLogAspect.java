@@ -34,12 +34,12 @@ public class OperateLogAspect {
         log.setDescription(operateLog.description());
         log.setMethod(point.getSignature().toString());
         log.setOperator(SecurityContextHolder.getUsername());
-        log.setIp(getIpAddress());
+        log.setIp(SecurityContextHolder.get().getClientIp());
         log.setUserAgent(request.getHeader("User-Agent"));
         log.setOperateTime(LocalDateTime.now());
         log.setDeptId(SecurityContextHolder.get().getDeptId());
-        log.setCreatedBy(SecurityContextHolder.getUsername());
-        log.setUpdatedBy(SecurityContextHolder.getUsername());
+        log.setCreatorId(SecurityContextHolder.getUserId());
+        log.setModifierId(SecurityContextHolder.getUserId());
 
         if (operateLog.recordParams()) {
             log.setRequestParams(JSON.toJSONString(point.getArgs()));
@@ -65,13 +65,5 @@ public class OperateLogAspect {
             // 异步保存
             CompletableFuture.runAsync(() -> operateLogRepository.save(log));
         }
-    }
-
-    private String getIpAddress() {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty()) {
-            ip = request.getRemoteAddr();
-        }
-        return ip;
     }
 }

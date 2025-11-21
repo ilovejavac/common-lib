@@ -29,6 +29,28 @@ public class SecurityContextHolder {
         return holder.get() != null;
     }
 
+    public static void with(UserDetails userDetails, Runnable task) {
+        UserDetails older = holder.get();
+        holder.set(userDetails);
+        try {
+            task.run();
+        } finally {
+            holder.set(older);
+        }
+    }
+
+    public static void withSystem(Runnable task) {
+        with(UserDetails.System, task);
+    }
+
+    public static void withInternal(Runnable task) {
+        with(UserDetails.Internal, task);
+    }
+
+    public static void withAnonymous(Runnable task) {
+        with(UserDetails.Anonymous, task);
+    }
+
     /**
      * 获取当前用户(未登录返回 Anonymous)
      */

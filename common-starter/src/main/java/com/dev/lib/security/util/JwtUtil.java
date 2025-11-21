@@ -58,8 +58,19 @@ class JwtUtil implements TokenService, InitializingBean {
         }
 
         try {
-            Long userId = getUserIdFromToken(token);
-            return userDetailService.loadUserById(userId);
+            JWT jwt = parseJwt(token);
+            Long userId = getLongPayload(jwt, "userId");
+
+            UserDetails userDetails = userDetailService.loadUserById(userId);
+            if (userDetails == null) {
+                return null;
+            }
+
+            userDetails.setTokenId(token);
+            userDetails.setLoginTime(System.currentTimeMillis());
+            userDetails.setExpireTime(getLongPayload(jwt, "exp") * 1000); // 已经是毫秒
+
+            return userDetails;
         } catch (Exception e) {
             log.error("Failed to parse user from token: {}", e.getMessage());
             return null;
@@ -204,10 +215,9 @@ class JwtUtil implements TokenService, InitializingBean {
     /**
      * 从token获取过期时间
      */
-    public Date getExpirationFromToken(String token) {
+    public Long getExpirationFromToken(String token) {
         JWT jwt = parseJwt(token);
-        Long expSeconds = getLongPayload(jwt, "exp");
-        return new Date(expSeconds * 1000);
+        return getLongPayload(jwt, "exp");
     }
 
     /**
@@ -219,8 +229,8 @@ class JwtUtil implements TokenService, InitializingBean {
         }
 
         try {
-            Date expiration = getExpirationFromToken(token);
-            return expiration.before(new Date());
+            Long expiration = getExpirationFromToken(token);
+            return expiration < System.currentTimeMillis();
         } catch (Exception e) {
             log.error("Failed to check token expiration: {}", e.getMessage());
             return true;
@@ -252,9 +262,9 @@ class JwtUtil implements TokenService, InitializingBean {
         }
 
         try {
-            Date expiration = getExpirationFromToken(token);
-            long remaining = expiration.getTime() - System.currentTimeMillis();
-            return Math.max(0, remaining); // 确保不返回负数
+            Long expiration = getExpirationFromToken(token);
+            long remaining = expiration - System.currentTimeMillis();
+            return Math.max(0, remaining);
         } catch (Exception e) {
             log.error("Failed to get token remaining time: {}", e.getMessage());
             return 0;
@@ -264,10 +274,10 @@ class JwtUtil implements TokenService, InitializingBean {
     /**
      * 获取token的Issue时间
      */
-    public Date getIssuedAtFromToken(String token) {
+    public Long getIssuedAtFromToken(String token) {
         JWT jwt = parseJwt(token);
         Long iatSeconds = getLongPayload(jwt, "iat");
-        return new Date(iatSeconds * 1000);
+        return iatSeconds * 1000;
     }
 
     /**

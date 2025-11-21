@@ -34,22 +34,26 @@ public class AuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = extractToken(request);
             UserDetails userDetail = tokenService.parseToken(token);
+
             if (userDetail != null && !userDetail.isExpired()) {
+                userDetail.setClientIp(ClientInfoExtractor.getClientIp(request));
+                userDetail.setClientType(ClientInfoExtractor.getClientType(request));
+                userDetail.setDeviceId(request.getHeader("X-Device-Id"));
+
                 SecurityContextHolder.set(userDetail);
-                log.debug("Set Authentication to SecurityContext for user: {}", userDetail.getUsername());
             }
         } catch (Exception e) {
             log.error("Cannot set user authentication", e);
+        } finally {
+            filterChain.doFilter(request, response);
+            SecurityContextHolder.clear();
         }
-
-        filterChain.doFilter(request, response);
     }
 
     private String extractToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
+        return (bearerToken != null && bearerToken.startsWith("Bearer "))
+                ? bearerToken.substring(7)
+                : null;
     }
 }

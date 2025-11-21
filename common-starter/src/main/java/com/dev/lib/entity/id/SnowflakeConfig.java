@@ -1,35 +1,32 @@
 package com.dev.lib.entity.id;
 
-import jakarta.annotation.PostConstruct;
+import com.dev.lib.config.properties.AppSnowFlakeProperties;
 import jakarta.annotation.PreDestroy;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class SnowflakeConfig {
+@RequiredArgsConstructor
+public class SnowflakeConfig implements InitializingBean {
 
+    private final AppSnowFlakeProperties snowFlakeProperties;
     private static final String LOCK_KEY_PREFIX = "snowflake:worker:";
     private static final int MAX_RETRY_TIMES = 3;
     private static final long RETRY_DELAY_MS = 1000L;
 
-    private static volatile SnowflakeConfig instance;
-
     //    private final RedissonClient redissonClient;
-    private SnowflakeDistributeId snowflakeWorker;
+    @Getter
+    private static SnowflakeDistributeId worker;
 
     private long acquiredWorkerId = -1;
     private long acquiredDatacenterId = -1;
 
-    public static SnowflakeDistributeId getWorker() {
-        if (instance == null || instance.snowflakeWorker == null) {
-            throw new IllegalStateException("SnowflakeConfig not initialized yet");
-        }
-        return instance.snowflakeWorker;
-    }
-
-    @PostConstruct
-    public void init() {
+    @Override
+    public void afterPropertiesSet() throws Exception {
         log.info("=".repeat(60));
         log.info("Initializing Snowflake");
         log.info("=".repeat(60));
@@ -41,17 +38,11 @@ public class SnowflakeConfig {
             acquiredWorkerId = workerId;
             acquiredDatacenterId = datacenterId;
 
-            String twepochStr = System.getenv("SNOWFLAKE_EPOCH");
-            long twepoch = (twepochStr != null) ? Long.parseLong(twepochStr) : 1542448800000L;
-
-            snowflakeWorker = SnowflakeDistributeId.getInstance(workerId, datacenterId, twepoch);
-            instance = this;
+            worker = SnowflakeDistributeId.getInstance(workerId, datacenterId);
 
             log.info("✓ Snowflake initialized!");
             log.info("  WorkerId: {}", workerId);
             log.info("  DatacenterId: {}", datacenterId);
-            log.info("=".repeat(60));
-
         } catch (Exception e) {
             log.error("✗ Failed to initialize Snowflake!", e);
             throw new RuntimeException("Snowflake initialization failed", e);
@@ -59,9 +50,7 @@ public class SnowflakeConfig {
     }
 
     private long getDatacenterId() {
-        String datacenterIdStr = System.getenv("DATACENTER_ID");
-        long datacenterId = (datacenterIdStr != null) ? Long.parseLong(datacenterIdStr) : 0L;
-        return Math.max(0, Math.min(datacenterId, 15));
+        return Math.max(0, Math.min(snowFlakeProperties.getDataCenterId(), 15));
     }
 
     private long acquireWorkerId(long datacenterId) {
@@ -113,7 +102,5 @@ public class SnowflakeConfig {
 //        } catch (Exception e) {
 //            log.error("Failed to release workerId", e);
 //        }
-
-        instance = null;
     }
 }

@@ -1,6 +1,8 @@
 package com.dev.lib.entity.id;
 
 public class IDWorker {
+    private IDWorker() {
+    }
 
     public static long nextID() {
         return SnowflakeConfig.getWorker().nextId();

@@ -1,7 +1,5 @@
-package com.dev.lib.entity;
+package com.dev.lib.entity.encrypt;
 
-import com.dev.lib.entity.encrypt.Encrypt;
-import com.dev.lib.entity.encrypt.EncryptionService;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostUpdate;

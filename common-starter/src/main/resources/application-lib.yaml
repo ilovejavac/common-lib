@@ -158,6 +158,8 @@ management:
       application: ${spring.application.name}
 
 app:
+  snow-flake:
+    data-center-id: 0
   dubbo:
     scan-packages: /
   cloud:

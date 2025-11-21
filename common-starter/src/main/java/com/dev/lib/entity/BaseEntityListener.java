@@ -5,7 +5,6 @@ import com.dev.lib.entity.id.IntEncoder;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreRemove;
 import jakarta.persistence.PreUpdate;
 
 import java.time.LocalDateTime;
@@ -24,15 +23,22 @@ public class BaseEntityListener {
             entity.setBizId(IntEncoder.encode36(entity.getId()));
         }
 
+        if (entity.getDeleted() == null) {
+            entity.setDeleted(false);
+        }
+
         // 2. 设置创建时间
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
 
         // 3. 设置创建人信息
         UserDetails user = SecurityContextHolder.current();
-        if (user.isRealUser()) {
-            entity.setCreatedBy(user.getUsername());
-            entity.setCreatedById(user.getId());
+
+        if (entity.getCreatorId() == null) {
+            entity.setCreatorId(user.getId());
+        }
+        if (entity.getModifierId() == null) {
+            entity.setModifierId(user.getId());
         }
     }
 
@@ -43,23 +49,20 @@ public class BaseEntityListener {
 
         // 2. 设置更新人信息
         UserDetails user = SecurityContextHolder.current();
-        if (user.isRealUser()) {
-            entity.setUpdatedBy(user.getUsername());
-            entity.setUpdatedById(user.getId());
-        }
+        entity.setModifierId(user.getId());
     }
 
-    @PreRemove
-    public void preRemove(BaseEntity entity) {
-        // 软删除
-        entity.setDeleted(true);
-        entity.setUpdatedAt(LocalDateTime.now());
-
-        // 记录删除人
-        UserDetails user = SecurityContextHolder.current();
-        if (user.isRealUser()) {
-            entity.setUpdatedBy(user.getUsername());
-            entity.setUpdatedById(user.getId());
-        }
-    }
+//    @PreRemove
+//    public void preRemove(BaseEntity entity) {
+//        // 软删除
+//        entity.setDeleted(true);
+//        entity.setUpdatedAt(LocalDateTime.now());
+//
+//        // 记录删除人
+//        UserDetails user = SecurityContextHolder.current();
+//        if (user.isRealUser()) {
+//            entity.setUpdatedBy(user.getUsername());
+//            entity.setUpdatedById(user.getId());
+//        }
+//    }
 }
