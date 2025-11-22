@@ -1,4 +1,4 @@
-package com.dev.lib.web.dict.pojo;
+package com.dev.lib.web.dict.data;
 
 import com.dev.lib.entity.BaseEntity;
 import com.dev.lib.entity.EntityStatus;
@@ -12,8 +12,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.Comment;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Entity
 @Table(name = "sys_dict_item", indexes = {

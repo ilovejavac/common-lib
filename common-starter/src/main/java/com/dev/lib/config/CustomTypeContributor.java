@@ -11,7 +11,7 @@ import org.hibernate.service.ServiceRegistry;
 
 /**
  * Hibernate 类型配置贡献器
-
+ * <p>
  * 通过 SPI 自动注册，修改各类型的默认配置：
  * - String: varchar(500)
  * - BigDecimal: decimal(19,4)

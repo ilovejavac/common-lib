@@ -1,253 +1,261 @@
 package com.dev.lib.redis;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RBucket;
+import org.redisson.api.RAtomicLong;
+import org.redisson.api.RBlockingQueue;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RCountDownLatch;
+import org.redisson.api.RList;
+import org.redisson.api.RLock;
+import org.redisson.api.RMap;
+import org.redisson.api.RQueue;
+import org.redisson.api.RReadWriteLock;
+import org.redisson.api.RScoredSortedSet;
+import org.redisson.api.RSemaphore;
+import org.redisson.api.RSet;
+import org.redisson.api.RSortedSet;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @ConditionalOnClass(name = "org.redisson.api.RedissonClient")
-@RequiredArgsConstructor
-public class RedisStore {
+@SuppressWarnings("java:S6548")
+public class RedisStore implements InitializingBean {
 
     private final RedissonClient redissonClient;
-    private final ObjectMapper objectMapper;
 
     private static final String STORE_PREFIX = "store:";
     private static RedisStore instance;
 
-    @PostConstruct
-    public void init() {
+    public RedisStore(RedissonClient redissonClient) {
+        this.redissonClient = redissonClient;
+    }
+
+    @Override
+    public void afterPropertiesSet() {
         instance = this;
     }
 
-    // ============ 静态方法 - 单对象 ============
+    // ============ 入口 ============
 
-    public static <T> void store(Object value, Object... keys) {
-        Object[] keyParts = Arrays.copyOf(keys, keys.length - 1);
-        instance.storeValue(null, keyParts, value);
-    }
-
-    public static <T> void store(Duration ttl, Object value, Object... keysAndValue) {
-        Object[] keyParts = Arrays.copyOf(keysAndValue, keysAndValue.length - 1);
-        instance.storeValue(ttl, keyParts, value);
-    }
-
-    public static <T> T load(Class<T> clazz, Object... keys) {
-        return instance.loadValue(clazz, keys);
-    }
-
-    public static <T> List<T> loadList(Class<T> elementClass, Object... keys) {
-        return instance.loadListValue(elementClass, keys);
-    }
-
-    public static <T> T load(TypeReference<T> typeRef, Object... keys) {
-        return instance.loadValue(typeRef, keys);
-    }
-
-    public static <T> T getIfPresent(Class<T> clazz, Supplier<T> loader, Object... keys) {
-        return instance.getOrLoad(clazz, null, loader, keys);
-    }
-
-    public static <T> T getIfPresent(Class<T> clazz, Duration ttl, Supplier<T> loader, Object... keys) {
-        return instance.getOrLoad(clazz, ttl, loader, keys);
-    }
-
-    public static <T> List<T> getIfPresentList(Class<T> elementClass, Supplier<List<T>> loader, Object... keys) {
-        return instance.getOrLoadList(elementClass, null, loader, keys);
-    }
-
-    public static <T> List<T> getIfPresentList(
-            Class<T> elementClass,
-            Duration ttl,
-            Supplier<List<T>> loader,
-            Object... keys
-    ) {
-        return instance.getOrLoadList(elementClass, ttl, loader, keys);
-    }
-
-    public static boolean remove(Object... keys) {
-        String storeKey = instance.buildKey(keys);
-        return instance.redissonClient.getBucket(storeKey).delete();
-    }
-
-    public static boolean exists(Object... keys) {
-        String storeKey = instance.buildKey(keys);
-        return instance.redissonClient.getBucket(storeKey).isExists();
-    }
-
-    // ============ 实例方法 ============
-
-    public <T> void storeValue(Duration ttl, Object[] keys, T value) {
-        String storeKey = buildKey(keys);
-        RBucket<String> bucket = redissonClient.getBucket(storeKey);
-        try {
-            String json = objectMapper.writeValueAsString(value);
-            if (ttl != null) {
-                bucket.set(json, ttl.toMillis(), TimeUnit.MILLISECONDS);
-            } else {
-                bucket.set(json);
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize value", e);
-        }
-    }
-
-    public <T> T loadValue(Class<T> clazz, Object... keys) {
-        String storeKey = buildKey(keys);
-        RBucket<String> bucket = redissonClient.getBucket(storeKey);
-        String json = bucket.get();
-        if (json == null) {
-            return null;
-        }
-        try {
-            return objectMapper.readValue(json, clazz);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize value", e);
-        }
-    }
-
-    public <T> List<T> loadListValue(Class<T> elementClass, Object... keys) {
-        String storeKey = buildKey(keys);
-        RBucket<String> bucket = redissonClient.getBucket(storeKey);
-        String json = bucket.get();
-        if (json == null) {
-            return null;
-        }
-        try {
-            JavaType type = objectMapper.getTypeFactory()
-                    .constructCollectionType(List.class, elementClass);
-            return objectMapper.readValue(json, type);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize list", e);
-        }
-    }
-
-    public <T> T loadValue(TypeReference<T> typeRef, Object... keys) {
-        String storeKey = buildKey(keys);
-        RBucket<String> bucket = redissonClient.getBucket(storeKey);
-        String json = bucket.get();
-        if (json == null) {
-            return null;
-        }
-        try {
-            return objectMapper.readValue(json, typeRef);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize value", e);
-        }
-    }
-
-    public <T> T getOrLoad(Class<T> clazz, Duration ttl, Supplier<T> loader, Object... keys) {
-        String storeKey = buildKey(keys);
-        RBucket<String> bucket = redissonClient.getBucket(storeKey);
-
-        String cached = bucket.get();
-        if (cached != null) {
-            try {
-                return objectMapper.readValue(cached, clazz);
-            } catch (Exception e) {
-                log.error("Failed to deserialize value, reloading", e);
-            }
-        }
-
-        return RedisDistributedLock.withLock(
-                "store_load:" + storeKey,
-                () -> {
-                    String rechecked = bucket.get();
-                    if (rechecked != null) {
-                        try {
-                            return objectMapper.readValue(rechecked, clazz);
-                        } catch (Exception e) {
-                            log.error("Failed to deserialize value on recheck", e);
-                        }
-                    }
-
-                    T data = loader.get();
-                    if (data != null) {
-                        try {
-                            String json = objectMapper.writeValueAsString(data);
-                            if (ttl != null) {
-                                bucket.set(json, ttl.toMillis(), TimeUnit.MILLISECONDS);
-                            } else {
-                                bucket.set(json);
-                            }
-                        } catch (Exception e) {
-                            log.error("Failed to serialize value", e);
-                        }
-                    }
-                    return data;
-                }
-        );
-    }
-
-    public <T> List<T> getOrLoadList(Class<T> elementClass, Duration ttl, Supplier<List<T>> loader, Object... keys) {
-        String storeKey = buildKey(keys);
-        RBucket<String> bucket = redissonClient.getBucket(storeKey);
-
-        String cached = bucket.get();
-        if (cached != null) {
-            try {
-                JavaType type = objectMapper.getTypeFactory()
-                        .constructCollectionType(List.class, elementClass);
-                return objectMapper.readValue(cached, type);
-            } catch (Exception e) {
-                log.error("Failed to deserialize list, reloading", e);
-            }
-        }
-
-        return RedisDistributedLock.withLock(
-                "store_load:" + storeKey,
-                () -> {
-                    String rechecked = bucket.get();
-                    if (rechecked != null) {
-                        try {
-                            JavaType type = objectMapper.getTypeFactory()
-                                    .constructCollectionType(List.class, elementClass);
-                            return objectMapper.readValue(rechecked, type);
-                        } catch (Exception e) {
-                            log.error("Failed to deserialize list on recheck", e);
-                        }
-                    }
-
-                    List<T> data = loader.get();
-                    if (data != null) {
-                        try {
-                            String json = objectMapper.writeValueAsString(data);
-                            if (ttl != null) {
-                                bucket.set(json, ttl.toMillis(), TimeUnit.MILLISECONDS);
-                            } else {
-                                bucket.set(json);
-                            }
-                        } catch (Exception e) {
-                            log.error("Failed to serialize list", e);
-                        }
-                    }
-                    return data;
-                }
-        );
-    }
-
-    private String buildKey(Object... keys) {
+    public static StoreKey key(Object... keys) {
         if (keys == null || keys.length == 0) {
             throw new IllegalArgumentException("keys must not be empty");
         }
         String keyStr = Arrays.stream(keys)
                 .map(String::valueOf)
                 .collect(Collectors.joining(":"));
-        return STORE_PREFIX + keyStr;
+        return new StoreKey(STORE_PREFIX + keyStr);
     }
+
+    // ============ StoreKey ============
+
+    public static class StoreKey {
+        private final String key;
+
+        StoreKey(String key) {
+            this.key = key;
+        }
+
+        // --- 单值 ---
+
+        public <T> StoreValue<T> get() {
+            T value = instance.redissonClient.<T>getBucket(key).get();
+            return new StoreValue<>(value, key);
+        }
+
+        public <T> void set(T value) {
+            instance.redissonClient.<T>getBucket(key).set(value);
+        }
+
+        public boolean delete() {
+            return instance.redissonClient.getBucket(key).delete();
+        }
+
+        public boolean exists() {
+            return instance.redissonClient.getBucket(key).isExists();
+        }
+
+        // --- 数据结构 ---
+
+        public StoreMap map() {
+            return new StoreMap(key);
+        }
+
+        public <T> RList<T> list() {
+            return instance.redissonClient.getList(key);
+        }
+
+        public <T> RSet<T> set() {
+            return instance.redissonClient.getSet(key);
+        }
+
+        public <T> RQueue<T> queue() {
+            return instance.redissonClient.getQueue(key);
+        }
+
+        public <T> RBlockingQueue<T> blockingQueue() {
+            return instance.redissonClient.getBlockingQueue(key);
+        }
+
+        public <T> RSortedSet<T> sortedSet() {
+            return instance.redissonClient.getSortedSet(key);
+        }
+
+        public <T> RScoredSortedSet<T> scoredSortedSet() {
+            return instance.redissonClient.getScoredSortedSet(key);
+        }
+
+        public RAtomicLong atomicLong() {
+            return instance.redissonClient.getAtomicLong(key);
+        }
+
+        public <T> RBloomFilter<T> bloomFilter() {
+            return instance.redissonClient.getBloomFilter(key);
+        }
+
+        // --- 锁 ---
+
+        public RLock lock() {
+            return instance.redissonClient.getLock(key);
+        }
+
+        public RLock fairLock() {
+            return instance.redissonClient.getFairLock(key);
+        }
+
+        public RReadWriteLock readWriteLock() {
+            return instance.redissonClient.getReadWriteLock(key);
+        }
+
+        public RSemaphore semaphore() {
+            return instance.redissonClient.getSemaphore(key);
+        }
+
+        public RCountDownLatch countDownLatch() {
+            return instance.redissonClient.getCountDownLatch(key);
+        }
+    }
+
+    // ============ StoreValue ============
+
+    public static class StoreValue<T> {
+        private final T value;
+        private final String key;
+
+        StoreValue(T value, String key) {
+            this.value = value;
+            this.key = key;
+        }
+
+        public T value() {
+            return value;
+        }
+
+        public T orElse(Supplier<T> loader) {
+            if (value != null) {
+                return value;
+            }
+            T data = loader.get();
+            if (data != null) {
+                instance.redissonClient.<T>getBucket(key).set(data);
+            }
+            return data;
+        }
+
+        public T orElseWithLock(Supplier<T> loader) {
+            if (value != null) {
+                return value;
+            }
+            return RedisDistributedLock.withLock(
+                    "store_load:" + key,
+                    () -> {
+                        T rechecked = instance.redissonClient.<T>getBucket(key).get();
+                        if (rechecked != null) {
+                            return rechecked;
+                        }
+                        T data = loader.get();
+                        if (data != null) {
+                            instance.redissonClient.<T>getBucket(key).set(data);
+                        }
+                        return data;
+                    }
+            );
+        }
+    }
+
+    // ============ StoreMap ============
+
+    public static class StoreMap {
+        private final String key;
+
+        StoreMap(String key) {
+            this.key = key;
+        }
+
+        public <K, V> RMap<K, V> raw() {
+            return instance.redissonClient.getMap(key);
+        }
+
+        public <V> V get(Object field) {
+            return instance.redissonClient.<Object, V>getMap(key).get(field);
+//            return new StoreMapValue<>(value, key, field);
+        }
+
+        public <V> void set(Object field, V value) {
+            instance.redissonClient.<Object, V>getMap(key).put(field, value);
+        }
+
+        public boolean delete(Object field) {
+            return instance.redissonClient.getMap(key).remove(field) != null;
+        }
+
+        public boolean exists(Object field) {
+            return instance.redissonClient.getMap(key).containsKey(field);
+        }
+
+        public boolean deleteAll() {
+            return instance.redissonClient.getMap(key).delete();
+        }
+
+        public int size() {
+            return instance.redissonClient.getMap(key).size();
+        }
+    }
+
+//    // ============ StoreMapValue ============
+//
+//    public static class StoreMapValue<V> {
+//        private final V value;
+//        private final String key;
+//        private final Object field;
+//
+//        StoreMapValue(V value, String key, Object field) {
+//            this.value = value;
+//            this.key = key;
+//            this.field = field;
+//        }
+//
+//        public V value() {
+//            return value;
+//        }
+//
+//        public V orElse(Supplier<V> loader) {
+//            if (value != null) {
+//                return value;
+//            }
+//            V data = loader.get();
+//            if (data != null) {
+//                instance.redissonClient.<Object, V>getMap(key).put(field, data);
+//            }
+//            return data;
+//        }
+//    }
 }

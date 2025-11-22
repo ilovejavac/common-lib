@@ -110,7 +110,11 @@ public class JacksonConfig {
         private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         @Override
-        public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+        public void serialize(
+                LocalDateTime value,
+                JsonGenerator gen,
+                SerializerProvider serializers
+        ) throws IOException {
             gen.writeString(value == null ? null : FORMATTER.format(value));
         }
     }

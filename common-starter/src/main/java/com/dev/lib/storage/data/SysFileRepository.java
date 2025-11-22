@@ -4,7 +4,6 @@ import com.dev.lib.entity.BaseRepository;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
-import com.dev.lib.storage.QSysFile;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

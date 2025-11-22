@@ -2,7 +2,6 @@ package com.dev.lib.entity.audit;
 
 import com.dev.lib.entity.BaseEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.Resource;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
 import jakarta.persistence.PostUpdate;

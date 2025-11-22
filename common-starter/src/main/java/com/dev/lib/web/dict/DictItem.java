@@ -1,6 +1,6 @@
 package com.dev.lib.web.dict;
 
-import com.dev.lib.web.dict.pojo.DictItemEntity;
+import com.dev.lib.web.dict.data.DictItemEntity;
 import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMapping;
 import lombok.AllArgsConstructor;

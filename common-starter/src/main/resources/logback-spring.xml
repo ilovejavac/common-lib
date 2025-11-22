@@ -89,7 +89,8 @@
             </fieldNames>
 
             <!-- 核心字段 -->
-            <customFields>{"service_name":"${APP_NAME}","hostname":"${HOSTNAME}","environment":"${SPRING_PROFILE}"}</customFields>
+            <customFields>{"service_name":"${APP_NAME}","hostname":"${HOSTNAME}","environment":"${SPRING_PROFILE}"}
+            </customFields>
 
             <!-- 只保留 trace_id（其他通过 StructuredArguments 传递） -->
             <includeMdcKeyName>trace_id</includeMdcKeyName>
@@ -162,7 +163,8 @@
     <logger name="org.apache.dubbo.remoting" level="WARN" additivity="false"/>
     <logger name="org.apache.dubbo.registry" level="WARN" additivity="false"/>
     <logger name="org.apache.dubbo.metadata" level="WARN" additivity="false"/>
-    <logger name="org.apache.dubbo.common.config.configcenter.wrapper.CompositeDynamicConfiguration" level="ERROR" additivity="false"/>
+    <logger name="org.apache.dubbo.common.config.configcenter.wrapper.CompositeDynamicConfiguration" level="ERROR"
+            additivity="false"/>
 
     <!-- Spring 框架噪声 -->
     <logger name="org.springframework.boot.autoconfigure" level="WARN" additivity="false"/>

@@ -1,7 +1,7 @@
 package com.dev.lib.web.dict;
 
-import com.dev.lib.web.dict.pojo.DictItemEntityToDictItemMapper;
-import com.dev.lib.web.dict.pojo.DictItemRepository;
+import com.dev.lib.web.dict.data.DictItemEntityToDictItemMapper;
+import com.dev.lib.web.dict.data.DictItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

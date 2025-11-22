@@ -1,4 +1,4 @@
-package com.dev.lib.web.dict.pojo;
+package com.dev.lib.web.dict.data;
 
 import com.dev.lib.entity.BaseEntity;
 import com.dev.lib.entity.EntityStatus;

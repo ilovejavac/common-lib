@@ -80,7 +80,12 @@ public class OnDeleteListener {
                 c.remove(parent);
             }
         } catch (IllegalAccessException e) {
-            log.warn("Failed to clear relation on field {} for child {}", field.getName(), child.getClass().getName(), e);
+            log.warn(
+                    "Failed to clear relation on field {} for child {}",
+                    field.getName(),
+                    child.getClass().getName(),
+                    e
+            );
         }
     }
 

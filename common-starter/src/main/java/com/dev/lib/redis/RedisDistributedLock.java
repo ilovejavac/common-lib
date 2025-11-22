@@ -15,6 +15,7 @@ import java.util.function.Supplier;
 @Component
 @ConditionalOnClass(name = "org.redisson.api.RedissonClient")
 @RequiredArgsConstructor
+@SuppressWarnings("all")
 public class RedisDistributedLock {
 
     private final RedissonClient redissonClient;
@@ -29,6 +30,17 @@ public class RedisDistributedLock {
     @PostConstruct
     public void init() {
         instance = this;
+    }
+
+    public static <T> T withLock(
+            String key,
+            long waitTime,
+            int retryTimes,
+            long leaseTime,
+            TimeUnit timeUnit,
+            Supplier<T> block
+    ) {
+        return instance.executeWithLock(key, waitTime, retryTimes, leaseTime, timeUnit, block);
     }
 
     public static <T> T withLock(String key, Supplier<T> block) {

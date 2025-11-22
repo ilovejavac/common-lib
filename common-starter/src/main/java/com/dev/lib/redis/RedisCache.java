@@ -1,26 +1,25 @@
 package com.dev.lib.redis;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+import java.util.Arrays;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @ConditionalOnClass(name = "org.redisson.api.RedissonClient")
-@RequiredArgsConstructor
-public class RedisCache {
+@SuppressWarnings("java:S6548")
+public class RedisCache implements InitializingBean {
 
     private final RedissonClient redissonClient;
-    private final ObjectMapper objectMapper;
 
     private static final String CACHE_PREFIX = "cache:";
     private static final String NULL_MARKER = "__NULL__";
@@ -29,110 +28,128 @@ public class RedisCache {
 
     private static RedisCache instance;
 
-    @PostConstruct
-    public void init() {
+    public RedisCache(RedissonClient redissonClient) {
+        this.redissonClient = redissonClient;
+    }
+
+    @Override
+    public void afterPropertiesSet() {
         instance = this;
     }
 
-    public static <T> T get(String key, Class<T> clazz, Supplier<T> loader) {
-        return instance.getCache(key, DEFAULT_TTL, clazz, loader);
-    }
+    // ============ 入口 ============
 
-    public static <T> T get(String key, Duration ttl, Class<T> clazz, Supplier<T> loader) {
-        return instance.getCache(key, ttl, clazz, loader);
-    }
-
-    public static <T> void set(String key, T value, Duration ttl) {
-        instance.setCache(key, value, ttl);
-    }
-
-    public static boolean delete(String key) {
-        return instance.deleteCache(key);
-    }
-
-    public static boolean exists(String key) {
-        return instance.cacheExists(key);
-    }
-
-    // ============ 实例方法 ============
-
-    public <T> T getCache(String key, Duration ttl, Class<T> clazz, Supplier<T> loader) {
-        String cacheKey = CACHE_PREFIX + key;
-        RBucket<String> bucket = redissonClient.getBucket(cacheKey);
-
-        String cached = bucket.get();
-        if (cached != null) {
-            if (NULL_MARKER.equals(cached)) {
-                return null;
-            }
-            try {
-                return objectMapper.readValue(cached, clazz);
-            } catch (Exception e) {
-                log.error("Failed to deserialize cache", e);
-            }
+    public static CacheKey key(Object... keys) {
+        if (keys == null || keys.length == 0) {
+            throw new IllegalArgumentException("keys must not be empty");
         }
-
-        return RedisDistributedLock.withLock(
-                "cache_load:" + key, () -> {
-                    String rechecked = bucket.get();
-                    if (rechecked != null) {
-                        if (NULL_MARKER.equals(rechecked)) {
-                            return null;
-                        }
-                        try {
-                            return objectMapper.readValue(rechecked, clazz);
-                        } catch (Exception e) {
-                            log.error("Failed to deserialize cache", e);
-                        }
-                    }
-
-                    T data = loader.get();
-
-                    try {
-                        String valueToCache = (data == null) ? NULL_MARKER : objectMapper.writeValueAsString(data);
-                        Duration actualTtl = (data == null) ? NULL_CACHE_TTL : ttl;
-                        bucket.set(valueToCache, actualTtl.toMillis(), TimeUnit.MILLISECONDS);
-                    } catch (Exception e) {
-                        log.error("Failed to serialize cache", e);
-                    }
-
-                    return data;
-                }
-        );
+        String keyStr = Arrays.stream(keys).map(String::valueOf).collect(Collectors.joining(":"));
+        return new CacheKey(CACHE_PREFIX + keyStr);
     }
 
-    public <T> void setCache(String key, T value, Duration ttl) {
-        String cacheKey = CACHE_PREFIX + key;
-        RBucket<String> bucket = redissonClient.getBucket(cacheKey);
-
-        try {
-            String valueToCache = (value == null) ? NULL_MARKER : objectMapper.writeValueAsString(value);
-            Duration actualTtl = (value == null) ? NULL_CACHE_TTL : ttl;
-            bucket.set(valueToCache, actualTtl.toMillis(), TimeUnit.MILLISECONDS);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set cache", e);
-        }
-    }
-
-    public boolean deleteCache(String key) {
-        String cacheKey = CACHE_PREFIX + key;
-        return redissonClient.getBucket(cacheKey).delete();
-    }
-
-    public boolean cacheExists(String key) {
-        String cacheKey = CACHE_PREFIX + key;
-        return redissonClient.getBucket(cacheKey).isExists();
-    }
-
-    public void deleteCachePattern(String pattern) {
+    public static void deletePattern(String pattern) {
         String fullPattern = CACHE_PREFIX + pattern;
-        redissonClient.getKeys().getKeysStreamByPattern(fullPattern)
-                .forEach(key -> redissonClient.getBucket(key).delete());
+        instance.redissonClient.getKeys().getKeysStreamByPattern(fullPattern)
+                .forEach(k -> instance.redissonClient.getBucket(k).delete());
     }
 
-    public long getTtl(String key) {
-        String cacheKey = CACHE_PREFIX + key;
-        RBucket<String> bucket = redissonClient.getBucket(cacheKey);
-        return TimeUnit.MILLISECONDS.toSeconds(bucket.remainTimeToLive());
+    // ============ CacheKey ============
+
+    public static class CacheKey {
+        private final String key;
+        private Duration ttl = DEFAULT_TTL;
+
+        CacheKey(String key) {
+            this.key = key;
+        }
+
+        public CacheKey ttl(Duration ttl) {
+            this.ttl = ttl;
+            return this;
+        }
+
+        public <T> CacheValue<T> get() {
+            RBucket<Object> bucket = instance.redissonClient.getBucket(key);
+            Object raw = bucket.get();
+            if (raw == null) {
+                return new CacheValue<>(null, false, key, ttl);
+            }
+            if (NULL_MARKER.equals(raw)) {
+                return new CacheValue<>(null, true, key, ttl);
+            }
+            @SuppressWarnings("unchecked") T value = (T) raw;
+            return new CacheValue<>(value, true, key, ttl);
+        }
+
+        public <T> void set(T value) {
+            RBucket<Object> bucket = instance.redissonClient.getBucket(key);
+            if (value == null) {
+                bucket.set(NULL_MARKER, NULL_CACHE_TTL);
+            } else {
+                bucket.set(value, ttl);
+            }
+        }
+
+        public boolean delete() {
+            return instance.redissonClient.getBucket(key).delete();
+        }
+
+        public boolean exists() {
+            return instance.redissonClient.getBucket(key).isExists();
+        }
+
+        public long getTtl() {
+            long millis = instance.redissonClient.getBucket(key).remainTimeToLive();
+            return Duration.ofMillis(millis).toSeconds();
+        }
+    }
+
+    // ============ CacheValue ============
+
+    @Getter
+    public static class CacheValue<T> {
+        private final T value;
+        private final boolean cached;
+        private final String key;
+        private final Duration ttl;
+
+        CacheValue(T value, boolean cached, String key, Duration ttl) {
+            this.value = value;
+            this.cached = cached;
+            this.key = key;
+            this.ttl = ttl;
+        }
+
+        public T value() {
+            return value;
+        }
+
+        public T orElse(Supplier<T> loader) {
+            if (cached) {
+                return value;
+            }
+
+            return RedisDistributedLock.withLock(
+                    "cache_load:" + key, () -> {
+                        RBucket<Object> bucket = instance.redissonClient.getBucket(key);
+                        Object rechecked = bucket.get();
+                        if (rechecked != null) {
+                            if (NULL_MARKER.equals(rechecked)) {
+                                return null;
+                            }
+                            @SuppressWarnings("unchecked") T val = (T) rechecked;
+                            return val;
+                        }
+
+                        T data = loader.get();
+                        if (data == null) {
+                            bucket.set(NULL_MARKER, NULL_CACHE_TTL);
+                        } else {
+                            bucket.set(data, ttl);
+                        }
+                        return data;
+                    }
+            );
+        }
     }
 }

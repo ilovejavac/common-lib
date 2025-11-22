@@ -9,17 +9,16 @@ import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.PathBuilder;
 import lombok.AllArgsConstructor;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 public class PredicateAssembler {
     private PredicateAssembler() {
     }
-
 
 
     public static <E extends BaseEntity> BooleanBuilder assemble(
@@ -29,7 +28,7 @@ public class PredicateAssembler {
     ) {
         BooleanBuilder builder = new BooleanBuilder();
 
-        if (query != null && !fields.isEmpty()) {
+        if (query != null && !CollectionUtils.isEmpty(fields)) {
             PathBuilder<E> pathBuilder = new PathBuilder<>(
                     query.getEntityPath().getType(),
                     query.getEntityPath().getMetadata()

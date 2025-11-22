@@ -1,11 +1,11 @@
 package com.dev.lib.web.dict;
 
+import com.dev.lib.web.dict.data.DictType;
+import com.dev.lib.web.dict.data.DictTypeRepository;
 import com.dev.lib.web.dict.model.dto.DictItemDTO;
 import com.dev.lib.web.dict.model.dto.DictItemDTOToDictItemEntityMapper;
 import com.dev.lib.web.dict.model.dto.DictTypeDTO;
 import com.dev.lib.web.dict.model.dto.DictTypeDTOToDictTypeMapper;
-import com.dev.lib.web.dict.pojo.DictType;
-import com.dev.lib.web.dict.pojo.DictTypeRepository;
 import com.dev.lib.web.model.ServerResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

@@ -43,14 +43,21 @@ public interface BaseRepository<T extends BaseEntity> extends JpaRepository<T, L
             DslQuery<E> query,
             BooleanExpression... expressions
     ) {
-        List<QueryFieldMerger.FieldMetaValue> self = QueryFieldMerger.resolve(query);
-        Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
-        for (QueryFieldMerger.FieldMetaValue fieldMetaValue : self) {
-            fields.put(fieldMetaValue.getFieldMeta().getTargetField(), fieldMetaValue);
-        }
-        Optional.ofNullable(query).map(DslQuery::getExternalFields).orElse(Collections.emptyList())
-                .forEach(it -> fields.put(it.getFieldMeta().getTargetField(), it));
+        if (query != null) {
+            List<QueryFieldMerger.FieldMetaValue> self = QueryFieldMerger.resolve(query);
+            Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
+            for (QueryFieldMerger.FieldMetaValue fieldMetaValue : self) {
+                fields.put(fieldMetaValue.getFieldMeta().getTargetField(), fieldMetaValue);
+            }
+            Optional.ofNullable(query).map(DslQuery::getExternalFields).orElse(Collections.emptyList())
+                    .forEach(it -> fields.put(it.getFieldMeta().getTargetField(), it));
 
-        return PredicateAssembler.assemble(query, fields.values(), expressions);
+            return PredicateAssembler.assemble(query, fields.values(), expressions);
+        }
+        if (expressions.length == 0) {
+            return null;
+        }
+
+        return PredicateAssembler.assemble(null, null, expressions);
     }
 }

@@ -58,7 +58,9 @@ public class CommonAutoConfiguration {
 
     @Bean
     @ConfigurationProperties(prefix = "app.snow-flake")
-    public AppSnowFlakeProperties appSnowFlakeProperties() {return new AppSnowFlakeProperties();}
+    public AppSnowFlakeProperties appSnowFlakeProperties() {
+        return new AppSnowFlakeProperties();
+    }
 
 
     @Configuration
