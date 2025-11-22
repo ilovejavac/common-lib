@@ -4,131 +4,50 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d862d8aa-10c2-45a7-9425-fbef040a84b3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/DictMapper.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/BaseEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/BaseEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/BaseEntityListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/BaseEntityListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/id/SnowflakeConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/id/SnowflakeConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/log/OperateLogAspect.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/log/OperateLogAspect.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/log/OperateLogEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/log/OperateLogEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/log/LoggingFilter.java" beforeDir="false" />
+    <list default="true" id="17419850-923f-46b5-9f45-c7ae14e7e051" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/data/SysFileRepository.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/FileController.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/FileController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/DictController.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/DictController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/DictServiceImpl.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/DictTypeMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/FileService.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/FileService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/StorageService.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/impl/StorageService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/SysFile.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/data/SysFile.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/SysFileRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/impl/LocalFileStorage.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/impl/LocalFileStorage.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/impl/MinioFileStorage.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/impl/MinioFileStorage.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/impl/OssFileStorage.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/storage/impl/OssFileStorage.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/model/dto/DictItemDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/model/dto/DictItemDTO.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/model/dto/DictTypeDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/model/dto/DictTypeDTO.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/pojo/DictItemEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/pojo/DictItemEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/pojo/DictItemRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/pojo/DictItemRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/pojo/DictType.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/pojo/DictType.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/pojo/DictTypeRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/dict/pojo/DictTypeRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/model/QueryRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/web/model/QueryRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common-starter/src/main/resources/application-lib.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/common-starter/src/main/resources/application-lib.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="Exception" />
-        <option value="AnnotationType" />
-        <option value="Enum" />
-        <option value="Interface" />
-        <option value="package-info" />
-        <option value="Class" />
-      </list>
-    </option>
-  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="HighlightingSettingsPerFile">
-    <setting file="jar://$MAVEN_REPOSITORY$/cn/hutool/hutool-all/5.8.24/hutool-all-5.8.24.jar!/cn/hutool/jwt/JWTValidator.class" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/BooleanBuilder.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/support/QueryBase.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/Expression.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/OrderSpecifier.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/Predicate.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/PredicateOperation.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/PredicateTemplate.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/dsl/BooleanExpression.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/dsl/BooleanOperation.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/dsl/EntityPathBase.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0-sources.jar!/com/querydsl/core/types/dsl/PathBuilder.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-core/5.1.0/querydsl-core-5.1.0.jar!/com/querydsl/core/support/QueryBase.class" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/com/querydsl/querydsl-jpa/5.1.0/querydsl-jpa-5.1.0-sources.jar!/com/querydsl/jpa/impl/AbstractJPAQuery.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.jar!/jakarta/annotation/Resource.class" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/jakarta/persistence/jakarta.persistence-api/3.1.0/jakarta.persistence-api-3.1.0.jar!/jakarta/persistence/Column.class" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/jakarta/persistence/jakarta.persistence-api/3.1.0/jakarta.persistence-api-3.1.0.jar!/jakarta/persistence/EntityManager.class" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/hibernate/orm/hibernate-core/6.6.33.Final/hibernate-core-6.6.33.Final-sources.jar!/org/hibernate/annotations/Where.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-autoconfigure/3.5.7/spring-boot-autoconfigure-3.5.7.jar!/org/springframework/boot/autoconfigure/orm/jpa/JpaProperties.class" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/data/spring-data-commons/3.5.5/spring-data-commons-3.5.5-sources.jar!/org/springframework/data/auditing/AuditingHandler.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/data/spring-data-commons/3.5.5/spring-data-commons-3.5.5-sources.jar!/org/springframework/data/auditing/AuditingHandlerSupport.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/data/spring-data-commons/3.5.5/spring-data-commons-3.5.5-sources.jar!/org/springframework/data/querydsl/QuerydslPredicateExecutor.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/data/spring-data-commons/3.5.5/spring-data-commons-3.5.5.jar!/org/springframework/data/auditing/AuditingHandler.class" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/data/spring-data-jpa/3.5.5/spring-data-jpa-3.5.5-sources.jar!/org/springframework/data/jpa/domain/support/AuditingEntityListener.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/data/spring-data-jpa/3.5.5/spring-data-jpa-3.5.5-sources.jar!/org/springframework/data/jpa/repository/support/Querydsl.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/data/spring-data-jpa/3.5.5/spring-data-jpa-3.5.5-sources.jar!/org/springframework/data/jpa/repository/support/QuerydslJpaPredicateExecutor.java" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/data/spring-data-jpa/3.5.5/spring-data-jpa-3.5.5.jar!/org/springframework/data/jpa/domain/support/AuditingEntityListener.class" root0="SKIP_INSPECTION" />
-    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/spring-web/6.2.12/spring-web-6.2.12.jar!/org/springframework/http/HttpStatus.class" root0="SKIP_INSPECTION" />
-    <setting file="jar:///opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/lib/src.zip!/java.base/java/lang/Comparable.java" root0="SKIP_INSPECTION" />
-    <setting file="jar:///opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/lib/src.zip!/java.base/java/lang/Exception.java" root0="SKIP_INSPECTION" />
-    <setting file="jar:///opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/lib/src.zip!/java.base/java/lang/System.java" root0="SKIP_INSPECTION" />
-    <setting file="jar:///opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/lib/src.zip!/java.base/java/lang/Throwable.java" root0="SKIP_INSPECTION" />
-    <setting file="jar:///opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/lib/src.zip!/java.base/java/lang/reflect/Field.java" root0="SKIP_INSPECTION" />
-    <setting file="jar:///opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/lib/src.zip!/java.base/java/util/Optional.java" root0="SKIP_INSPECTION" />
-    <setting file="jar:///opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/lib/src.zip!/java.base/java/util/concurrent/locks/ReentrantLock.java" root0="SKIP_INSPECTION" />
-  </component>
-  <component name="MavenRunner">
-    <option name="skipTests" value="true" />
-  </component>
-  <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 2
-}</component>
-  <component name="ProjectId" id="35JaPjr96VN3TtUOISWNuwdCszV" />
-  <component name="ProjectLevelVcsManager">
-    <ConfirmationsSetting value="1" id="Add" />
-  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 1
+}]]></component>
+  <component name="ProjectId" id="35otAEGQbbqV0IsslVR1E8lHlHX" />
   <component name="ProjectViewState">
     <option name="autoscrollToSource" value="true" />
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="openDirectoriesWithSingleClick" value="true" />
     <option name="showLibraryContents" value="true" />
-    <option name="showVisibilityIcons" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Maven.common-lib [clean].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.common-lib [compile].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.common-lib [install].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.common-lib [package].executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/lucheng/project/dev/common-lib&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settingsdialog.project.gradle&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "project.structure.last.edited": "SDKs",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "reference.settingsdialog.project.gradle"
   }
-}</component>
-  <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$" />
-    </key>
-    <key name="CopyClassDialog.RECENTS_KEY">
-      <recent name="com.dev.lib.log" />
-      <recent name="com.dev.lib.encrypt.impl" />
-    </key>
-  </component>
+}]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -138,23 +57,12 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="d862d8aa-10c2-45a7-9425-fbef040a84b3" name="Changes" comment="" />
+      <changelist id="17419850-923f-46b5-9f45-c7ae14e7e051" name="Changes" comment="" />
       <created>1759116798323</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1759116798323</updated>
     </task>
     <servers />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/common-starter/src/main/java/com/dev/lib/entity/encrypt/impl/V2EncryptionStrategy.java</url>
-          <line>25</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>

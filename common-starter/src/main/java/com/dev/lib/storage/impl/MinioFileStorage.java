@@ -1,7 +1,6 @@
 package com.dev.lib.storage.impl;
 
 import com.dev.lib.config.properties.AppStorageProperties;
-import com.dev.lib.storage.StorageService;
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;

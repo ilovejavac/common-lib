@@ -1,7 +1,7 @@
 package com.dev.lib.web.dict.model.dto;
 
 import com.dev.lib.entity.EntityStatus;
-import com.dev.lib.web.dict.pojo.DictItemEntity;
+import com.dev.lib.web.dict.data.DictItemEntity;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 

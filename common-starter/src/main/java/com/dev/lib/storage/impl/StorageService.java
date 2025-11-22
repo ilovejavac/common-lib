@@ -1,4 +1,4 @@
-package com.dev.lib.storage;
+package com.dev.lib.storage.impl;
 
 import org.springframework.web.multipart.MultipartFile;
 

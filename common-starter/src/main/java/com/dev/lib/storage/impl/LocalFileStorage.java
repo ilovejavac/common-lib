@@ -1,7 +1,6 @@
 package com.dev.lib.storage.impl;
 
 import com.dev.lib.config.properties.AppStorageProperties;
-import com.dev.lib.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
