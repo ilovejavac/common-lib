@@ -41,10 +41,10 @@ public abstract class BaseEntity implements Serializable {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "created_by_id", updatable = false, length = 20)
+    @Column(updatable = false, length = 20)
     private Long creatorId;
 
-    @Column(name = "updated_by_id", length = 20)
+    @Column(length = 20)
     private Long modifierId;
 
     @Column(nullable = false)

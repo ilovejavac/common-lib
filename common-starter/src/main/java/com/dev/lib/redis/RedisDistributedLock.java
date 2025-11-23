@@ -8,8 +8,10 @@ import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -32,68 +34,93 @@ public class RedisDistributedLock {
         instance = this;
     }
 
-    public static <T> T withLock(
-            String key,
-            long waitTime,
-            int retryTimes,
-            long leaseTime,
-            TimeUnit timeUnit,
-            Supplier<T> block
-    ) {
-        return instance.executeWithLock(key, waitTime, retryTimes, leaseTime, timeUnit, block);
+    // ============ 入口 ============
+
+    public static LockBuilder lock(String... keys) {
+        if (keys == null || keys.length == 0) {
+            throw new IllegalArgumentException("keys must not be empty");
+        }
+        String keyStr = Arrays.stream(keys).map(String::valueOf).collect(Collectors.joining(":"));
+        return new LockBuilder(LOCK_PREFIX + keyStr);
     }
 
-    public static <T> T withLock(String key, Supplier<T> block) {
-        return instance.executeWithLock(key, DEFAULT_WAIT_TIME, DEFAULT_RETRY_TIMES, -1, TimeUnit.SECONDS, block);
-    }
+    // ============ LockBuilder ============
 
-    public static <T> T withLock(String key, long waitTime, int retryTimes, Supplier<T> block) {
-        return instance.executeWithLock(key, waitTime, retryTimes, -1, TimeUnit.SECONDS, block);
-    }
+    public static class LockBuilder {
+        private final String key;
+        private long waitTime = DEFAULT_WAIT_TIME;
+        private int retryTimes = DEFAULT_RETRY_TIMES;
+        private long leaseTime = -1;
+        private TimeUnit timeUnit = TimeUnit.SECONDS;
 
-    public <T> T executeWithLock(
-            String key, long waitTime, int retryTimes, long leaseTime,
-            TimeUnit timeUnit, Supplier<T> block
-    ) {
-        if (key == null || key.isBlank()) {
-            throw new IllegalArgumentException("Lock key must not be blank");
+        LockBuilder(String key) {
+            this.key = key;
         }
 
-        String lockKey = LOCK_PREFIX + key;
-        RLock lock = redissonClient.getLock(lockKey);
-        int attempts = 0;
+        public LockBuilder waitTime(long waitTime) {
+            this.waitTime = waitTime;
+            return this;
+        }
 
-        while (attempts < retryTimes) {
-            try {
-                boolean acquired = (leaseTime > 0)
-                        ? lock.tryLock(waitTime, leaseTime, timeUnit)
-                        : lock.tryLock(waitTime, timeUnit);
+        public LockBuilder retryTimes(int retryTimes) {
+            this.retryTimes = retryTimes;
+            return this;
+        }
 
-                if (acquired) {
-                    try {
-                        log.debug("Acquired lock: {}", lockKey);
-                        return block.get();
-                    } finally {
-                        if (lock.isHeldByCurrentThread()) {
-                            lock.unlock();
-                            log.debug("Released lock: {}", lockKey);
+        public LockBuilder leaseTime(long leaseTime) {
+            this.leaseTime = leaseTime;
+            return this;
+        }
+
+        public LockBuilder timeUnit(TimeUnit timeUnit) {
+            this.timeUnit = timeUnit;
+            return this;
+        }
+
+        public <T> T execute(Supplier<T> block) {
+            String lockKey = LOCK_PREFIX + key;
+            RLock lock = instance.redissonClient.getLock(lockKey);
+            int attempts = 0;
+
+            while (attempts < retryTimes) {
+                try {
+                    boolean acquired = (leaseTime > 0)
+                            ? lock.tryLock(waitTime, leaseTime, timeUnit)
+                            : lock.tryLock(waitTime, timeUnit);
+
+                    if (acquired) {
+                        try {
+                            log.debug("Acquired lock: {}", lockKey);
+                            return block.get();
+                        } finally {
+                            if (lock.isHeldByCurrentThread()) {
+                                lock.unlock();
+                                log.debug("Released lock: {}", lockKey);
+                            }
                         }
                     }
-                }
 
-                attempts++;
-                if (attempts < retryTimes) {
-                    long sleepTime = Math.min(RETRY_INTERVAL_MS * (1L << (attempts - 1)), 1000L);
-                    Thread.sleep(sleepTime);
-                }
+                    attempts++;
+                    if (attempts < retryTimes) {
+                        long sleepTime = Math.min(RETRY_INTERVAL_MS * (1L << (attempts - 1)), 1000L);
+                        Thread.sleep(sleepTime);
+                    }
 
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Lock acquisition interrupted: " + key, e);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Lock acquisition interrupted: " + key, e);
+                }
             }
+
+            throw new LockAcquisitionException("Failed to acquire lock after " + retryTimes + " retries: " + key);
         }
 
-        throw new LockAcquisitionException("Failed to acquire lock after " + retryTimes + " retries: " + key);
+        public void execute(Runnable block) {
+            execute(() -> {
+                block.run();
+                return null;
+            });
+        }
     }
 
     public static class LockAcquisitionException extends RuntimeException {

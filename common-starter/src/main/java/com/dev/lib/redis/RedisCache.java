@@ -9,13 +9,19 @@ import com.dev.lib.redis.cache.CacheScoredSortedSet;
 import com.dev.lib.redis.cache.CacheSet;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.*;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RBucket;
+import org.redisson.api.RCountDownLatch;
+import org.redisson.api.RLock;
+import org.redisson.api.RReadWriteLock;
+import org.redisson.api.RSemaphore;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.Arrays;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -199,8 +205,7 @@ public class RedisCache implements InitializingBean {
                 return value;
             }
 
-            return RedisDistributedLock.withLock(
-                    "cache_load:" + key, () -> {
+            return RedisDistributedLock.lock("cache_load:", key).execute(() -> {
                         RBucket<Object> bucket = instance.redissonClient.getBucket(key);
                         Object rechecked = bucket.get();
                         if (rechecked != null) {
