@@ -6,6 +6,7 @@ import com.dev.lib.entity.encrypt.EncryptVersion;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnBean(CustomEncryptor.class)
+@ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "custom")
 public class CustomEncryptionStrategy implements EncryptService {
 
     @Resource

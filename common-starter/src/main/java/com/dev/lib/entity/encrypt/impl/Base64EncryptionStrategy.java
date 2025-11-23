@@ -2,6 +2,7 @@ package com.dev.lib.entity.encrypt.impl;
 
 import com.dev.lib.entity.encrypt.EncryptService;
 import com.dev.lib.entity.encrypt.EncryptVersion;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.Base64;
@@ -10,6 +11,7 @@ import java.util.Base64;
  * base64加密
  */
 @Component
+@ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "base64")
 public class Base64EncryptionStrategy implements EncryptService {
     @Override
     public String getVersion() {

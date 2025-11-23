@@ -5,6 +5,7 @@ import com.dev.lib.entity.encrypt.EncryptService;
 import com.dev.lib.entity.encrypt.EncryptVersion;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -17,6 +18,7 @@ import java.util.Base64;
  */
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "aes")
 public class AesEncryptionStrategy implements EncryptService, InitializingBean {
 
     private final AppSecurityProperties securityProperties;

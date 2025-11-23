@@ -6,6 +6,7 @@ import com.dev.lib.entity.encrypt.EncryptVersion;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -25,6 +26,7 @@ import java.util.Base64;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "rsa")
 public class RSAEncryptionStrategy implements EncryptService, InitializingBean {
 
     private final AppSecurityProperties securityProperties;
