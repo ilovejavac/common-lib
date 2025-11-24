@@ -4,9 +4,11 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.OSSObject;
 import com.dev.lib.config.properties.AppStorageProperties;
+import io.minio.MinioClient;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,6 +17,7 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnClass(name = "com.aliyun.oss.OSS")
 @ConditionalOnProperty(prefix = "app.storage", name = "type", havingValue = "oss")
 public class OssFileStorage implements StorageService, InitializingBean {
 

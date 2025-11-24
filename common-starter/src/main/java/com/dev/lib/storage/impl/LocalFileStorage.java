@@ -19,8 +19,7 @@ public class LocalFileStorage implements StorageService {
 
     @Override
     public String upload(MultipartFile file, String path) throws IOException {
-        String basePath = fileProperties.getLocal().getPath();
-        File destFile = new File(basePath, path);
+        File destFile = resolveSafePath(path);
 
         if (!destFile.getParentFile().exists()) {
             destFile.getParentFile().mkdirs();
@@ -32,8 +31,7 @@ public class LocalFileStorage implements StorageService {
 
     @Override
     public byte[] download(String path) throws IOException {
-        String basePath = fileProperties.getLocal().getPath();
-        File file = new File(basePath, path);
+        File file = resolveSafePath(path);
         return Files.readAllBytes(file.toPath());
     }
 
@@ -47,5 +45,17 @@ public class LocalFileStorage implements StorageService {
     @Override
     public String getUrl(String path) {
         return fileProperties.getLocal().getUrlPrefix() + "/" + path;
+    }
+
+    private File resolveSafePath(String path) throws IOException {
+        String basePath = fileProperties.getLocal().getPath();
+        File base = new File(basePath).getCanonicalFile();
+        File target = new File(base, path).getCanonicalFile();
+
+        if (!target.getPath().startsWith(base.getPath() + File.separator)) {
+            throw new IOException("Invalid path: " + path);
+        }
+
+        return target;
     }
 }

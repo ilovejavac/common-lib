@@ -9,6 +9,7 @@ import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnClass(name = "io.minio.MinioClient")
 @ConditionalOnProperty(prefix = "app.storage", name = "type", havingValue = "minio")
 public class MinioFileStorage implements StorageService, InitializingBean {
 
