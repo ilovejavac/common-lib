@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * 外部接口校验
  */
-@Target(ElementType.METHOD)
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Internal {
 }

@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.dev.lib.entity.dsl.DslQuery.toPredicate;
+
 @NoRepositoryBean
 @SuppressWarnings("all")
 public interface BaseRepository<T extends BaseEntity> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
@@ -38,27 +40,5 @@ public interface BaseRepository<T extends BaseEntity> extends JpaRepository<T, L
 
     default long count(DslQuery<T> dslQuery, BooleanExpression... expressions) {
         return count(toPredicate(dslQuery, expressions));
-    }
-
-    private static <E extends BaseEntity> Predicate toPredicate(
-            DslQuery<E> query,
-            BooleanExpression... expressions
-    ) {
-        if (query != null) {
-            List<QueryFieldMerger.FieldMetaValue> self = QueryFieldMerger.resolve(query);
-            Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
-            for (QueryFieldMerger.FieldMetaValue fieldMetaValue : self) {
-                fields.put(fieldMetaValue.getFieldMeta().getTargetField(), fieldMetaValue);
-            }
-            Optional.ofNullable(query).map(DslQuery::getExternalFields).orElse(Collections.emptyList())
-                    .forEach(it -> fields.put(it.getFieldMeta().getTargetField(), it));
-
-            return PredicateAssembler.assemble(query, fields.values(), expressions);
-        }
-        if (expressions.length == 0) {
-            return null;
-        }
-
-        return PredicateAssembler.assemble(null, null, expressions);
     }
 }

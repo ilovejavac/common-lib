@@ -1,6 +1,7 @@
 package com.dev.lib.redis.cache;
 
 import org.redisson.api.RMap;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
@@ -65,33 +66,39 @@ public class CacheMap {
 
     public <K, V> V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
         @SuppressWarnings("unchecked")
-        V result = (V) rMap.computeIfAbsent(key, k -> {
-            @SuppressWarnings("unchecked")
-            V value = mappingFunction.apply((K) k);
-            return value;
-        });
+        V result = (V) rMap.computeIfAbsent(
+                key, k -> {
+                    @SuppressWarnings("unchecked")
+                    V value = mappingFunction.apply((K) k);
+                    return value;
+                }
+        );
         expireIfNeeded();
         return result;
     }
 
     public <K, V> V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         @SuppressWarnings("unchecked")
-        V result = (V) rMap.computeIfPresent(key, (k, v) -> {
-            @SuppressWarnings("unchecked")
-            V newValue = remappingFunction.apply((K) k, (V) v);
-            return newValue;
-        });
+        V result = (V) rMap.computeIfPresent(
+                key, (k, v) -> {
+                    @SuppressWarnings("unchecked")
+                    V newValue = remappingFunction.apply((K) k, (V) v);
+                    return newValue;
+                }
+        );
         expireIfNeeded();
         return result;
     }
 
     public <K, V> V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         @SuppressWarnings("unchecked")
-        V result = (V) rMap.compute(key, (k, v) -> {
-            @SuppressWarnings("unchecked")
-            V newValue = remappingFunction.apply((K) k, (V) v);
-            return newValue;
-        });
+        V result = (V) rMap.compute(
+                key, (k, v) -> {
+                    @SuppressWarnings("unchecked")
+                    V newValue = remappingFunction.apply((K) k, (V) v);
+                    return newValue;
+                }
+        );
         expireIfNeeded();
         return result;
     }

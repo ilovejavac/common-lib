@@ -17,6 +17,10 @@ public class ExpressionBuilder {
             QueryType type,
             Object value
     ) {
+        if (value == null && type != QueryType.IS_NULL && type != QueryType.IS_NOT_NULL) {
+            return null;
+        }
+
         // 处理嵌套字段: user.profile.name
         PathBuilder<?> currentPath = pathBuilder;
         String[] fieldParts = field.split("\\.");

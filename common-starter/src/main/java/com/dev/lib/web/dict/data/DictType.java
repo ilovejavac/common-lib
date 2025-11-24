@@ -11,13 +11,11 @@ import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.Comment;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@EqualsAndHashCode(callSuper = true)
 @Data
 @Entity
 @Table(name = "sys_dict_type", indexes = {
@@ -25,11 +23,11 @@ import java.util.List;
 })
 public class DictType extends BaseEntity {
     @Comment("字典类型编码")
-    @Column(name = "type_code", nullable = false, unique = true, length = 50)
+    @Column(nullable = false, unique = true, length = 50)
     private String typeCode;
 
     @Comment("字典类型名称")
-    @Column(name = "type_name", nullable = false, length = 100)
+    @Column(nullable = false, length = 100)
     private String typeName;
 
     @Comment("排序")

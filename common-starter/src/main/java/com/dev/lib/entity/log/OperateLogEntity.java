@@ -4,14 +4,13 @@ import com.dev.lib.entity.BaseEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "sys_operate_log")
 @Data
-@EqualsAndHashCode(callSuper = true)
+
 public class OperateLogEntity extends BaseEntity {
     private String module;
     private String type;

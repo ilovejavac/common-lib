@@ -1,15 +1,14 @@
 package com.dev.lib.web.dict.model.valobj;
 
 import com.dev.lib.entity.EntityStatus;
+import com.dev.lib.web.dict.data.DictType;
+import com.dev.lib.web.model.BaseVO;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @Data
-public class DictTypeVO {
-    private String bizId;
-
+@AutoMapper(target = DictType.class)
+public class DictTypeVO extends BaseVO {
     private String typeCode;
 
     private String typeName;
@@ -17,6 +16,4 @@ public class DictTypeVO {
     private Integer sort;
 
     private EntityStatus status;
-
-    private List<DictItemVO> items = new ArrayList<>();
 }

@@ -5,12 +5,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 @Entity
 @Table(name = "sys_slow_sql_log")
 @Data
-@EqualsAndHashCode(callSuper = true)
+
 public class SlowSqlLog extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")

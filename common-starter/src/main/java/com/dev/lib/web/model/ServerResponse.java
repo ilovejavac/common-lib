@@ -43,6 +43,23 @@ public class ServerResponse<T> {
         return result;
     }
 
+    public static <S, T> ServerResponse<List<T>> success(Page<S> page, Convert<S, T> convert) {
+        ServerResponse<List<T>> result = new ServerResponse<>();
+
+        result.setCode(200);
+        result.setMessage(SUCCESS);
+        result.setData(page.getContent().stream().map(convert::convert).toList());
+
+        PageResult pager = new PageResult();
+        pager.setPage(page.getPageable().getPageNumber());
+        pager.setSize(page.getPageable().getPageSize());
+        pager.setTotal(page.getTotalElements());
+        pager.setHasNext(page.hasNext());
+        result.setPager(pager);
+
+        return result;
+    }
+
     public static <T> ServerResponse<List<T>> success(Page<T> page) {
         ServerResponse<List<T>> result = new ServerResponse<>();
 

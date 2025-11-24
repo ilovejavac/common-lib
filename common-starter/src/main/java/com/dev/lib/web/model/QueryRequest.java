@@ -5,17 +5,17 @@ import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.experimental.Accessors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import java.util.List;
+import java.util.Optional;
 
+@Slf4j
 @Data
-@Accessors(chain = true)
 @NoArgsConstructor
-@AllArgsConstructor
 public class QueryRequest<T> {
     private T query;
 
@@ -34,20 +34,26 @@ public class QueryRequest<T> {
         private Sort.Direction direction;
     }
 
-    private List<Order> orders = List.of(new Order("createdAt", Sort.Direction.DESC));
+    /**
+     * 排序方式
+     *
+     * [{"property": "createAt", "direction": "DESC/ASC"}]
+     */
+    private List<Order> orders;
 
     public Sort toSort() {
         return orders == null || orders.isEmpty()
-                ? Sort.unsorted()
+                ? Sort.by(Sort.Direction.DESC, "createdAt")
                 : Sort.by(orders.stream()
                 .map(o -> new Sort.Order(o.getDirection(), o.getProperty()))
                 .toList());
     }
 
     public Pageable toPageable() {
+        log.info("{}", this);
         return PageRequest.of(
-                Math.max(0, page - 1),
-                Math.min(size, 1000),
+                Math.max(0, Optional.ofNullable(page).orElse(1) - 1),
+                Math.min(Optional.ofNullable(size).orElse(20), 1000),
                 toSort()
         );
     }

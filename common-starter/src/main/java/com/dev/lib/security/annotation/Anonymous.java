@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * 允许接口匿名访问
  */
-@Target(ElementType.METHOD)
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Anonymous {
 }

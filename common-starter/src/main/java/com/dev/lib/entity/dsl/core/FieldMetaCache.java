@@ -8,6 +8,7 @@ import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -46,16 +47,17 @@ public class FieldMetaCache {
 
                             ReflectionUtils.makeAccessible(field);
                             Condition condition = field.getAnnotation(Condition.class);
+                            QueryFieldParser.ParsedField parsedField = QueryFieldParser.parse(field.getName());
 
                             boolean isNestedQuery = DslQuery.class.isAssignableFrom(field.getType());
 
                             fieldMetas.add(new FieldMeta(
                                     field,
                                     condition,
-                                    condition != null && !condition.field().isEmpty()
+                                    condition != null && StringUtils.hasText(condition.field())
                                             ? condition.field()
-                                            : field.getName(),
-                                    condition != null ? condition.type() : null,
+                                            : parsedField.targetField(),
+                                    condition != null ? condition.type() : parsedField.queryType(),
                                     condition != null ? condition.operator() : LogicalOperator.AND,
                                     isNestedQuery
                             ));
@@ -129,8 +131,8 @@ public class FieldMetaCache {
 
         public Object getValue(Object instance) {
             try {
-                return field.get(instance);
-            } catch (IllegalAccessException e) {
+                return ReflectionUtils.getField(field, instance);
+            } catch (Exception e) {
                 return null;
             }
         }

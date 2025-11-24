@@ -1,6 +1,7 @@
 package com.dev.lib.redis.cache;
 
 import org.redisson.api.RScoredSortedSet;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
@@ -64,11 +65,21 @@ public class CacheScoredSortedSet<T> {
         return rScoredSortedSet.valueRangeReversed(startIndex, endIndex);
     }
 
-    public Collection<T> valueRange(double startScore, boolean startScoreInclusive, double endScore, boolean endScoreInclusive) {
+    public Collection<T> valueRange(
+            double startScore,
+            boolean startScoreInclusive,
+            double endScore,
+            boolean endScoreInclusive
+    ) {
         return rScoredSortedSet.valueRange(startScore, startScoreInclusive, endScore, endScoreInclusive);
     }
 
-    public Collection<T> valueRangeReversed(double startScore, boolean startScoreInclusive, double endScore, boolean endScoreInclusive) {
+    public Collection<T> valueRangeReversed(
+            double startScore,
+            boolean startScoreInclusive,
+            double endScore,
+            boolean endScoreInclusive
+    ) {
         return rScoredSortedSet.valueRangeReversed(startScore, startScoreInclusive, endScore, endScoreInclusive);
     }
 
@@ -88,7 +99,12 @@ public class CacheScoredSortedSet<T> {
         return result;
     }
 
-    public int removeRangeByScore(double startScore, boolean startScoreInclusive, double endScore, boolean endScoreInclusive) {
+    public int removeRangeByScore(
+            double startScore,
+            boolean startScoreInclusive,
+            double endScore,
+            boolean endScoreInclusive
+    ) {
         int result = rScoredSortedSet.removeRangeByScore(startScore, startScoreInclusive, endScore, endScoreInclusive);
         if (result > 0) {
             expireIfNeeded();

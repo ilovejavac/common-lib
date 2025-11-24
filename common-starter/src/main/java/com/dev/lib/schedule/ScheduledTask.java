@@ -4,12 +4,11 @@ import com.dev.lib.entity.BaseEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 @Entity
 @Table(name = "sys_scheduled_task")
 @Data
-@EqualsAndHashCode(callSuper = true)
+
 public class ScheduledTask extends BaseEntity {
 
     private String taskName;        // 任务名称

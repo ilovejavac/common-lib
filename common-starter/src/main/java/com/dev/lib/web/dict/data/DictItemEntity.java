@@ -12,10 +12,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.Comment;
 
-@EqualsAndHashCode(callSuper = true)
 @Data
 @Entity
 @Table(name = "sys_dict_item", indexes = {
@@ -24,11 +22,11 @@ import org.hibernate.annotations.Comment;
 })
 public class DictItemEntity extends BaseEntity {
     @Comment("字典项编码")
-    @Column(name = "item_code", nullable = false, unique = true, length = 50)
+    @Column(nullable = false, unique = true, length = 50)
     private String itemCode;
 
     @Comment("字典项标签")
-    @Column(name = "item_label", nullable = false, length = 100)
+    @Column(nullable = false)
     private String itemLabel;
 
     @Comment("样式类名")
@@ -43,7 +41,7 @@ public class DictItemEntity extends BaseEntity {
     @Column(nullable = false)
     private EntityStatus status = EntityStatus.ENABLE;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "type_id", nullable = false)
     private DictType dictType;
 }

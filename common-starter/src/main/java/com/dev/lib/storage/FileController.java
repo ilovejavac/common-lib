@@ -44,6 +44,9 @@ public class FileController {
 
     @Data
     public static class DownloadFileRequest {
+        /**
+         * 文件名
+         */
         private String name;
     }
 

@@ -170,8 +170,12 @@
             <id>aliyun-central</id>
             <name>Aliyun Central</name>
             <url>https://maven.aliyun.com/repository/central</url>
-            <releases><enabled>true</enabled></releases>
-            <snapshots><enabled>false</enabled></snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
         <repository>
             <id>aliyun-spring</id>

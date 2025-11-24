@@ -4,25 +4,34 @@ import com.dev.lib.entity.BaseRepository;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
+import com.dev.lib.web.dict.model.dto.DictItemDTO;
+import com.dev.lib.web.model.QueryRequest;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.experimental.Accessors;
+import org.springframework.data.domain.Page;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface DictItemRepository extends BaseRepository<DictItemEntity> {
 
-    @EqualsAndHashCode(callSuper = true)
     @Data
-    @Accessors(chain = true)
     class Query extends DslQuery<DictItemEntity> {
         @Condition(type = QueryType.EQ)
         private String itemCode;
 
         @Condition(type = QueryType.IN, field = "itemCode")
         private List<String> itemCodes;
+
+        @Condition(type = QueryType.EQ, field = "dictType.bizId")
+        private String type;
     }
+
+    default Page<DictItemEntity> list(String type, QueryRequest<DictItemDTO.Query> request) {
+        return page(new Query().setType(type).external(request));
+    }
+
+    Optional<DictItemEntity> getByBizId(String bizId);
 
     default DictItemEntity getItem(String code) {
         Query query = new Query().setItemCode(code);

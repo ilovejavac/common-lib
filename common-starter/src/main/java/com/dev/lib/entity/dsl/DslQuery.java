@@ -3,10 +3,13 @@ package com.dev.lib.entity.dsl;
 import com.dev.lib.entity.BaseEntity;
 import com.dev.lib.entity.dsl.core.EntityPathManager;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
+import com.dev.lib.entity.dsl.core.PredicateAssembler;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.web.model.QueryRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.EntityPathBase;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -17,7 +20,9 @@ import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 public abstract class DslQuery<E extends BaseEntity> {
@@ -62,7 +67,7 @@ public abstract class DslQuery<E extends BaseEntity> {
 
     public DslQuery<E> external(Object query) {
         if (query != null) {
-            this.externalFields = QueryFieldMerger.resolve(query);
+            this.externalFields.addAll(QueryFieldMerger.resolve(query));
         }
         return this;
     }
@@ -70,7 +75,7 @@ public abstract class DslQuery<E extends BaseEntity> {
     public DslQuery<E> external(QueryRequest<?> pageRequest) {
         this.pageRequest = pageRequest;
         if (pageRequest != null) {
-            this.externalFields = QueryFieldMerger.resolve(pageRequest.getQuery());
+            this.externalFields.addAll(QueryFieldMerger.resolve(pageRequest.getQuery()));
         }
         return this;
     }
@@ -84,8 +89,32 @@ public abstract class DslQuery<E extends BaseEntity> {
 
     public Pageable toPageable() {
         if (pageRequest == null) {
-            return PageRequest.of(1, 500, Sort.unsorted());
+            return PageRequest.of(0, 500, Sort.unsorted());
         }
         return pageRequest.toPageable();
+    }
+
+    public static <E extends BaseEntity> Predicate toPredicate(
+            DslQuery<E> query,
+            BooleanExpression... expressions
+    ) {
+        if (query != null) {
+            List<QueryFieldMerger.FieldMetaValue> self = QueryFieldMerger.resolve(query);
+            Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
+
+            for (QueryFieldMerger.FieldMetaValue fieldMetaValue : self) {
+                fields.put(fieldMetaValue.getFieldMeta().getTargetField(), fieldMetaValue);
+            }
+            query.getExternalFields().forEach(it ->
+                    fields.put(it.getFieldMeta().getTargetField(), it)
+            );
+
+            return PredicateAssembler.assemble(query, fields.values(), expressions);
+        }
+        if (expressions.length == 0) {
+            return null;
+        }
+
+        return PredicateAssembler.assemble(null, null, expressions);
     }
 }

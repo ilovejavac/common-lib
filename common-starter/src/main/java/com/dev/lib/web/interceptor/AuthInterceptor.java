@@ -75,7 +75,9 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
             return true;
         }
 
-        // 2. 检查是否有 @Anonymous 注解
+        Class<?> controllerClass = handlerMethod.getBeanType();
+
+        // 2. 方法级别 @Anonymous 优先检查
         if (handlerMethod.hasMethodAnnotation(Anonymous.class)) {
             if (!SecurityContextHolder.isLogin()) {
                 SecurityContextHolder.set(UserDetails.Anonymous);
@@ -83,13 +85,17 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
             return true;
         }
 
-        if (!SecurityContextHolder.isLogin()) {
-            throw new BizException(401, "认证失败，请先登录");
+        // 3. 类级别 @Anonymous
+        if (controllerClass.isAnnotationPresent(Anonymous.class)) {
+            if (!SecurityContextHolder.isLogin()) {
+                SecurityContextHolder.set(UserDetails.Anonymous);
+            }
+            return true;
         }
 
-        // 3. 权限校验 =====
-        Internal internal = handlerMethod.getMethodAnnotation(Internal.class);
-        if (internal != null) {
+        // 4. 方法级别 @Internal 优先检查
+        Internal methodInternal = handlerMethod.getMethodAnnotation(Internal.class);
+        if (methodInternal != null) {
             String token = request.getHeader("X-Internal-Id");
             if (!internalService.validToken(token)) {
                 throw new BizException(403, "服务认证失败");
@@ -100,18 +106,54 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
             return true;
         }
 
-        RequireRole role = handlerMethod.getMethodAnnotation(RequireRole.class);
-        if (role != null) {
-            String[] requiredRoles = role.value();
-            if (!permissionService.hasRole(requiredRoles)) {
+        // 5. 类级别 @Internal
+        Internal classInternal = controllerClass.getAnnotation(Internal.class);
+        if (classInternal != null) {
+            String token = request.getHeader("X-Internal-Id");
+            if (!internalService.validToken(token)) {
+                throw new BizException(403, "服务认证失败");
+            }
+            if (!SecurityContextHolder.isLogin()) {
+                SecurityContextHolder.set(UserDetails.Internal.setTokenId(token));
+            }
+            return true;
+        }
+
+        // 6. 必须登录
+        if (!SecurityContextHolder.isLogin()) {
+            throw new BizException(401, "认证失败，请先登录");
+        }
+
+        // 7. 方法级别 @RequireRole
+        RequireRole methodRole = handlerMethod.getMethodAnnotation(RequireRole.class);
+        if (methodRole != null) {
+            if (!permissionService.hasRole(methodRole.value())) {
+                throw new BizException(403, "无权限访问");
+            }
+            return true;
+        }
+
+        // 8. 类级别 @RequireRole
+        RequireRole classRole = controllerClass.getAnnotation(RequireRole.class);
+        if (classRole != null) {
+            if (!permissionService.hasRole(classRole.value())) {
                 throw new BizException(403, "无权限访问");
             }
         }
 
-        RequirePermission permission = handlerMethod.getMethodAnnotation(RequirePermission.class);
-        if (permission != null) {
-            String[] requiredPerms = permission.value();
-            if (!permissionService.hasPermission(requiredPerms)) {
+        // 9. 方法级别 @RequirePermission
+        RequirePermission methodPermission = handlerMethod.getMethodAnnotation(RequirePermission.class);
+        if (methodPermission != null) {
+            if (!permissionService.hasPermission(methodPermission.value())) {
+                throw new BizException(403, "无权限访问");
+            }
+            return true;
+        }
+
+        // 10. 类级别 @RequirePermission
+        RequirePermission classPermission = controllerClass.getAnnotation(RequirePermission.class);
+        if (classPermission != null) {
+            if (!permissionService.hasPermission(classPermission.value())) {
                 throw new BizException(403, "无权限访问");
             }
         }
