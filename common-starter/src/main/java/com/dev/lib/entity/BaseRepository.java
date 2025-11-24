@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @NoRepositoryBean
+@SuppressWarnings("all")
 public interface BaseRepository<T extends BaseEntity> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
 
     default Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions) {
