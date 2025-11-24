@@ -17,6 +17,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FieldMetaCache {
@@ -50,14 +51,16 @@ public class FieldMetaCache {
                             QueryFieldParser.ParsedField parsedField = QueryFieldParser.parse(field.getName());
 
                             boolean isNestedQuery = DslQuery.class.isAssignableFrom(field.getType());
-
+                            QueryType queryType =
+                                    Optional.ofNullable(condition).map(Condition::type).orElse(parsedField.queryType());
                             fieldMetas.add(new FieldMeta(
                                     field,
                                     condition,
                                     condition != null && StringUtils.hasText(condition.field())
                                             ? condition.field()
                                             : parsedField.targetField(),
-                                    condition != null ? condition.type() : parsedField.queryType(),
+                                    queryType.equals(QueryType.EMPTY) ?
+                                            parsedField.queryType() : queryType,
                                     condition != null ? condition.operator() : LogicalOperator.AND,
                                     isNestedQuery
                             ));

@@ -41,7 +41,7 @@ public class ExceptionHandle {
      */
     @ExceptionHandler(BizException.class)
     public ServerResponse<Void> handleBizException(BizException e, HttpServletRequest request) {
-        log.warn("业务异常 [{}] {}: {}", request.getRequestURI(), e.getCode(), e.getMessage(), e);
+        log.warn("业务异常 [{}] {}: {}", request.getRequestURI(), e.getCoder(), e.getMessage(), e);
         return ServerResponse.fail(e);
     }
 

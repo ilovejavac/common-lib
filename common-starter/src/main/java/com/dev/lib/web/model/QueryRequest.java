@@ -43,7 +43,7 @@ public class QueryRequest<T> {
 
     public Sort toSort() {
         return orders == null || orders.isEmpty()
-                ? Sort.by(Sort.Direction.DESC, "createdAt")
+                ? Sort.by(Sort.Order.desc("createdAt"))
                 : Sort.by(orders.stream()
                 .map(o -> new Sort.Order(o.getDirection(), o.getProperty()))
                 .toList());

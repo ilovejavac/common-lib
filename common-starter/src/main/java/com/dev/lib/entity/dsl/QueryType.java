@@ -14,5 +14,7 @@ public enum QueryType {
     NOT_IN,       // NOT IN
     IS_NULL,      // IS NULL
     IS_NOT_NULL,  // IS NOT NULL
-    BETWEEN       // BETWEEN
+    BETWEEN,       // BETWEEN
+
+    EMPTY
 }

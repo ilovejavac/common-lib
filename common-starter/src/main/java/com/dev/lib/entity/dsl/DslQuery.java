@@ -17,9 +17,11 @@ import lombok.ToString;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,9 @@ public abstract class DslQuery<E extends BaseEntity> {
 
     @Condition(type = QueryType.EQ)
     public Boolean deleted = false;
+
+    @ConditionIgnore
+    public String sortStr = "";
 
     @JsonIgnore
     @ConditionIgnore
@@ -81,40 +86,33 @@ public abstract class DslQuery<E extends BaseEntity> {
     }
 
     public Sort toSort() {
-        if (pageRequest == null) {
-            return Sort.unsorted();
+        if (pageRequest == null || CollectionUtils.isEmpty(pageRequest.getOrders())) {
+            if (sortStr == null || sortStr.isBlank()) {
+                return Sort.by(Sort.Order.asc("id"));
+            }
+
+            List<Sort.Order> orders = Arrays.stream(sortStr.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(s -> {
+                        String[] parts = s.split("_");
+                        String field = parts[0];
+                        Sort.Direction dir = parts.length > 1 && "desc".equalsIgnoreCase(parts[1])
+                                ? Sort.Direction.DESC
+                                : Sort.Direction.ASC;
+                        return new Sort.Order(dir, field);
+                    })
+                    .toList();
+
+            return orders.isEmpty() ? Sort.by(Sort.Order.asc("id")) : Sort.by(orders);
         }
         return pageRequest.toSort();
     }
 
     public Pageable toPageable() {
         if (pageRequest == null) {
-            return PageRequest.of(0, 500, Sort.unsorted());
+            return PageRequest.of(0, 1000, Sort.by(Sort.Direction.ASC, "id"));
         }
         return pageRequest.toPageable();
-    }
-
-    public static <E extends BaseEntity> Predicate toPredicate(
-            DslQuery<E> query,
-            BooleanExpression... expressions
-    ) {
-        if (query != null) {
-            List<QueryFieldMerger.FieldMetaValue> self = QueryFieldMerger.resolve(query);
-            Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
-
-            for (QueryFieldMerger.FieldMetaValue fieldMetaValue : self) {
-                fields.put(fieldMetaValue.getFieldMeta().getTargetField(), fieldMetaValue);
-            }
-            query.getExternalFields().forEach(it ->
-                    fields.put(it.getFieldMeta().getTargetField(), it)
-            );
-
-            return PredicateAssembler.assemble(query, fields.values(), expressions);
-        }
-        if (expressions.length == 0) {
-            return null;
-        }
-
-        return PredicateAssembler.assemble(null, null, expressions);
     }
 }

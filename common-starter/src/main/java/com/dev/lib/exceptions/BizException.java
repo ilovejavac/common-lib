@@ -6,12 +6,12 @@ import lombok.Setter;
 @Setter
 @Getter
 public class BizException extends RuntimeException {
-    private final Integer code;
-    private final String msg;
+    private final Integer coder;
+    private final String msger;
 
     public BizException(Integer code, String message) {
         super(message);
-        this.code = code;
-        this.msg = message;
+        this.coder = code;
+        this.msger = message;
     }
 }

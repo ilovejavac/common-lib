@@ -21,7 +21,7 @@ public interface DictItemRepository extends BaseRepository<DictItemEntity> {
         private String itemCode;
 
         @Condition(type = QueryType.IN, field = "itemCode")
-        private List<String> itemCodes;
+        private Collection<String> itemCodes;
 
         @Condition(type = QueryType.EQ, field = "dictType.bizId")
         private String type;
@@ -33,14 +33,13 @@ public interface DictItemRepository extends BaseRepository<DictItemEntity> {
 
     Optional<DictItemEntity> getByBizId(String bizId);
 
+//    @org.springframework.data.jpa.repository.Query("select DictItemEntity from DictItemEntity where itemCode = :code")
     default DictItemEntity getItem(String code) {
-        Query query = new Query().setItemCode(code);
-        return load(query).orElse(null);
+        return load(new Query().setItemCode(code)).orElse(null);
     }
 
     default List<DictItemEntity> listItem(Collection<String> codes) {
-        Query query = new Query().setItemCodes(codes.stream().toList());
-        return loads(query);
+        return loads(new Query().setItemCodes(codes));
     }
 
 }

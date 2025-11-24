@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Condition {
-    QueryType type() default QueryType.EQ;
+    QueryType type() default QueryType.EMPTY;
 
     String field() default "";  // 空则用字段名
 

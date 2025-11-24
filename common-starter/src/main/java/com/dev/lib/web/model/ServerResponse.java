@@ -45,27 +45,25 @@ public class ServerResponse<T> {
 
     public static <S, T> ServerResponse<List<T>> success(Page<S> page, Convert<S, T> convert) {
         ServerResponse<List<T>> result = new ServerResponse<>();
-
-        result.setCode(200);
-        result.setMessage(SUCCESS);
         result.setData(page.getContent().stream().map(convert::convert).toList());
 
-        PageResult pager = new PageResult();
-        pager.setPage(page.getPageable().getPageNumber());
-        pager.setSize(page.getPageable().getPageSize());
-        pager.setTotal(page.getTotalElements());
-        pager.setHasNext(page.hasNext());
-        result.setPager(pager);
+        setPage(page, result);
 
         return result;
     }
 
     public static <T> ServerResponse<List<T>> success(Page<T> page) {
         ServerResponse<List<T>> result = new ServerResponse<>();
+        result.setData(page.getContent());
 
+        setPage(page, result);
+
+        return result;
+    }
+
+    private static void setPage(Page<?> page, ServerResponse<?> result) {
         result.setCode(200);
         result.setMessage(SUCCESS);
-        result.setData(page.getContent());
 
         PageResult pager = new PageResult();
         pager.setPage(page.getPageable().getPageNumber());
@@ -73,8 +71,6 @@ public class ServerResponse<T> {
         pager.setTotal(page.getTotalElements());
         pager.setHasNext(page.hasNext());
         result.setPager(pager);
-
-        return result;
     }
 
     public static ServerResponse<Void> fail(Integer code, String message) {
@@ -82,7 +78,7 @@ public class ServerResponse<T> {
     }
 
     public static ServerResponse<Void> fail(BizException e) {
-        return fail(e.getCode(), e.getMsg(), null);
+        return fail(e.getCoder(), e.getMsger(), null);
     }
 
     public static <T> ServerResponse<T> fail(Integer code, String message, T data) {
