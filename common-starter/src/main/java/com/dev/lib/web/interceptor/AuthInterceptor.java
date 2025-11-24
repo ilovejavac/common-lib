@@ -2,7 +2,7 @@ package com.dev.lib.web.interceptor;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.exceptions.BizException;
-import com.dev.lib.security.InternalService;
+import com.dev.lib.security.AuthenticateService;
 import com.dev.lib.security.PermissionService;
 import com.dev.lib.security.annotation.Anonymous;
 import com.dev.lib.security.annotation.Internal;
@@ -34,7 +34,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
 
-    private final InternalService internalService;
+    private final AuthenticateService authenticateService;
     private final AppSecurityProperties securityProperties;
     private final PermissionService permissionService;
     // 以下接口放行
@@ -97,7 +97,7 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
         Internal methodInternal = handlerMethod.getMethodAnnotation(Internal.class);
         if (methodInternal != null) {
             String token = request.getHeader("X-Internal-Id");
-            if (!internalService.validToken(token)) {
+            if (!authenticateService.validToken(token)) {
                 throw new BizException(403, "服务认证失败");
             }
             if (!SecurityContextHolder.isLogin()) {
@@ -110,7 +110,7 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
         Internal classInternal = controllerClass.getAnnotation(Internal.class);
         if (classInternal != null) {
             String token = request.getHeader("X-Internal-Id");
-            if (!internalService.validToken(token)) {
+            if (!authenticateService.validToken(token)) {
                 throw new BizException(403, "服务认证失败");
             }
             if (!SecurityContextHolder.isLogin()) {

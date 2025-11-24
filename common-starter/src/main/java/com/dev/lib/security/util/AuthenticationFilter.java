@@ -19,7 +19,6 @@ import java.io.IOException;
  */
 @Slf4j
 @Order(1)
-@Component
 @RequiredArgsConstructor
 public class AuthenticationFilter extends OncePerRequestFilter {
 

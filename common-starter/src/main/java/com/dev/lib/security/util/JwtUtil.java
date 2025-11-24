@@ -2,7 +2,7 @@ package com.dev.lib.security.util;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.security.TokenService;
-import com.dev.lib.security.UserDetailService;
+import com.dev.lib.security.AuthenticateService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -21,10 +21,10 @@ import java.util.Optional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-class JwtUtil implements TokenService, InitializingBean {
+public class JwtUtil implements TokenService, InitializingBean {
 
     private final AppSecurityProperties securityProperties;
-    private final UserDetailService userDetailService;
+    private final AuthenticateService userDetailService;
     private SecretKey secretKey;
 
     @Override
