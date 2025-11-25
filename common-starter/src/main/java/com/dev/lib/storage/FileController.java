@@ -1,7 +1,7 @@
 package com.dev.lib.storage;
 
 import com.dev.lib.entity.log.OperateLog;
-import com.dev.lib.storage.data.SysFile;
+import com.dev.lib.jpa.data.SysFile;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
@@ -28,7 +28,7 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 public class FileController {
 
-    private final FileService fileService;
+    private final FileServiceImpl fileService;
 
     /**
      * 文件上传

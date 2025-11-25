@@ -4,20 +4,15 @@ import com.dev.lib.config.properties.AppCloudProperties;
 import com.dev.lib.config.properties.AppDubboProperties;
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.config.properties.AppSnowFlakeProperties;
-import com.dev.lib.config.properties.AppSqlMonitorProperties;
 import com.dev.lib.config.properties.AppStorageProperties;
 import io.github.linpeilie.annotations.ComponentModelConfig;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @AutoConfiguration
 @ComponentScan("com.dev.lib")
-@EntityScan("com.dev.lib")  // 添加
-@EnableJpaRepositories(basePackages = "com.dev.lib")  // 添加
 @ComponentModelConfig
 public class CommonAutoConfiguration {
 
@@ -43,12 +38,6 @@ public class CommonAutoConfiguration {
     @ConfigurationProperties(prefix = "app.storage")
     public AppStorageProperties appStorageProperties() {
         return new AppStorageProperties();
-    }
-
-    @Bean
-    @ConfigurationProperties(prefix = "app.sql")
-    public AppSqlMonitorProperties appSqlMonitorProperties() {
-        return new AppSqlMonitorProperties();
     }
 
     @Bean

@@ -1,0 +1,35 @@
+package com.dev.lib.dict;
+
+import com.dev.lib.dict.serialize.DictItem;
+import com.dev.lib.jpa.data.DictItemEntityToDictItemMapper;
+import com.dev.lib.jpa.data.DictItemRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+public class DictServiceImpl implements DictService {
+
+    private final DictItemEntityToDictItemMapper mapper;
+    private final DictItemRepository itemRepository;
+
+    @Override
+    public DictItem getItem(String code) {
+        return mapper.convert(itemRepository.getItem(code));
+    }
+
+    @Override
+    public Map<String, DictItem> getItems(Collection<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return Map.of();
+        }
+
+        return itemRepository.listItem(codes).stream()
+                .map(mapper::convert)
+                .collect(Collectors.toMap(DictItem::getCode, item -> item));
+    }
+}

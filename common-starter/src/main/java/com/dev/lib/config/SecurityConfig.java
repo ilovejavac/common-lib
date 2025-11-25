@@ -1,15 +1,10 @@
 package com.dev.lib.config;
 
-import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.security.AuthenticateService;
 import com.dev.lib.security.PermissionService;
-import com.dev.lib.security.TokenService;
-import com.dev.lib.security.util.AuthenticationFilter;
-import com.dev.lib.security.util.JwtUtil;
 import com.dev.lib.security.util.SecurityContextHolder;
-import com.dev.lib.security.util.UserContextFilter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,21 +37,10 @@ public class SecurityConfig {
         };
     }
 
-    @Bean
-    @ConditionalOnBean(AuthenticateService.class)
-    public TokenService tokenService(AppSecurityProperties properties, AuthenticateService authService) {
-        return new JwtUtil(properties, authService);
-    }
-
-    @Bean
-    @ConditionalOnBean(TokenService.class)
-    public AuthenticationFilter authenticationFilter(TokenService tokenService) {
-        return new AuthenticationFilter(tokenService);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(TokenService.class)
-    public UserContextFilter userContextFilter() {
-        return new UserContextFilter();
+    @Configuration
+    @ConditionalOnMissingBean(AuthenticateService.class)
+    public static class AuthenticateServiceAutoConfig {
+        @DubboReference
+        private AuthenticateService authenticateService;
     }
 }
