@@ -13,9 +13,6 @@ import org.redisson.client.protocol.Encoder;
 
 import java.io.IOException;
 
-/**
- * @author yh
- */
 public class FastJson2JsonRedissonSerializer extends BaseCodec {
 
     private final Encoder encoder = in -> {

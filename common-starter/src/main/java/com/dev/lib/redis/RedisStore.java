@@ -1,16 +1,12 @@
 package com.dev.lib.redis;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Component
-@ConditionalOnClass(name = "org.redisson.api.RedissonClient")
 public class RedisStore {
 
     private static final String STORE_PREFIX = "store:";

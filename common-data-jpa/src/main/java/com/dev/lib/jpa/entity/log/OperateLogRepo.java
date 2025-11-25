@@ -1,6 +1,6 @@
 package com.dev.lib.jpa.entity.log;
 
-import com.dev.lib.jpa.entity.JpaDsl;
+import com.dev.lib.jpa.entity.BaseRepository;
 
-public interface OperateLogRepo extends JpaDsl<OperateLogEntity> {
+public interface OperateLogRepo extends BaseRepository<OperateLogEntity> {
 }

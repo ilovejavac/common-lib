@@ -6,7 +6,6 @@ import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Getter;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -82,7 +81,6 @@ public class FieldMetaCache {
                 || Modifier.isStatic(field.getModifiers());
     }
 
-    @SuppressWarnings("unchecked")
     private static Class<?> resolveEntityClass(Class<?> queryClass) {
         Class<?> current = queryClass;
         while (current != null && current != Object.class) {
@@ -99,37 +97,11 @@ public class FieldMetaCache {
         throw new IllegalStateException("无法解析泛型类型: " + queryClass.getName());
     }
 
-    @Getter
-    public static class ClassMeta {
-        private final Class<?> entityClass;
-        private final List<FieldMeta> fields;
-
-        ClassMeta(Class<?> entityClass, List<FieldMeta> fields) {
-            this.entityClass = entityClass;
-            this.fields = fields;
-        }
+    public record ClassMeta(Class<?> entityClass, List<FieldMeta> fields) {
     }
 
-    @Getter
-    public static class FieldMeta {
-        private final Field field;
-        private final Condition condition;
-        private final String targetField;
-        private final QueryType queryType;
-        private final LogicalOperator operator;
-        private final boolean nestedQuery;
-
-        FieldMeta(
-                Field field, Condition condition, String targetField,
-                QueryType queryType, LogicalOperator operator, boolean nestedQuery
-        ) {
-            this.field = field;
-            this.condition = condition;
-            this.targetField = targetField;
-            this.queryType = queryType;
-            this.operator = operator;
-            this.nestedQuery = nestedQuery;
-        }
+    public record FieldMeta(Field field, Condition condition, String targetField, QueryType queryType,
+                            LogicalOperator operator, boolean nestedQuery) {
 
         public Object getValue(Object instance) {
             try {

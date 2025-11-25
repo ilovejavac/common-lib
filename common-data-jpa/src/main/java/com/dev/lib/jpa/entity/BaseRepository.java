@@ -17,7 +17,7 @@ import java.util.Optional;
 
 @NoRepositoryBean
 @SuppressWarnings("all")
-public interface JpaDsl<T extends JpaEntity> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
+public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
 
     default Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions) {
         return findOne(toPredicate(dslQuery, expressions));
@@ -48,10 +48,10 @@ public interface JpaDsl<T extends JpaEntity> extends JpaRepository<T, Long>, Lis
             Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
 
             for (QueryFieldMerger.FieldMetaValue fieldMetaValue : self) {
-                fields.put(fieldMetaValue.getFieldMeta().getTargetField(), fieldMetaValue);
+                fields.put(fieldMetaValue.getFieldMeta().targetField(), fieldMetaValue);
             }
             query.getExternalFields().forEach(it ->
-                    fields.put(it.getFieldMeta().getTargetField(), it)
+                    fields.put(it.getFieldMeta().targetField(), it)
             );
 
             return PredicateAssembler.assemble(query, fields.values(), expressions);

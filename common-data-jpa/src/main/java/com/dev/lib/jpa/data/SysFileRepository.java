@@ -1,6 +1,6 @@
 package com.dev.lib.jpa.data;
 
-import com.dev.lib.jpa.entity.JpaDsl;
+import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
@@ -8,7 +8,7 @@ import lombok.Data;
 
 import java.util.Optional;
 
-public interface SysFileRepository extends JpaDsl<SysFile> {
+public interface SysFileRepository extends BaseRepository<SysFile> {
     QSysFile q = QSysFile.sysFile;
 
 

@@ -1,6 +1,6 @@
 package com.dev.lib.jpa.entity.audit;
 
-import com.dev.lib.jpa.entity.JpaDsl;
+import com.dev.lib.jpa.entity.BaseRepository;
 
-public interface AuditRepo extends JpaDsl<AuditLog> {
+public interface AuditRepo extends BaseRepository<AuditLog> {
 }

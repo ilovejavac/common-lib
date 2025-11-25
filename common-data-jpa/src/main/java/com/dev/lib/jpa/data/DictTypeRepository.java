@@ -1,7 +1,7 @@
 package com.dev.lib.jpa.data;
 
 import com.dev.lib.dict.model.dto.DictTypeDTO;
-import com.dev.lib.jpa.entity.JpaDsl;
+import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.web.model.QueryRequest;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface DictTypeRepository extends JpaDsl<DictType> {
+public interface DictTypeRepository extends BaseRepository<DictType> {
     QDictType q = QDictType.dictType;
 
     @Data

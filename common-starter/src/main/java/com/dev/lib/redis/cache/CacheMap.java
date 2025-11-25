@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+@SuppressWarnings("unchecked")
 public class CacheMap {
     private final String key;
     private final Duration ttl;
@@ -28,21 +29,15 @@ public class CacheMap {
     }
 
     public <K, V> RMap<K, V> raw() {
-        @SuppressWarnings("unchecked")
-        RMap<K, V> result = (RMap<K, V>) rMap;
-        return result;
+        return (RMap<K, V>) rMap;
     }
 
     public <V> V get(Object field) {
-        @SuppressWarnings("unchecked")
-        V result = (V) rMap.get(field);
-        return result;
+        return (V) rMap.get(field);
     }
 
     public <V> V getOrDefault(Object key, V defaultValue) {
-        @SuppressWarnings("unchecked")
-        V result = (V) rMap.getOrDefault(key, defaultValue);
-        return result;
+        return (V) rMap.getOrDefault(key, defaultValue);
     }
 
     public <V> void put(Object field, V value) {
@@ -51,7 +46,6 @@ public class CacheMap {
     }
 
     public <V> V putIfAbsent(Object key, V value) {
-        @SuppressWarnings("unchecked")
         V result = (V) rMap.putIfAbsent(key, value);
         if (result == null) {
             expireIfNeeded();
@@ -65,39 +59,24 @@ public class CacheMap {
     }
 
     public <K, V> V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
-        @SuppressWarnings("unchecked")
         V result = (V) rMap.computeIfAbsent(
-                key, k -> {
-                    @SuppressWarnings("unchecked")
-                    V value = mappingFunction.apply((K) k);
-                    return value;
-                }
+                key, k -> mappingFunction.apply((K) k)
         );
         expireIfNeeded();
         return result;
     }
 
     public <K, V> V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-        @SuppressWarnings("unchecked")
         V result = (V) rMap.computeIfPresent(
-                key, (k, v) -> {
-                    @SuppressWarnings("unchecked")
-                    V newValue = remappingFunction.apply((K) k, (V) v);
-                    return newValue;
-                }
+                key, (k, v) -> remappingFunction.apply((K) k, (V) v)
         );
         expireIfNeeded();
         return result;
     }
 
     public <K, V> V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-        @SuppressWarnings("unchecked")
         V result = (V) rMap.compute(
-                key, (k, v) -> {
-                    @SuppressWarnings("unchecked")
-                    V newValue = remappingFunction.apply((K) k, (V) v);
-                    return newValue;
-                }
+                key, (k, v) -> remappingFunction.apply((K) k, (V) v)
         );
         expireIfNeeded();
         return result;

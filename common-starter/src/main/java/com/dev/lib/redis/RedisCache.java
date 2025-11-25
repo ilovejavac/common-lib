@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @ConditionalOnClass(name = "org.redisson.api.RedissonClient")
-@SuppressWarnings("java:S6548")
+@SuppressWarnings("all")
 public class RedisCache implements InitializingBean {
 
     private final RedissonClient redissonClient;
@@ -36,7 +36,7 @@ public class RedisCache implements InitializingBean {
     private static final String CACHE_PREFIX = "cache:";
     private static final String NULL_MARKER = "__NULL__";
     private static final Duration DEFAULT_TTL = Duration.ofHours(1);
-    private static final Duration NULL_CACHE_TTL = Duration.ofMinutes(5);
+    private static final Duration NULL_CACHE_TTL = Duration.ofHours(5);
 
     private static RedisCache instance;
 
@@ -89,8 +89,7 @@ public class RedisCache implements InitializingBean {
             if (NULL_MARKER.equals(raw)) {
                 return new CacheValue<>(null, true, key, ttl);
             }
-            @SuppressWarnings("unchecked") T value = (T) raw;
-            return new CacheValue<>(value, true, key, ttl);
+            return new CacheValue<>((T) raw, true, key, ttl);
         }
 
         public <T> void set(T value) {
@@ -212,8 +211,7 @@ public class RedisCache implements InitializingBean {
                             if (NULL_MARKER.equals(rechecked)) {
                                 return null;
                             }
-                            @SuppressWarnings("unchecked") T val = (T) rechecked;
-                            return val;
+                            return (T) rechecked;
                         }
 
                         T data = loader.get();

@@ -1,7 +1,7 @@
 package com.dev.lib.jpa.data;
 
 import com.dev.lib.dict.model.dto.DictItemDTO;
-import com.dev.lib.jpa.entity.JpaDsl;
+import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
@@ -13,7 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface DictItemRepository extends JpaDsl<DictItemEntity> {
+public interface DictItemRepository extends BaseRepository<DictItemEntity> {
 
     @Data
     class Query extends DslQuery<DictItemEntity> {

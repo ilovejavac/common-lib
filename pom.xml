@@ -31,6 +31,8 @@
         <lombok.version>1.18.42</lombok.version>
         <minio.version>8.5.7</minio.version>
         <oss.version>3.17.4</oss.version>
+
+        <lib.version>1.1.0</lib.version>
     </properties>
 
     <profiles>
@@ -166,15 +168,14 @@
 
             <dependency>
                 <groupId>com.dev.lib</groupId>
-                <artifactId>common-core</artifactId>
-                <version>${project.version}</version>
+                <artifactId>common-data-jpa</artifactId>
+                <version>${lib.version}</version>
+                <optional>true</optional>
             </dependency>
-
             <dependency>
                 <groupId>com.dev.lib</groupId>
-                <artifactId>common-data-jpa</artifactId>
-                <version>${project.version}</version>
-                <optional>true</optional>
+                <artifactId>common-core</artifactId>
+                <version>${lib.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

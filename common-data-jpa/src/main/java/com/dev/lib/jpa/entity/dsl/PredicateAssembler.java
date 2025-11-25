@@ -19,14 +19,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public class PredicateAssembler<E> {
+public class PredicateAssembler {
     private PredicateAssembler() {
     }
 
     @SuppressWarnings("unchecked")
     private static <T extends JpaEntity> EntityPathBase<T> getEntityPath(Class<?> clazz) {
         return (EntityPathBase<T>) EntityPathManager.getEntityPath(
-                FieldMetaCache.getMeta(clazz).getEntityClass()
+                FieldMetaCache.getMeta(clazz).entityClass()
         );
     }
 
@@ -77,13 +77,13 @@ public class PredicateAssembler<E> {
 
             BooleanExpression expr = ExpressionBuilder.build(
                     pathBuilder,
-                    fm.getTargetField(),
-                    Optional.ofNullable(fm.getQueryType()).orElse(QueryType.EQ),
+                    fm.targetField(),
+                    Optional.ofNullable(fm.queryType()).orElse(QueryType.EQ),
                     value
             );
 
             if (expr != null) {
-                items.add(new ExpressionItem(expr, fm.getOperator()));
+                items.add(new ExpressionItem(expr, fm.operator()));
             }
         }
 
