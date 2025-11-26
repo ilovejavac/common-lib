@@ -1,11 +1,11 @@
 package com.dev.lib.jpa.adapt;
 
-import com.dev.lib.jpa.data.SysFile;
-import com.dev.lib.jpa.data.SysFileRepository;
-import com.dev.lib.jpa.data.SysFileToStorageFileMapper;
-import com.dev.lib.storage.StorageFile;
-import com.dev.lib.storage.StorageFileRepo;
-import com.dev.lib.storage.StorageFileToSysFileMapper;
+import com.dev.lib.jpa.infra.file.SysFile;
+import com.dev.lib.jpa.infra.file.SysFileRepository;
+import com.dev.lib.jpa.infra.file.SysFileToStorageFileMapper;
+import com.dev.lib.storage.domain.model.StorageFile;
+import com.dev.lib.storage.domain.adapter.StorageFileRepo;
+import com.dev.lib.storage.domain.model.StorageFileToSysFileMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

@@ -13,6 +13,10 @@
         <module>common-starter</module>
         <module>common-core</module>
         <module>common-data-jpa</module>
+        <module>common-local-task-message</module>
+        <module>common-dict</module>
+        <module>common-schedule</module>
+        <module>common-storage</module>
     </modules>
 
     <properties>
@@ -177,6 +181,26 @@
                 <artifactId>common-core</artifactId>
                 <version>${lib.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-dict</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-storage</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-schedule</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-local-task-message</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -196,6 +220,20 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-json</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.fastjson2</groupId>
+            <artifactId>fastjson2</artifactId>
         </dependency>
     </dependencies>
 

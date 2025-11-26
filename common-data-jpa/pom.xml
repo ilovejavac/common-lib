@@ -23,10 +23,7 @@
             <classifier>jakarta</classifier>
         </dependency>
 
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-core</artifactId>
-        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -36,6 +33,27 @@
             <groupId>net.ttddyy</groupId>
             <artifactId>datasource-proxy</artifactId>
             <version>1.10</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-dict</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-storage</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-schedule</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-local-task-message</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-core</artifactId>
         </dependency>
     </dependencies>
 
