@@ -1,4 +1,4 @@
-package com.dev.lib.jpa.config.properties;
+package com.dev.lib.config.properties;
 
 import lombok.Data;
 

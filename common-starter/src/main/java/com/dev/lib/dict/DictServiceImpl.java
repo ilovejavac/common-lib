@@ -1,8 +1,6 @@
 package com.dev.lib.dict;
 
 import com.dev.lib.dict.serialize.DictItem;
-import com.dev.lib.jpa.data.DictItemEntityToDictItemMapper;
-import com.dev.lib.jpa.data.DictItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,12 +12,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DictServiceImpl implements DictService {
 
-    private final DictItemEntityToDictItemMapper mapper;
-    private final DictItemRepository itemRepository;
+    private final DictAdapt adapt;
 
     @Override
     public DictItem getItem(String code) {
-        return mapper.convert(itemRepository.getItem(code));
+        return adapt.getItem(code);
     }
 
     @Override
@@ -28,8 +25,6 @@ public class DictServiceImpl implements DictService {
             return Map.of();
         }
 
-        return itemRepository.listItem(codes).stream()
-                .map(mapper::convert)
-                .collect(Collectors.toMap(DictItem::getCode, item -> item));
+        return adapt.listItem(codes).stream().collect(Collectors.toMap(DictItem::getCode, item -> item));
     }
 }

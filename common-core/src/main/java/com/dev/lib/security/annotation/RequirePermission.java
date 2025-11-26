@@ -1,4 +1,4 @@
-package com.dev.lib.web.security.annotation;
+package com.dev.lib.security.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

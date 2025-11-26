@@ -30,7 +30,7 @@ public interface DictTypeRepository extends BaseRepository<DictType> {
         Query query = new Query();
         query.id = id;
 
-        return load(query, q.status.eq(EntityStatus.ENABLE));
+        return load(query);
     }
 
 }

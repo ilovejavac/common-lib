@@ -4,10 +4,10 @@ import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.security.AuthenticateService;
 import com.dev.lib.security.PermissionService;
-import com.dev.lib.web.security.annotation.Anonymous;
-import com.dev.lib.web.security.annotation.Internal;
-import com.dev.lib.web.security.annotation.RequirePermission;
-import com.dev.lib.web.security.annotation.RequireRole;
+import com.dev.lib.security.annotation.Anonymous;
+import com.dev.lib.security.annotation.Internal;
+import com.dev.lib.security.annotation.RequirePermission;
+import com.dev.lib.security.annotation.RequireRole;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
 import jakarta.servlet.http.HttpServletRequest;
@@ -64,6 +64,9 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
             @NonNull HttpServletResponse response,
             @NonNull Object handler
     ) {
+        if (!(handler instanceof HandlerMethod handlerMethod)) {
+            return true;
+        }
 
         // 1. 放行不需要认证的接口 =====
         if (isWhitelistRequest(request.getRequestURI())) {
@@ -71,51 +74,31 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
             return true;
         }
 
-        if (!(handler instanceof HandlerMethod handlerMethod)) {
-            return true;
-        }
-
         Class<?> controllerClass = handlerMethod.getBeanType();
 
         // 2. 方法级别 @Anonymous 优先检查
         if (handlerMethod.hasMethodAnnotation(Anonymous.class)) {
-            if (!SecurityContextHolder.isLogin()) {
-                SecurityContextHolder.set(UserDetails.Anonymous);
-            }
+            anonymous();
             return true;
         }
 
         // 3. 类级别 @Anonymous
         if (controllerClass.isAnnotationPresent(Anonymous.class)) {
-            if (!SecurityContextHolder.isLogin()) {
-                SecurityContextHolder.set(UserDetails.Anonymous);
-            }
+            anonymous();
             return true;
         }
 
         // 4. 方法级别 @Internal 优先检查
         Internal methodInternal = handlerMethod.getMethodAnnotation(Internal.class);
         if (methodInternal != null) {
-            String token = request.getHeader("X-Internal-Id");
-            if (!authenticateService.validToken(token)) {
-                throw new BizException(403, "服务认证失败");
-            }
-            if (!SecurityContextHolder.isLogin()) {
-                SecurityContextHolder.set(UserDetails.Internal.setTokenId(token));
-            }
+            internal(request);
             return true;
         }
 
         // 5. 类级别 @Internal
         Internal classInternal = controllerClass.getAnnotation(Internal.class);
         if (classInternal != null) {
-            String token = request.getHeader("X-Internal-Id");
-            if (!authenticateService.validToken(token)) {
-                throw new BizException(403, "服务认证失败");
-            }
-            if (!SecurityContextHolder.isLogin()) {
-                SecurityContextHolder.set(UserDetails.Internal.setTokenId(token));
-            }
+            internal(request);
             return true;
         }
 
@@ -135,11 +118,10 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
 
         // 8. 类级别 @RequireRole
         RequireRole classRole = controllerClass.getAnnotation(RequireRole.class);
-        if (classRole != null) {
-            if (!permissionService.hasRole(classRole.value())) {
-                throw new BizException(403, "无权限访问");
-            }
+        if (classRole != null && !permissionService.hasRole(classRole.value())) {
+            throw new BizException(403, "无权限访问");
         }
+
 
         // 9. 方法级别 @RequirePermission
         RequirePermission methodPermission = handlerMethod.getMethodAnnotation(RequirePermission.class);
@@ -152,13 +134,28 @@ public class AuthInterceptor implements HandlerInterceptor, InitializingBean {
 
         // 10. 类级别 @RequirePermission
         RequirePermission classPermission = controllerClass.getAnnotation(RequirePermission.class);
-        if (classPermission != null) {
-            if (!permissionService.hasPermission(classPermission.value())) {
-                throw new BizException(403, "无权限访问");
-            }
+        if (classPermission != null && !permissionService.hasPermission(classPermission.value())) {
+            throw new BizException(403, "无权限访问");
         }
 
+
         return true;
+    }
+
+    private static void anonymous() {
+        if (!SecurityContextHolder.isLogin()) {
+            SecurityContextHolder.set(UserDetails.Anonymous);
+        }
+    }
+
+    private void internal(HttpServletRequest request) {
+        String token = request.getHeader("X-Internal-Id");
+        if (Boolean.FALSE.equals(authenticateService.validToken(token))) {
+            throw new BizException(403, "服务认证失败");
+        }
+        if (!SecurityContextHolder.isLogin()) {
+            SecurityContextHolder.set(UserDetails.Internal.setTokenId(token));
+        }
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.dev.lib.config.properties.AppCloudProperties;
 import com.dev.lib.config.properties.AppDubboProperties;
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.config.properties.AppSnowFlakeProperties;
+import com.dev.lib.config.properties.AppSqlMonitorProperties;
 import com.dev.lib.config.properties.AppStorageProperties;
 import io.github.linpeilie.annotations.ComponentModelConfig;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -44,5 +45,11 @@ public class CommonAutoConfiguration {
     @ConfigurationProperties(prefix = "app.snow-flake")
     public AppSnowFlakeProperties appSnowFlakeProperties() {
         return new AppSnowFlakeProperties();
+    }
+
+    @Bean
+    @ConfigurationProperties(prefix = "app.sql")
+    public AppSqlMonitorProperties appSqlMonitorProperties() {
+        return new AppSqlMonitorProperties();
     }
 }
