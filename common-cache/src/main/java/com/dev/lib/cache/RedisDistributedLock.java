@@ -1,4 +1,4 @@
-package com.dev.lib.redis;
+package com.dev.lib.cache;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;

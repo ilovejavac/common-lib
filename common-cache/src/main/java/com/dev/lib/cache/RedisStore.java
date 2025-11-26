@@ -1,4 +1,4 @@
-package com.dev.lib.redis;
+package com.dev.lib.cache;
 
 import lombok.extern.slf4j.Slf4j;
 

@@ -1,12 +1,12 @@
-package com.dev.lib.redis;
+package com.dev.lib.cache;
 
-import com.dev.lib.redis.cache.CacheAtomicLong;
-import com.dev.lib.redis.cache.CacheBlockingQueue;
-import com.dev.lib.redis.cache.CacheList;
-import com.dev.lib.redis.cache.CacheMap;
-import com.dev.lib.redis.cache.CacheQueue;
-import com.dev.lib.redis.cache.CacheScoredSortedSet;
-import com.dev.lib.redis.cache.CacheSet;
+import com.dev.lib.cache.common.CacheAtomicLong;
+import com.dev.lib.cache.common.CacheBlockingQueue;
+import com.dev.lib.cache.common.CacheList;
+import com.dev.lib.cache.common.CacheMap;
+import com.dev.lib.cache.common.CacheQueue;
+import com.dev.lib.cache.common.CacheScoredSortedSet;
+import com.dev.lib.cache.common.CacheSet;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;

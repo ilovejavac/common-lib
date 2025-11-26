@@ -1,12 +1,12 @@
-package com.dev.lib.web.excel;
+package com.dev.lib.excel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * excel 导出
+ * excel 导入
  */
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ExcelExport {
-    String file() default "export";
+public @interface ExcelImport {
+    String value() default "file";
 }

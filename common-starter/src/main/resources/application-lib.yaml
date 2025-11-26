@@ -83,6 +83,12 @@ spring:
         generate_statistics: false
 
 server:
+  servlet:
+    encoding:
+      charset: utf-8
+      enabled: true
+      force: true
+      force-response: true
   tomcat:
     threads:
       max: 200

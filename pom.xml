@@ -17,6 +17,8 @@
         <module>common-dict</module>
         <module>common-schedule</module>
         <module>common-storage</module>
+        <module>common-cache</module>
+        <module>common-excel</module>
     </modules>
 
     <properties>
@@ -140,18 +142,6 @@
             </dependency>
 
             <dependency>
-                <groupId>cn.hutool</groupId>
-                <artifactId>hutool-json</artifactId>
-                <version>5.8.41</version>
-            </dependency>
-            <!-- https://mvnrepository.com/artifact/cn.hutool/hutool-core -->
-            <dependency>
-                <groupId>cn.hutool</groupId>
-                <artifactId>hutool-core</artifactId>
-                <version>5.8.41</version>
-            </dependency>
-
-            <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
                 <version>2.0.17</version>
@@ -161,7 +151,6 @@
                 <groupId>org.redisson</groupId>
                 <artifactId>redisson-spring-boot-starter</artifactId>
                 <version>${redisson.version}</version>
-                <optional>true</optional>
             </dependency>
 
             <dependency>
@@ -174,7 +163,6 @@
                 <groupId>com.dev.lib</groupId>
                 <artifactId>common-data-jpa</artifactId>
                 <version>${lib.version}</version>
-                <optional>true</optional>
             </dependency>
             <dependency>
                 <groupId>com.dev.lib</groupId>
@@ -201,6 +189,16 @@
                 <artifactId>common-local-task-message</artifactId>
                 <version>${lib.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-cache</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-excel</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -214,14 +212,9 @@
             <artifactId>mapstruct-plus-spring-boot-starter</artifactId>
         </dependency>
         <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-core</artifactId>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
         </dependency>
-        <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-json</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
@@ -234,6 +227,22 @@
         <dependency>
             <groupId>com.alibaba.fastjson2</groupId>
             <artifactId>fastjson2</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

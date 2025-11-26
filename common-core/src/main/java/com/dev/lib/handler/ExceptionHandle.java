@@ -2,6 +2,7 @@ package com.dev.lib.handler;
 
 
 import com.dev.lib.exceptions.BizException;
+import com.dev.lib.web.MessageUtils;
 import com.dev.lib.web.model.ServerResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -41,8 +42,14 @@ public class ExceptionHandle {
      */
     @ExceptionHandler(BizException.class)
     public ServerResponse<Void> handleBizException(BizException e, HttpServletRequest request) {
-        log.warn("业务异常 [{}] {}: {}", request.getRequestURI(), e.getCoder(), e.getMessage(), e);
-        return ServerResponse.fail(e);
+        log.warn("业务异常 [{}] {}: {}", request.getRequestURI(), e.getCoder(), e.getMsger(), e);
+
+        String message = e.getMsger();
+        if (e.isI18n()) {
+            message = MessageUtils.get(e.getMsger(), e.getArgs());
+        }
+
+        return ServerResponse.fail(e.getCoder(), message);
     }
 
     /**

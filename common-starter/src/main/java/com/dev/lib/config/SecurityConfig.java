@@ -39,8 +39,14 @@ public class SecurityConfig {
 
     @Configuration
     @ConditionalOnMissingBean(AuthenticateService.class)
-    public static class AuthenticateServiceAutoConfig {
+    public static class RemoteAuthenticateConfig {
+
         @DubboReference
-        private AuthenticateService authenticateService;
+        private AuthenticateService remoteService;
+
+        @Bean
+        public AuthenticateService authenticateService() {
+            return remoteService;
+        }
     }
 }

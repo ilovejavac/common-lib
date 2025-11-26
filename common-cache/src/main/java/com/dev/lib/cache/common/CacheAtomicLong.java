@@ -1,4 +1,4 @@
-package com.dev.lib.redis.cache;
+package com.dev.lib.cache.common;
 
 import org.redisson.api.RAtomicLong;
 
