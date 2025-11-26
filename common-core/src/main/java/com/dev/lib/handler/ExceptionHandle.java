@@ -1,6 +1,5 @@
 package com.dev.lib.handler;
 
-
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.web.MessageUtils;
 import com.dev.lib.web.model.ServerResponse;
@@ -28,9 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 全局异常处理
- */
 @Configuration
 @RestControllerAdvice
 public class ExceptionHandle {
@@ -53,7 +49,7 @@ public class ExceptionHandle {
     }
 
     /**
-     * 参数校验异常 - @Validated 注解
+     * 参数校验异常 - @Validated
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -64,11 +60,12 @@ public class ExceptionHandle {
         for (FieldError fieldError : e.getBindingResult().getFieldErrors()) {
             errors.put(
                     fieldError.getField(),
-                    fieldError.getDefaultMessage() != null ? fieldError.getDefaultMessage() : "参数校验失败"
+                    fieldError.getDefaultMessage() != null ? fieldError.getDefaultMessage() : MessageUtils.get(
+                            "error.validation.failed")
             );
         }
 
-        return ServerResponse.fail(400, "参数校验失败", errors);
+        return ServerResponse.fail(400, MessageUtils.get("error.validation.failed"), errors);
     }
 
     /**
@@ -83,11 +80,12 @@ public class ExceptionHandle {
         for (FieldError fieldError : e.getFieldErrors()) {
             errors.put(
                     fieldError.getField(),
-                    fieldError.getDefaultMessage() != null ? fieldError.getDefaultMessage() : "参数绑定失败"
+                    fieldError.getDefaultMessage() != null ? fieldError.getDefaultMessage() : MessageUtils.get(
+                            "error.bind.failed")
             );
         }
 
-        return ServerResponse.fail(400, "参数绑定失败", errors);
+        return ServerResponse.fail(400, MessageUtils.get("error.bind.failed"), errors);
     }
 
     /**
@@ -98,11 +96,9 @@ public class ExceptionHandle {
     public ServerResponse<List<String>> handleConstraintViolationException(ConstraintViolationException e) {
         log.warn("约束校验失败: {}", e.getMessage());
 
-        List<String> errors = e.getConstraintViolations().stream()
-                .map(ConstraintViolation::getMessage)
-                .toList();
+        List<String> errors = e.getConstraintViolations().stream().map(ConstraintViolation::getMessage).toList();
 
-        return ServerResponse.fail(400, "参数校验失败", errors);
+        return ServerResponse.fail(400, MessageUtils.get("error.validation.failed"), errors);
     }
 
     /**
@@ -112,7 +108,7 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ServerResponse<Void> handleMissingParameter(MissingServletRequestParameterException e) {
         log.warn("缺少请求参数: {}", e.getParameterName());
-        return ServerResponse.fail(400, "缺少必需参数: " + e.getParameterName());
+        return ServerResponse.fail(400, MessageUtils.get("error.param.missing", e.getParameterName()));
     }
 
     /**
@@ -121,9 +117,9 @@ public class ExceptionHandle {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ServerResponse<Void> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
-        String typeName = e.getRequiredType() != null ? e.getRequiredType().getSimpleName() : "未知";
+        String typeName = e.getRequiredType() != null ? e.getRequiredType().getSimpleName() : "unknown";
         log.warn("参数类型错误: {} 期望类型: {}", e.getName(), typeName);
-        return ServerResponse.fail(400, "参数 " + e.getName() + " 类型错误，期望类型: " + typeName);
+        return ServerResponse.fail(400, MessageUtils.get("error.param.type", e.getName(), typeName));
     }
 
     /**
@@ -133,7 +129,7 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ServerResponse<Void> handleMessageNotReadable(HttpMessageNotReadableException e) {
         log.warn("请求体格式错误: {}", e.getMessage());
-        return ServerResponse.fail(400, "请求体格式错误，请检查JSON格式");
+        return ServerResponse.fail(400, MessageUtils.get("error.request.body.invalid"));
     }
 
     /**
@@ -143,10 +139,11 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public ServerResponse<Void> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
         log.warn("不支持的请求方法: {}", e.getMethod());
-        String supportedMethods = e.getSupportedHttpMethods() != null
-                ? e.getSupportedHttpMethods().toString()
-                : "";
-        return ServerResponse.fail(405, "不支持的请求方法: " + e.getMethod() + "，支持的方法: " + supportedMethods);
+        String supportedMethods = e.getSupportedHttpMethods() != null ? e.getSupportedHttpMethods().toString() : "";
+        return ServerResponse.fail(
+                405,
+                MessageUtils.get("error.method.not.supported", e.getMethod(), supportedMethods)
+        );
     }
 
     /**
@@ -156,7 +153,7 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ServerResponse<Void> handleNotFound(NoHandlerFoundException e) {
         log.warn("接口不存在: {} {}", e.getHttpMethod(), e.getRequestURL());
-        return ServerResponse.fail(404, "接口不存在: " + e.getHttpMethod() + " " + e.getRequestURL());
+        return ServerResponse.fail(404, MessageUtils.get("error.api.not.found"));
     }
 
     /**
@@ -166,17 +163,17 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
     public ServerResponse<Void> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
         log.warn("上传文件大小超限: {}", e.getMessage());
-        return ServerResponse.fail(413, "上传文件大小超过限制");
+        return ServerResponse.fail(413, MessageUtils.get("error.file.size.exceeded"));
     }
 
     /**
-     * 空指针异常（应该避免，但作为兜底）
+     * 空指针异常
      */
     @ExceptionHandler(NullPointerException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ServerResponse<Void> handleNullPointer(NullPointerException e, HttpServletRequest request) {
         log.error("空指针异常 [{}]: ", request.getRequestURI(), e);
-        return ServerResponse.fail(500, "系统异常");
+        return ServerResponse.fail(500, MessageUtils.get("error.system"));
     }
 
     /**
@@ -186,7 +183,10 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ServerResponse<Void> handleIllegalArgument(IllegalArgumentException e) {
         log.warn("非法参数: {}", e.getMessage());
-        return ServerResponse.fail(400, e.getMessage() != null ? e.getMessage() : "参数错误");
+        return ServerResponse.fail(
+                400,
+                e.getMessage() != null ? e.getMessage() : MessageUtils.get("error.param.invalid")
+        );
     }
 
     /**
@@ -196,7 +196,7 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ServerResponse<Void> handleIllegalState(IllegalStateException e, HttpServletRequest request) {
         log.error("非法状态 [{}]: ", request.getRequestURI(), e);
-        return ServerResponse.fail(500, "系统状态异常");
+        return ServerResponse.fail(500, MessageUtils.get("error.system.state"));
     }
 
     /**
@@ -207,19 +207,14 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleException(Throwable e, HttpServletRequest request) {
         log.error("系统异常 [{}]: ", request.getRequestURI(), e);
 
-        // 生产环境不暴露详细错误信息
-        String message = isProductionEnvironment()
-                ? "系统异常，请联系管理员"
-                : (e.getMessage() != null ? e.getMessage() : "未知异常");
+        String message =
+                isProductionEnvironment() ? MessageUtils.get("error.system.contact") : (e.getMessage() != null ? e.getMessage() : MessageUtils.get(
+                        "error.unknown"));
 
         return ServerResponse.fail(500, message);
     }
 
-    /**
-     * 判断是否为生产环境
-     */
     private boolean isProductionEnvironment() {
-        // 可以从配置中读取
         String activeProfile = System.getProperty("spring.profiles.active");
         return activeProfile != null && activeProfile.contains("prod");
     }

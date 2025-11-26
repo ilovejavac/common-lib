@@ -1,8 +1,8 @@
 spring:
-  messages:
-    basename: i18n/messages
-    encoding: UTF-8
-    cache-duration: 3600
+#  messages:
+#    basename: i18n/messages
+#    encoding: UTF-8
+#    cache-duration: 3600
   servlet:
     multipart:
       enabled: true
