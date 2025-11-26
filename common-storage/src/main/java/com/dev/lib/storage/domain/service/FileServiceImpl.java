@@ -1,0 +1,128 @@
+package com.dev.lib.storage.domain.service;
+
+import com.dev.lib.storage.config.AppStorageProperties;
+import com.dev.lib.entity.id.IDWorker;
+import com.dev.lib.storage.domain.adapter.StorageFileRepo;
+import com.dev.lib.storage.domain.model.StorageFile;
+import com.dev.lib.storage.domain.model.StorageFileToFileItemMapper;
+import com.dev.lib.storage.domain.service.impl.StorageService;
+import com.dev.lib.storage.serialize.FileItem;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class FileServiceImpl implements FileService {
+
+    private final AppStorageProperties fileProperties;
+    private final StorageService storage;
+    private final StorageFileRepo repo;
+
+    public StorageFile upload(MultipartFile file, String category) throws IOException {
+        if (file == null) {
+            throw new IllegalArgumentException("File not exists");
+        }
+        // 校验文件
+        validateFile(file);
+
+        // 生成存储路径
+        String extension = getExtension(file.getOriginalFilename());
+        String storageName = generateFileName() + "." + extension;
+        String storagePath = generatePath(category, storageName);
+
+        // 计算MD5(去重)
+        String md5 = calculateMd5(file);
+        Optional<StorageFile> existFile = repo.findByMd5(md5);
+        if (existFile.isPresent()) {
+            return existFile.get();
+        }
+
+        // 上传文件
+        storage.upload(file, storagePath);
+        StorageFile sf = new StorageFile();
+        sf.setOriginalName(file.getOriginalFilename());
+        sf.setStorageName(storageName);
+        sf.setStoragePath(storagePath);
+        sf.setUrl(storage.getUrl(storagePath));
+        sf.setExtension(extension);
+        sf.setContentType(file.getContentType());
+        sf.setSize(file.getSize());
+        sf.setStorageType(fileProperties.getType());
+        sf.setMd5(md5);
+        sf.setCategory(category);
+
+        repo.saveFile(sf);
+        return sf;
+    }
+
+    public StorageFile getById(String id) {
+        return repo.findByBizId(id);
+    }
+
+    public InputStream download(StorageFile sf) throws IOException {
+        StorageFile file = repo.findByBizId(sf.getBizId());
+
+        return storage.download(file.getStoragePath());
+    }
+
+    public void delete(StorageFile sf) {
+        StorageFile file = repo.findByBizId(sf.getBizId());
+
+        storage.delete(file.getStoragePath());
+        repo.remove(file.getBizId());
+    }
+
+    private void validateFile(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+        if (file.getSize() > fileProperties.getMaxSize()) {
+            throw new IllegalArgumentException("File size exceeds limit");
+        }
+
+        String extension = getExtension(file.getOriginalFilename());
+        String[] allowed = fileProperties.getAllowedExtensions().split(",");
+        if (!Arrays.asList(allowed).contains(extension)) {
+            throw new IllegalArgumentException("File type not allowed");
+        }
+    }
+
+    private String getExtension(String filename) {
+        if (!StringUtils.hasText(filename)) {
+            throw new IllegalArgumentException("unknow filename");
+        }
+        return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+    }
+
+    private String generateFileName() {
+        return IDWorker.newId();
+    }
+
+    private String generatePath(String category, String filename) {
+        LocalDate now = LocalDate.now();
+        return String.format(
+                "%s/%d/%02d/%02d/%s",
+                category, now.getYear(), now.getMonthValue(), now.getDayOfMonth(), filename
+        );
+    }
+
+    private String calculateMd5(MultipartFile file) throws IOException {
+        return DigestUtils.md5DigestAsHex(file.getInputStream());
+    }
+
+    private final StorageFileToFileItemMapper mapper;
+
+    public FileItem getItem(String value) {
+        return mapper.convert(repo.findByBizId(value));
+    }
+}

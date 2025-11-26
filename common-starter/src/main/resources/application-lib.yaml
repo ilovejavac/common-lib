@@ -1,0 +1,216 @@
+spring:
+#  messages:
+#    basename: i18n/messages
+#    encoding: UTF-8
+#    cache-duration: 3600
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5GB
+      max-request-size: 5GB
+      file-size-threshold: 2MB
+      location: ${UPLOAD_TEMP_DIR:/tmp}
+      resolve-lazily: false
+
+  config:
+    import: optional:nacos:${spring.application.name}.${app.cloud.file-extension}
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${app.cloud.hostport}
+        group: ${app.cloud.group}
+        namespace: ${app.cloud.namespace}
+        watch:
+          enabled: false
+      config:
+        server-addr: ${app.cloud.hostport}
+        group: ${app.cloud.group}
+        namespace: ${app.cloud.namespace}
+        file-extension: ${app.cloud.file-extension}
+        timeout: 5000
+        max-retry: 3
+        config-long-poll-timeout: 30000
+        refresh-enabled: true
+
+  web:
+    resources:
+      add-mappings: false
+
+  datasource:
+    hikari:
+      maximum-pool-size: 31
+      minimum-idle: 7
+      connection-timeout: 10000
+      validation-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      keepalive-time: 300000
+      leak-detection-threshold: 0
+      auto-commit: true
+      pool-name: HikariPool-${spring.application.name}
+
+      connection-test-query: SELECT 1                    # 连接测试查询
+      initialization-fail-timeout: 1                      # 快速失败
+  jpa:
+    open-in-view: false
+    show-sql: false
+    properties:
+      type:
+        preferred_java_type_jdbc_code_for_enum: 24
+      hibernate:
+        use_sql_comments: false
+        highlight_sql: true
+        naming:
+          # 驼峰转下划线
+          physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+          implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
+
+        format_sql: true
+        jdbc:
+          batch_size: 50
+          fetch_size: 500
+          time_zone: Asia/Shanghai
+          use_enum_ordinal_type: false
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+        generate_statistics: false
+
+server:
+  servlet:
+    encoding:
+      charset: utf-8
+      enabled: true
+      force: true
+      force-response: true
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 10
+    max-http-form-post-size: 20MB
+    max-swallow-size: -1
+  http2:
+    enabled: true
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-exception: false
+    whitelabel:
+      enabled: false
+  compression:
+    enabled: true
+    mime-types:
+      - application/json
+      - text/html
+      - text/css
+      - application/javascript
+      - image/svg+xml
+    min-response-size: 1KB
+
+dubbo:
+  consumer:
+    lazy: false
+    timeout: 5000
+    check: false
+    retries: 0
+  application:
+    name: dubbo-${spring.application.name}
+    qos-enable: false
+    qos-accept-foreign-ip: false
+  protocol:
+    name: dubbo
+    port: -1
+    threads: 200
+    threadpool: fixed
+    accepts: 1000
+    payload: 8388608
+    buffer: 8192
+    heartbeat: 60000
+
+  registry:
+    address: nacos://${app.cloud.hostport}?namespace=${app.cloud.namespace}&group=${app.cloud.group}
+  scan:
+    base-packages: ${app.dubbo.scan-packages}
+
+logging:
+  config: classpath:logback-spring.xml
+  file:
+    path: log
+    name: ${spring.application.name}
+  level:
+    root: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+        exclude: shutdown
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+app:
+  snow-flake:
+    data-center-id: 0
+  dubbo:
+    scan-packages: /
+  cloud:
+    hostport: localhost:8848
+    namespace: public
+    file-extension: yaml
+    group: dev
+  security:
+    # 密钥必须至少256位（32字节）
+    secret: your-256-bit-secret-key-change-this-in-production-environment-must-be-at-least-256-bits
+    # 过期时间（毫秒）：2400小时
+    expiration: 8640000000
+    encrypt-version: base64
+  cors:
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+      - OPTIONS
+    max-age: 3600
+    allow-credentials: true
+  opensearch:
+    enabled: false
+    hosts: localhost:9200
+    index-prefix: ${spring.application.name}
+  storage:
+    max-size: 999999
+    allowed-extensions:
+      - pdf
+      - png
+      - jpg
+      - jpeg
+      - gif
+      - doc
+      - docx
+      - ppt
+      - pptx
+      - xls
+      - xlsx
+      - txt
+    type: local
+    local:
+      path: storage
+  sql:
+    enabled: true
+    save-enabled: true

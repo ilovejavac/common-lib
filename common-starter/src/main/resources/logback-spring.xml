@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false" scan="false">
+
+    <!-- ========== 变量定义 ========== -->
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="/"/>
+    <springProperty scope="context" name="SPRING_PROFILE" source="spring.profiles.active" defaultValue="dev"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="./log"/>
+
+    <property name="LOG_FILE" value="${APP_NAME}"/>
+
+    <!-- 日志输出格式 -->
+    <property name="CONSOLE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n"/>
+
+    <property name="FILE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n"/>
+
+    <!-- ========== 控制台输出 ========== -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ========== 文件输出 - 所有日志 ========== -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ========== 文件输出 - ERROR 日志 ========== -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE}-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ========== JSON 文件输出（自定义完整字段） ========== -->
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE}-json.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE}-json-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</timestampPattern>
+            <timeZone>UTC</timeZone>
+
+            <includeMdc>true</includeMdc>
+            <includeContext>false</includeContext>
+            <includeTags>false</includeTags>
+            <includeCallerData>false</includeCallerData>
+
+            <!-- 字段名映射 -->
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <message>message</message>
+                <logger>[ignore]</logger>
+                <thread>[ignore]</thread>
+                <level>level</level>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+
+            <!-- 核心字段 -->
+            <customFields>{"service_name":"${APP_NAME}","hostname":"${HOSTNAME}","environment":"${SPRING_PROFILE}"}
+            </customFields>
+
+            <!-- 只保留 trace_id（其他通过 StructuredArguments 传递） -->
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>span_id</includeMdcKeyName>
+
+            <!-- 结构化参数支持（重点：这会把 keyValue() 的参数展开成 JSON 对象） -->
+            <includeStructuredArguments>true</includeStructuredArguments>
+
+            <!-- 异常堆栈优化 -->
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerThrowable>15</maxDepthPerThrowable>
+                <maxLength>8192</maxLength>
+                <shortenedClassNameLength>40</shortenedClassNameLength>
+                <exclude>sun\.reflect\..*</exclude>
+                <exclude>java\.lang\.reflect\..*</exclude>
+                <exclude>org\.springframework\..*</exclude>
+                <exclude>org\.apache\.catalina\..*</exclude>
+                <exclude>org\.apache\.tomcat\..*</exclude>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <!-- ========== 异步 Appender（性能优化，生产环境使用） ========== -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>512</queueSize>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="FILE"/>
+    </appender>
+
+    <appender name="ASYNC_ERROR_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>256</queueSize>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="ERROR_FILE"/>
+    </appender>
+
+    <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>512</queueSize>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="JSON_FILE"/>
+    </appender>
+
+    <!-- ========== 框架日志（只记录警告和错误） ========== -->
+    <logger name="org.springframework" level="WARN" additivity="true"/>
+    <logger name="org.springframework.web" level="INFO" additivity="true"/>
+    <logger name="org.springframework.jdbc" level="WARN" additivity="true"/>
+    <logger name="org.hibernate" level="WARN" additivity="true"/>
+    <logger name="org.apache.dubbo" level="WARN" additivity="true"/>
+
+    <!-- ========== 屏蔽噪音日志 ========== -->
+    <!-- 数据库连接池 -->
+    <logger name="com.zaxxer.hikari.pool" level="WARN" additivity="false"/>
+    <logger name="com.zaxxer.hikari.HikariConfig" level="WARN" additivity="false"/>
+    <logger name="net.ttddyy.dsproxy" level="WARN" additivity="false"/>
+
+    <!-- Web 容器 -->
+    <logger name="org.apache.catalina" level="WARN" additivity="false"/>
+    <logger name="org.apache.tomcat" level="WARN" additivity="false"/>
+    <logger name="io.netty" level="WARN" additivity="false"/>
+
+    <!-- Nacos 客户端噪声 -->
+    <logger name="com.alibaba.nacos.common.notify.NotifyCenter" level="OFF" additivity="false"/>
+    <logger name="com.alibaba.nacos.client.naming" level="WARN" additivity="false"/>
+    <logger name="com.alibaba.nacos.client.config.impl" level="WARN" additivity="false"/>
+    <logger name="com.alibaba.nacos.client.config.filter" level="WARN" additivity="false"/>
+
+    <!-- Dubbo 框架噪声 -->
+    <logger name="org.apache.dubbo.remoting" level="WARN" additivity="false"/>
+    <logger name="org.apache.dubbo.registry" level="WARN" additivity="false"/>
+    <logger name="org.apache.dubbo.metadata" level="WARN" additivity="false"/>
+    <logger name="org.apache.dubbo.common.config.configcenter.wrapper.CompositeDynamicConfiguration" level="ERROR"
+            additivity="false"/>
+
+    <!-- Spring 框架噪声 -->
+    <logger name="org.springframework.boot.autoconfigure" level="WARN" additivity="false"/>
+    <logger name="org.springframework.cloud.context" level="WARN" additivity="false"/>
+    <logger name="org.springframework.data" level="WARN" additivity="false"/>
+    <logger name="org.springframework.aop" level="WARN" additivity="false"/>
+
+    <!-- Hibernate/JPA 噪声 -->
+    <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR" additivity="false"/>
+    <logger name="org.hibernate.engine.internal" level="WARN" additivity="false"/>
+    <logger name="org.hibernate.validator" level="WARN" additivity="false"/>
+
+    <!-- Redisson 客户端噪声 -->
+    <logger name="org.redisson" level="WARN" additivity="false"/>
+    <logger name="io.netty.util.internal" level="WARN" additivity="false"/>
+
+    <!-- OpenSearch 客户端噪声 -->
+    <logger name="org.opensearch.client" level="WARN" additivity="false"/>
+    <logger name="org.apache.http" level="WARN" additivity="false"/>
+
+    <!-- MinIO 客户端噪声 -->
+    <logger name="io.minio" level="WARN" additivity="false"/>
+    <logger name="okhttp3" level="WARN" additivity="false"/>
+
+    <!-- 阿里云 OSS 客户端噪声 -->
+    <logger name="com.aliyun.oss" level="WARN" additivity="false"/>
+
+    <!-- MapStruct 编译时工具 -->
+    <logger name="io.github.linpeilie" level="WARN" additivity="false"/>
+
+    <!-- Hutool 工具类 -->
+    <logger name="cn.hutool" level="WARN" additivity="false"/>
+
+    <!-- Actuator 健康检查噪声 -->
+    <logger name="org.springframework.boot.actuate" level="WARN" additivity="false"/>
+
+    <!-- 屏蔽 Redis 客户端噪声 -->
+    <logger name="io.lettuce.core" level="WARN" additivity="false"/>
+    <logger name="org.redisson" level="WARN" additivity="false"/>
+
+    <!-- 屏蔽 RocketMQ 客户端噪声 -->
+    <logger name="RocketmqClient" level="WARN" additivity="false"/>
+    <logger name="RocketmqRemoting" level="WARN" additivity="false"/>
+
+    <!-- 屏蔽 Kafka 客户端噪声 -->
+    <logger name="org.apache.kafka" level="WARN" additivity="false"/>
+
+    <!-- 屏蔽 Elasticsearch 客户端噪声 -->
+    <logger name="org.elasticsearch.client" level="WARN" additivity="false"/>
+
+    <!-- 屏蔽 MongoDB 客户端噪声 -->
+    <logger name="org.mongodb.driver" level="WARN" additivity="false"/>
+
+    <!-- 屏蔽 Sentinel 噪声 -->
+    <logger name="com.alibaba.csp.sentinel" level="WARN" additivity="false"/>
+
+    <!-- 屏蔽 Seata 噪声 -->
+    <logger name="io.seata" level="WARN" additivity="false"/>
+
+    <!-- 屏蔽 Swagger/Knife4j 噪声 -->
+    <logger name="springfox.documentation" level="WARN" additivity="false"/>
+    <logger name="com.github.xiaoymin" level="WARN" additivity="false"/>
+
+    <!-- ========== 根日志配置（根据环境区分） ========== -->
+
+    <!-- 开发环境：控制台 + 同步文件 -->
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
+            <appender-ref ref="JSON_FILE"/>
+        </root>
+        <logger name="org.springframework.jdbc" level="DEBUG" additivity="true"/>
+    </springProfile>
+
+    <!-- 测试环境：控制台 + 异步文件 -->
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 生产环境：只输出异步文件，不输出控制台 -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 默认配置 -->
+    <springProfile name="!dev &amp; !test &amp; !prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
+        </root>
+    </springProfile>
+
+</configuration>
