@@ -7,7 +7,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 
 @Component
@@ -30,9 +32,9 @@ public class LocalFileStorage implements StorageService {
     }
 
     @Override
-    public byte[] download(String path) throws IOException {
+    public InputStream download(String path) throws IOException {
         File file = resolveSafePath(path);
-        return Files.readAllBytes(file.toPath());
+        return new FileInputStream(file);
     }
 
     @Override

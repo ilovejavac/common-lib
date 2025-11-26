@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 @Component
 @RequiredArgsConstructor
@@ -42,10 +43,10 @@ public class OssFileStorage implements StorageService, InitializingBean {
     }
 
     @Override
-    public byte[] download(String path) throws IOException {
+    public InputStream download(String path) throws IOException {
         String bucket = fileProperties.getOss().getBucket();
         OSSObject ossObject = ossClient.getObject(bucket, path);
-        return ossObject.getObjectContent().readAllBytes();
+        return ossObject.getObjectContent();
     }
 
     @Override

@@ -59,15 +59,15 @@ public class MinioFileStorage implements StorageService, InitializingBean {
     }
 
     @Override
-    public byte[] download(String path) throws IOException {
+    public InputStream download(String path) throws IOException {
         String bucket = fileProperties.getMinio().getBucket();
-        try (InputStream stream = minioClient.getObject(
-                GetObjectArgs.builder()
-                        .bucket(bucket)
-                        .object(path)
-                        .build()
-        )) {
-            return stream.readAllBytes();
+        try {
+            return minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(path)
+                            .build()
+            );
         } catch (Exception e) {
             throw new IOException("MinIO download failed", e);
         }

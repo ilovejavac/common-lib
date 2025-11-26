@@ -2,9 +2,6 @@ package com.dev.lib.storage;
 
 import com.dev.lib.config.properties.AppStorageProperties;
 import com.dev.lib.entity.id.IDWorker;
-import com.dev.lib.jpa.data.SysFile;
-import com.dev.lib.jpa.data.SysFileRepository;
-import com.dev.lib.jpa.data.SysFileToFileItemMapper;
 import com.dev.lib.storage.impl.StorageService;
 import com.dev.lib.storage.serialize.FileItem;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +11,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Optional;
@@ -22,13 +20,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
 
-    public static final String FILE_NOT_FOUND = "File not found";
-    private final StorageService storage;
     private final AppStorageProperties fileProperties;
+    private final StorageService storage;
+    private final StorageFileRepo repo;
 
-    private final SysFileRepository fileRepository;
-
-    public SysFile upload(MultipartFile file, String category) throws IOException {
+    public StorageFile upload(MultipartFile file, String category) throws IOException {
         if (file == null) {
             throw new IllegalArgumentException("File not exists");
         }
@@ -42,47 +38,44 @@ public class FileServiceImpl implements FileService {
 
         // 计算MD5(去重)
         String md5 = calculateMd5(file);
-        Optional<SysFile> existFile = fileRepository.findByMd5(md5);
+        Optional<StorageFile> existFile = repo.findByMd5(md5);
         if (existFile.isPresent()) {
             return existFile.get();
         }
 
         // 上传文件
         storage.upload(file, storagePath);
+        StorageFile sf = new StorageFile();
+        sf.setOriginalName(file.getOriginalFilename());
+        sf.setStorageName(storageName);
+        sf.setStoragePath(storagePath);
+        sf.setUrl(storage.getUrl(storagePath));
+        sf.setExtension(extension);
+        sf.setContentType(file.getContentType());
+        sf.setSize(file.getSize());
+        sf.setStorageType(fileProperties.getType());
+        sf.setMd5(md5);
+        sf.setCategory(category);
 
-        // 保存记录
-        SysFile sysFile = new SysFile();
-        sysFile.setOriginalName(file.getOriginalFilename());
-        sysFile.setStorageName(storageName);
-        sysFile.setStoragePath(storagePath);
-        sysFile.setUrl(storage.getUrl(storagePath));
-        sysFile.setExtension(extension);
-        sysFile.setContentType(file.getContentType());
-        sysFile.setSize(file.getSize());
-        sysFile.setStorageType(fileProperties.getType());
-        sysFile.setMd5(md5);
-        sysFile.setCategory(category);
-
-        return fileRepository.save(sysFile);
+        repo.saveFile(sf);
+        return sf;
     }
 
-    SysFile getById(String id) {
-        return fileRepository.findByBizId(id).orElseThrow(() -> new RuntimeException(FILE_NOT_FOUND));
+    public StorageFile getById(String id) {
+        return repo.findByBizId(id);
     }
 
-    public byte[] download(SysFile sf) throws IOException {
-        SysFile file = fileRepository.findById(sf.getId())
-                .orElseThrow(() -> new RuntimeException(FILE_NOT_FOUND));
+    public InputStream download(StorageFile sf) throws IOException {
+        StorageFile file = repo.findByBizId(sf.getBizId());
 
         return storage.download(file.getStoragePath());
     }
 
-    public void delete(SysFile sf) {
-        SysFile file = fileRepository.findById(sf.getId())
-                .orElseThrow(() -> new RuntimeException(FILE_NOT_FOUND));
+    public void delete(StorageFile sf) {
+        StorageFile file = repo.findByBizId(sf.getBizId());
 
         storage.delete(file.getStoragePath());
-        fileRepository.delete(file);
+        repo.remove(file.getBizId());
     }
 
     private void validateFile(MultipartFile file) {
@@ -124,9 +117,9 @@ public class FileServiceImpl implements FileService {
         return DigestUtils.md5DigestAsHex(file.getInputStream());
     }
 
-    private final SysFileToFileItemMapper mapper;
+    private final StorageFileToFileItemMapper mapper;
 
     public FileItem getItem(String value) {
-        return mapper.convert(fileRepository.findByBizId(value).orElse(null));
+        return mapper.convert(repo.findByBizId(value));
     }
 }

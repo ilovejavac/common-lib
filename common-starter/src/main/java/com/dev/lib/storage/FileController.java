@@ -1,9 +1,9 @@
 package com.dev.lib.storage;
 
 import com.dev.lib.entity.log.OperateLog;
-import com.dev.lib.jpa.data.SysFile;
-import lombok.Data;
+import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.net.URLEncoder;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -35,46 +35,35 @@ public class FileController {
      */
     @PostMapping("/upload")
     @OperateLog(module = "file", type = "upload", description = "上传文件")
-    public SysFile upload(
+    public ServerResponse<StorageFile> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "document") String category
     ) throws IOException {
-        return fileService.upload(file, category);
-    }
-
-    @Data
-    public static class DownloadFileRequest {
-        /**
-         * 文件名
-         */
-        private String name;
+        return ServerResponse.success(fileService.upload(file, category));
     }
 
     /**
      * 文件下载
      */
     @GetMapping("/{id}")
-    public ResponseEntity<byte[]> download(
+    public ResponseEntity<InputStreamResource> download(
             @PathVariable String id,
-            @RequestParam DownloadFileRequest request
+            @RequestParam(required = false) String name
     ) throws IOException {
-        byte[] data = fileService.download(fileService.getById(id));
+        StorageFile file = fileService.getById(id);
+        InputStream is = fileService.download(file);
 
-        String filename = request.getName();
-        if (filename == null || filename.isBlank()) {
-            filename = "file";
-        }
-        // URL 编码处理中文文件名
-        String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8)
-                .replace("+", "%20");
+        String filename = (name != null && !name.isBlank()) ? name : file.getOriginalName();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename(encodedFilename, StandardCharsets.UTF_8)
-                .build());
-
-        return ResponseEntity.ok().headers(headers).body(data);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename(filename, StandardCharsets.UTF_8)
+                                .build().toString()
+                )
+                .body(new InputStreamResource(is));
     }
 
     /**

@@ -1,9 +1,11 @@
 package com.dev.lib.jpa.data;
 
 import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.storage.StorageFile;
 import com.dev.lib.storage.StorageType;
 import com.dev.lib.storage.serialize.FileItem;
 import io.github.linpeilie.annotations.AutoMapper;
+import io.github.linpeilie.annotations.AutoMappers;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -14,7 +16,10 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "sys_file")
 @Data
-@AutoMapper(target = FileItem.class, reverseConvertGenerate = false)
+@AutoMappers({
+        @AutoMapper(target = FileItem.class, reverseConvertGenerate = false),
+        @AutoMapper(target = StorageFile.class)
+})
 public class SysFile extends JpaEntity {
     @Column(nullable = false)
     private String originalName;    // 原始文件名
