@@ -29,6 +29,10 @@ public class SecurityContextHolder {
         return holder.get() != null;
     }
 
+    public static boolean validated() {
+        return isLogin() && holder.get().getValidated();
+    }
+
     public static void with(UserDetails userDetails, Runnable task) {
         UserDetails older = holder.get();
         holder.set(userDetails);

@@ -18,6 +18,11 @@ public class LocalTaskMessageService implements LocalTaskMessageHandleService {
 
     @Override
     public void handle(TaskMessageEntityCommand cmd) {
-        event.publish(cmd);
+        try {
+            event.saveMessage(cmd);
+            event.publish(cmd);
+        } finally {
+
+        }
     }
 }

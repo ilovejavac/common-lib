@@ -26,6 +26,6 @@ public class DictServiceImpl implements DictService {
             return Map.of();
         }
 
-        return adapt.listItem(codes).stream().collect(Collectors.toMap(DictItem::getCode, item -> item));
+        return adapt.listItem(codes).stream().collect(Collectors.toMap(DictItem::getItemCode, item -> item));
     }
 }

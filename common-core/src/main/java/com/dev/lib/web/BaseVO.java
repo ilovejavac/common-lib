@@ -1,5 +1,7 @@
 package com.dev.lib.web;
 
+import com.dev.lib.web.serialize.FieldLoader;
+import com.dev.lib.web.serialize.PopulateField;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -11,9 +13,18 @@ public abstract class BaseVO {
     private String bizId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
     @JsonProperty("creator")
+    @PopulateField(loader = FieldLoader.USER_LOADER)
     private Long creatorId;
 
     @JsonProperty("modifier")
+    @PopulateField(loader = FieldLoader.USER_LOADER)
     private Long modifierId;
+
+    @PopulateField(loader = FieldLoader.DICT_LOADER)
+    private String dict = "37";
+
+    @PopulateField(loader = FieldLoader.FILE_LOADER)
+    private String file = "1";
 }

@@ -1,6 +1,8 @@
 package com.dev.lib.security.util;
 
 import com.dev.lib.entity.EntityStatus;
+import com.dev.lib.web.serialize.userinfo.UserLoader;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,6 +19,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
+@AutoMapper(target = UserLoader.UserItem.class)
 public class UserDetails implements Serializable {
 
     private static final String INTERNAL = "INTERNAL";
@@ -71,6 +74,7 @@ public class UserDetails implements Serializable {
                 .build();
     }
 
+    private Boolean validated;
     // ===== 基础信息 =====
     private Long id;
     private String username;

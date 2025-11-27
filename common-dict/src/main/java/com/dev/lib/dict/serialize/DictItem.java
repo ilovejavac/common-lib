@@ -1,6 +1,6 @@
 package com.dev.lib.dict.serialize;
 
-import io.github.linpeilie.annotations.AutoMapping;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,9 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DictItem {
-    @AutoMapping(target = "itemCode")
-    private String code;
-    @AutoMapping(target = "itemLabel")
-    private String label;
+    @JsonProperty("code")
+    private String itemCode;
+    @JsonProperty("label")
+    private String itemLabel;
     private String css;
 }

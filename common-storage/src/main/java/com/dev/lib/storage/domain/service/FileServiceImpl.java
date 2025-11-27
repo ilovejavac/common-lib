@@ -1,7 +1,7 @@
 package com.dev.lib.storage.domain.service;
 
-import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.entity.id.IDWorker;
+import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.storage.domain.adapter.StorageFileRepo;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageFileToFileItemMapper;
@@ -17,7 +17,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -124,5 +128,11 @@ public class FileServiceImpl implements FileService {
 
     public FileItem getItem(String value) {
         return mapper.convert(repo.findByBizId(value));
+    }
+
+    @Override
+    public Map<String, FileItem> getItems(Collection<String> ids) {
+        List<StorageFile> files = repo.findByIds(ids);
+        return files.stream().collect(Collectors.toMap(StorageFile::getBizId, mapper::convert));
     }
 }

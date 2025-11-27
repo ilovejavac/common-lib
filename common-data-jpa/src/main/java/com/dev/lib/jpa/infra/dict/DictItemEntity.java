@@ -7,6 +7,7 @@ import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.jpa.entity.JpaEntity;
 import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
+import io.github.linpeilie.annotations.AutoMapping;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

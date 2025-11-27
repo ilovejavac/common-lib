@@ -1,6 +1,9 @@
 package com.dev.lib.security;
 
+import com.dev.lib.security.util.ClientInfoExtractor;
+import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
+import jakarta.servlet.http.HttpServletRequest;
 
 public interface TokenService {
     /**

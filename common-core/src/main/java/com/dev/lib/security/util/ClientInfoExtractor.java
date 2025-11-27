@@ -1,8 +1,9 @@
-package com.dev.lib.web.security.util;
+package com.dev.lib.security.util;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-public class ClientInfoExtractor {
+public abstract class ClientInfoExtractor {
+    private ClientInfoExtractor() {}
 
     public static String getClientIp(HttpServletRequest request) {
         String[] headers = {

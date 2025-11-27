@@ -3,14 +3,15 @@ package com.dev.lib.jpa.adapt;
 import com.dev.lib.jpa.infra.file.SysFile;
 import com.dev.lib.jpa.infra.file.SysFileRepository;
 import com.dev.lib.jpa.infra.file.SysFileToStorageFileMapper;
-import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.adapter.StorageFileRepo;
+import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageFileToSysFileMapper;
-import com.google.common.base.Strings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -42,5 +43,10 @@ public class StorageFileAdapt implements StorageFileRepo {
     public void saveFile(StorageFile storageFile) {
         // 保存记录
         fileRepository.save(sysFileMapper.convert(storageFile));
+    }
+
+    @Override
+    public List<StorageFile> findByIds(Collection<String> ids) {
+        return fileRepository.findAllByBizIdIn(ids).stream().map(storageFileMapper::convert).toList();
     }
 }

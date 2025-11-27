@@ -2,6 +2,7 @@ package com.dev.lib.web;
 
 import com.dev.lib.entity.id.IDWorker;
 import com.dev.lib.entity.id.IntEncoder;
+import com.dev.lib.security.util.ClientInfoExtractor;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,7 +33,7 @@ import java.util.Optional;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Slf4j
-@Order(2)
+@Order(3)
 @Component
 @RequiredArgsConstructor
 public class LoggingFilter extends OncePerRequestFilter {
@@ -67,7 +68,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         Map<String, Object> requestInfo = new HashMap<>();
         requestInfo.put("method", request.getMethod());
         requestInfo.put("path", request.getRequestURI());
-        requestInfo.put("source_ip", getClientIp(request));
+        requestInfo.put("source_ip", ClientInfoExtractor.getClientIp(request));
 
         List<StructuredArgument> args = new ArrayList<>(List.of(
                 keyValue("context", requestInfo)
@@ -85,7 +86,6 @@ public class LoggingFilter extends OncePerRequestFilter {
         Map<String, Object> business = new HashMap<>();
         boolean hasBusiness = false;
 
-        // 现在可以读到了
         if ("POST".equals(request.getMethod()) || "PUT".equals(request.getMethod())) {
             byte[] content = request.getContentAsByteArray();
             if (content.length > 0) {
@@ -115,16 +115,5 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
 
         log.info("Request received", args.toArray());
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty()) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty()) {
-            ip = request.getRemoteAddr();
-        }
-        return ip.split(",")[0].trim();
     }
 }

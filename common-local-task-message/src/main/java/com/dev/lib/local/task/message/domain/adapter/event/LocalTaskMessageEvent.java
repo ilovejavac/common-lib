@@ -4,5 +4,7 @@ import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityComma
 
 public interface LocalTaskMessageEvent {
 
+    void saveMessage(TaskMessageEntityCommand cmd);
+
     void publish(TaskMessageEntityCommand cmd);
 }

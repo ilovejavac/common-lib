@@ -1,4 +1,4 @@
-package com.dev.lib.web.security.util;
+package com.dev.lib.web.security;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.security.TokenService;

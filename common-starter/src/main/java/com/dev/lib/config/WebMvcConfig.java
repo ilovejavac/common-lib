@@ -1,6 +1,7 @@
 package com.dev.lib.config;
 
 import com.dev.lib.web.interceptor.AuthInterceptor;
+import com.dev.lib.web.serialize.PopulateFieldSerializerModifier;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -25,6 +26,7 @@ import java.util.List;
 public class WebMvcConfig implements WebMvcConfigurer {
     private final AuthInterceptor authInterceptor;
     private final ObjectMapper objectMapper;
+    private final PopulateFieldSerializerModifier modifier;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -43,6 +45,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addSerializer(Long.TYPE, new LongToStringSerializer())
                 .addDeserializer(Long.class, new StringToLongDeserializer())
                 .addDeserializer(Long.TYPE, new StringToLongDeserializer())
+        );
+        webMapper.setSerializerFactory(
+                webMapper.getSerializerFactory().withSerializerModifier(modifier)
         );
 
         converters.add(0, new MappingJackson2HttpMessageConverter(webMapper));

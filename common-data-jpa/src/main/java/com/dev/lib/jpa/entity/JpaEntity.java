@@ -12,6 +12,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -21,6 +22,7 @@ import java.util.Map;
 @Getter
 @Setter
 @MappedSuperclass
+@DynamicUpdate
 @EntityListeners({BaseEntityListener.class, EncryptionListener.class, AuditListener.class, OnDeleteListener.class})
 public abstract class JpaEntity extends CoreEntity {
     @Id
