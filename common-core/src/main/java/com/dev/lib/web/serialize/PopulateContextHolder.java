@@ -10,7 +10,8 @@ import java.util.Set;
  * 请求级缓存，按 loader 名称隔离
  */
 @Slf4j
-public class PopulateContextHolder {
+public abstract class PopulateContextHolder {
+    private PopulateContextHolder() {}
     
     // Map<loaderName, Map<key, value>>
     private static final ThreadLocal<Map<String, Map<Object, Object>>> CACHE = 
@@ -22,8 +23,6 @@ public class PopulateContextHolder {
     @SuppressWarnings("unchecked")
 // PopulateContextHolder.java
     public static <K, V> void preload(String loaderName, Set<K> keys, PopulateLoader<K, V> loader) {
-        log.info("preload called: loader={}, keys={}", loaderName, keys);
-
         if (keys == null || keys.isEmpty()) return;
 
         Map<Object, Object> loaderCache = CACHE.get().computeIfAbsent(loaderName, k -> new HashMap<>());
@@ -36,7 +35,6 @@ public class PopulateContextHolder {
 
         if (!toLoad.isEmpty()) {
             Map<K, V> loaded = loader.batchLoad(toLoad);
-            log.info("batchLoad returned: {}", loaded);
             if (loaded != null) {
                 loaderCache.putAll(loaded);
             }

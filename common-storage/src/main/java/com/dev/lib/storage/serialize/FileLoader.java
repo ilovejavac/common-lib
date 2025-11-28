@@ -1,6 +1,5 @@
 package com.dev.lib.storage.serialize;
 
-import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.service.FileService;
 import com.dev.lib.web.serialize.PopulateLoader;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +21,5 @@ public class FileLoader implements PopulateLoader<String, FileItem> {
     @Override
     public Map<String, FileItem> batchLoad(Set<String> ids) {
         return fileService.getItems(ids);
-    }
-
-    @Override
-    public Class<String> keyType() {
-        return String.class;
     }
 }

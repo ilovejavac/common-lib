@@ -35,6 +35,7 @@ public class PopulateFieldAspect {
             // 提取所有 @PopulateField 字段，按 loader 分组
             Map<String, Set<Object>> loaderKeyMap = PopulateFieldExtractor.extract(dataToScan);
 
+
             // 批量加载每个 loader
             for (Map.Entry<String, Set<Object>> entry : loaderKeyMap.entrySet()) {
                 String loaderName = entry.getKey();
@@ -43,9 +44,6 @@ public class PopulateFieldAspect {
                 PopulateLoader<Object, Object> loader = PopulateLoaderRegistry.getLoader(loaderName);
                 if (loader != null) {
                     PopulateContextHolder.preload(loaderName, keys, loader);
-                    log.debug("Preloaded {} keys for loader [{}]", keys.size(), loaderName);
-                } else {
-                    log.warn("Loader not found: {}", loaderName);
                 }
             }
         } catch (Exception e) {

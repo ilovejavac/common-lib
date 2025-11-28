@@ -1,8 +1,9 @@
 package com.dev.lib.jpa.entity;
 
 import com.dev.lib.entity.dsl.DslQuery;
-import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
+import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
+import com.google.common.base.Strings;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.data.domain.Page;
@@ -48,10 +49,22 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
             Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
 
             for (QueryFieldMerger.FieldMetaValue fieldMetaValue : self) {
-                fields.put(fieldMetaValue.getFieldMeta().targetField(), fieldMetaValue);
+                fields.put(
+                        Strings.lenientFormat(
+                                "%s-%s",
+                                fieldMetaValue.getFieldMeta().targetField(),
+                                fieldMetaValue.getFieldMeta().queryType()
+                        ), fieldMetaValue
+                );
             }
             query.getExternalFields().forEach(it ->
-                    fields.put(it.getFieldMeta().targetField(), it)
+                    fields.put(
+                            Strings.lenientFormat(
+                                    "%s-%s",
+                                    it.getFieldMeta().targetField(),
+                                    it.getFieldMeta().queryType()
+                            ), it
+                    )
             );
 
             return PredicateAssembler.assemble(query, fields.values(), expressions);

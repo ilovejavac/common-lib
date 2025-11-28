@@ -22,9 +22,4 @@ public class DictLoader implements PopulateLoader<String, DictItem> {
     public Map<String, DictItem> batchLoad(Set<String> ids) {
         return dictService.getItems(ids);
     }
-
-    @Override
-    public Class<String> keyType() {
-        return String.class;
-    }
 }

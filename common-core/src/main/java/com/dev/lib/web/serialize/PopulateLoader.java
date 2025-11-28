@@ -17,9 +17,4 @@ public interface PopulateLoader<K, V> {
      * @return 键值映射
      */
     Map<K, V> batchLoad(Set<K> keys);
-    
-    /**
-     * 获取键的类型
-     */
-    Class<K> keyType();
 }

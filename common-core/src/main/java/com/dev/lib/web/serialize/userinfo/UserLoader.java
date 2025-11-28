@@ -30,11 +30,6 @@ public class UserLoader implements PopulateLoader<Long, UserLoader.UserItem> {
                 .collect(Collectors.toMap(UserDetails::getId, mapper::convert));
     }
 
-    @Override
-    public Class<Long> keyType() {
-        return Long.class;
-    }
-
     @Data
     public static class UserItem {
         private String email;
