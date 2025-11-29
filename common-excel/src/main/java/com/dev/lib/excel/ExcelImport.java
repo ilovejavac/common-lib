@@ -1,12 +1,17 @@
 package com.dev.lib.excel;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.*;
 
 /**
- * excel 导入
+ * 标记方法接收 Excel 上传
  */
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
+@Documented
 public @interface ExcelImport {
-    String value() default "file";
+    
+    /**
+     * 上传文件参数名
+     */
+    String fileParam() default "file";
 }

@@ -1,12 +1,25 @@
 package com.dev.lib.excel;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.*;
 
 /**
- * excel 导出
+ * 标记方法返回值为 Excel 导出
  */
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
+@Documented
 public @interface ExcelExport {
-    String file() default "export";
+    
+    /**
+     * 文件名模板，支持占位符：
+     * ${date} - yyyyMMdd
+     * ${datetime} - yyyyMMddHHmmss
+     * ${timestamp} - 毫秒时间戳
+     */
+    String fileName() default "export_${datetime}";
+    
+    /**
+     * Sheet 名称
+     */
+    String sheetName() default "Sheet1";
 }
