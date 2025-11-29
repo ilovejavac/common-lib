@@ -73,6 +73,26 @@ public class ServerResponse<T> {
         result.setPager(pager);
     }
 
+    @SuppressWarnings("unchecked")
+    public <S, R> ServerResponse<List<R>> convert(Convert<S, R> convert) {
+        ServerResponse<List<R>> result = new ServerResponse<>();
+        result.setCode(this.code);
+        result.setMessage(this.message);
+        result.setError(this.error);
+        result.setPager(this.pager);
+        result.setTimestamp(this.timestamp);
+        result.setTraceId(this.traceId);
+
+        if (this.data == null) {
+            result.setData(null);
+        } else {
+            List<S> list = (List<S>) this.data;
+            result.setData(list.stream().map(convert::convert).toList());
+        }
+
+        return result;
+    }
+
     public static ServerResponse<Void> fail(Integer code, String message) {
         return fail(code, message, null);
     }

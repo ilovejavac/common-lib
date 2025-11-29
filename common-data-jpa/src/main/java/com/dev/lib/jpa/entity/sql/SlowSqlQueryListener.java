@@ -1,6 +1,6 @@
 package com.dev.lib.jpa.entity.sql;
 
-import com.dev.lib.config.properties.AppSqlMonitorProperties;
+import com.dev.lib.jpa.config.AppSqlMonitorProperties;
 import com.dev.lib.security.util.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

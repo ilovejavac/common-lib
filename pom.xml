@@ -19,6 +19,7 @@
         <module>common-storage</module>
         <module>common-cache</module>
         <module>common-excel</module>
+        <module>common-ai</module>
     </modules>
 
     <properties>
@@ -197,6 +198,11 @@
             <dependency>
                 <groupId>com.dev.lib</groupId>
                 <artifactId>common-excel</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-ai</artifactId>
                 <version>${lib.version}</version>
             </dependency>
         </dependencies>
