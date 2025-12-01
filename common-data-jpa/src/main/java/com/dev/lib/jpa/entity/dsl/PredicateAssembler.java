@@ -3,6 +3,7 @@ package com.dev.lib.jpa.entity.dsl;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
+import com.dev.lib.entity.dsl.core.FieldMetaCache.FieldMeta;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.jpa.entity.JpaEntity;
@@ -19,9 +20,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 谓词组装器
+ *
+ * 统一处理普通条件、条件分组、子查询
+ */
 public class PredicateAssembler {
-    private PredicateAssembler() {
-    }
+
+    private PredicateAssembler() {}
 
     @SuppressWarnings("unchecked")
     private static <T extends JpaEntity> EntityPathBase<T> getEntityPath(Class<?> clazz) {
@@ -30,6 +36,9 @@ public class PredicateAssembler {
         );
     }
 
+    /**
+     * 组装查询条件
+     */
     public static <E extends JpaEntity> BooleanBuilder assemble(
             DslQuery<E> query,
             Collection<QueryFieldMerger.FieldMetaValue> fields,
@@ -43,7 +52,8 @@ public class PredicateAssembler {
                     getEntityPath(query.getClass()).getMetadata()
             );
 
-            Predicate predicate = buildWithPrecedence(collectExpressions(pathBuilder, fields));
+            List<ExpressionItem> items = collectExpressions(pathBuilder, fields);
+            Predicate predicate = buildWithPrecedence(items);
             Optional.ofNullable(predicate).ifPresent(builder::and);
         }
 
@@ -54,6 +64,9 @@ public class PredicateAssembler {
         return builder;
     }
 
+    /**
+     * 收集表达式
+     */
     private static <E extends JpaEntity> List<ExpressionItem> collectExpressions(
             PathBuilder<E> pathBuilder,
             Collection<QueryFieldMerger.FieldMetaValue> fields
@@ -61,35 +74,79 @@ public class PredicateAssembler {
         List<ExpressionItem> items = new ArrayList<>();
 
         for (QueryFieldMerger.FieldMetaValue fv : fields) {
-            FieldMetaCache.FieldMeta fm = fv.getFieldMeta();
+            FieldMeta fm = fv.getFieldMeta();
             Object value = fv.getValue();
 
-            // 处理嵌套 DslQuery
-//            if (fm.isNestedQuery() && value instanceof DslQuery<?> nestedQuery) {
-//                List<QueryFieldMerger.FieldMetaValue> nestedFields = QueryFieldMerger.resolve(nestedQuery);
-//                Predicate nestedExpr = assemble(nestedQuery, nestedFields).getValue();
-//
-//                if (nestedExpr != null) {
-//                    items.add(new ExpressionItem(nestedExpr, fm.getOperator()));
-//                }
-//                continue;
-//            }
+            if (value == null) continue;
 
-            BooleanExpression expr = ExpressionBuilder.build(
-                    pathBuilder,
-                    fm.targetField(),
-                    Optional.ofNullable(fm.queryType()).orElse(QueryType.EQ),
-                    value
-            );
+            switch (fm.metaType()) {
+                case CONDITION -> {
+                    BooleanExpression expr = ExpressionBuilder.build(
+                            pathBuilder,
+                            fm.targetField(),
+                            Optional.ofNullable(fm.queryType()).orElse(QueryType.EQ),
+                            value
+                    );
+                    if (expr != null) {
+                        items.add(new ExpressionItem(expr, fm.operator()));
+                    }
+                }
 
-            if (expr != null) {
-                items.add(new ExpressionItem(expr, fm.operator()));
+                case GROUP -> {
+                    Predicate groupPredicate = buildGroupPredicate(pathBuilder, fm, value);
+                    if (groupPredicate != null) {
+                        items.add(new ExpressionItem(groupPredicate, fm.operator()));
+                    }
+                }
+
+                case SUB_QUERY -> {
+                    BooleanExpression subExpr = SubQueryBuilder.build(pathBuilder, fm, value);
+                    if (subExpr != null) {
+                        items.add(new ExpressionItem(subExpr, fm.operator()));
+                    }
+                }
             }
         }
 
         return items;
     }
 
+    /**
+     * 构建分组条件
+     */
+    private static <E extends JpaEntity> Predicate buildGroupPredicate(
+            PathBuilder<E> pathBuilder,
+            FieldMeta groupMeta,
+            Object groupValue
+    ) {
+        List<FieldMeta> nestedMetas = groupMeta.nestedMetas();
+        if (nestedMetas == null || nestedMetas.isEmpty()) {
+            return null;
+        }
+
+        List<QueryFieldMerger.FieldMetaValue> nestedFields = new ArrayList<>();
+        for (FieldMeta nested : nestedMetas) {
+            Object nestedValue = nested.getValue(groupValue);
+            if (nestedValue != null) {
+                nestedFields.add(new QueryFieldMerger.FieldMetaValue(nestedValue, nested));
+            }
+        }
+
+        if (nestedFields.isEmpty()) {
+            return null;
+        }
+
+        List<ExpressionItem> nestedItems = collectExpressions(pathBuilder, nestedFields);
+        if (nestedItems.isEmpty()) {
+            return null;
+        }
+
+        return buildWithPrecedence(nestedItems);
+    }
+
+    /**
+     * 处理运算符优先级
+     */
     private static Predicate buildWithPrecedence(List<ExpressionItem> items) {
         if (items.isEmpty()) return null;
         if (items.size() == 1) return items.get(0).expression;
@@ -109,24 +166,25 @@ public class PredicateAssembler {
             andGroups.add(currentGroup);
         }
 
-        List<Predicate> groupExpressions = new ArrayList<>();
+        List<Predicate> groupPredicates = new ArrayList<>();
         for (List<ExpressionItem> group : andGroups) {
             if (group.isEmpty()) continue;
+
             BooleanBuilder andBuilder = new BooleanBuilder();
             for (ExpressionItem item : group) {
                 andBuilder.and(item.expression);
             }
             if (andBuilder.getValue() != null) {
-                groupExpressions.add(andBuilder.getValue());
+                groupPredicates.add(andBuilder.getValue());
             }
         }
 
-        if (groupExpressions.isEmpty()) return null;
-        if (groupExpressions.size() == 1) return groupExpressions.get(0);
+        if (groupPredicates.isEmpty()) return null;
+        if (groupPredicates.size() == 1) return groupPredicates.get(0);
 
         BooleanBuilder result = new BooleanBuilder();
-        for (Predicate expr : groupExpressions) {
-            result.or(expr);
+        for (Predicate pred : groupPredicates) {
+            result.or(pred);
         }
         return result.getValue();
     }
