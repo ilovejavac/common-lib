@@ -2,7 +2,7 @@ package com.dev.lib.jpa.adapt;
 
 import com.dev.lib.jpa.infra.localTaskMessage.LocalTaskMessagePo;
 import com.dev.lib.jpa.infra.localTaskMessage.TaskMessageRepository;
-import com.dev.lib.local.task.message.domain.adapter.event.LocalTaskMessageEvent;
+import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageEvent;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommandToLocalTaskMessagePoMapper;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class LocalTaskMessageAdapter implements LocalTaskMessageEvent {
+public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent {
 
     private final ApplicationEventPublisher publisher;
     private final TaskMessageRepository repository;

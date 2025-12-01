@@ -1,18 +1,20 @@
 package com.dev.lib.web.interceptor;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.exceptions.BizException;
-import com.dev.lib.security.AuthenticateService;
-import com.dev.lib.security.PermissionService;
-import com.dev.lib.security.TokenService;
-import com.dev.lib.security.annotation.Anonymous;
-import com.dev.lib.security.annotation.RequirePermission;
-import com.dev.lib.security.annotation.RequireRole;
+import com.dev.lib.security.service.AuthenticateService;
+import com.dev.lib.security.service.PermissionService;
+import com.dev.lib.security.service.TokenService;
+import com.dev.lib.security.service.annotation.Anonymous;
+import com.dev.lib.security.service.annotation.RequirePermission;
+import com.dev.lib.security.service.annotation.RequireRole;
 import com.dev.lib.security.util.ClientInfoExtractor;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
@@ -23,6 +25,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class PermissionValidator implements InitializingBean {
@@ -159,15 +162,27 @@ public class PermissionValidator implements InitializingBean {
     }
 
     public void setContextInfo(HttpServletRequest request) {
-        String token = extractToken(request);
-        UserDetails userDetail = tokenService.parseToken(token);
+        try {
+            UserDetails userDetail = tokenService.parseToken(StpUtil.getTokenValue());
+            if (userDetail != null) {
+                userDetail.setClientIp(ClientInfoExtractor.getClientIp(request));
+                userDetail.setClientType(ClientInfoExtractor.getClientType(request));
+                userDetail.setDeviceId(request.getHeader("X-Device-Id"));
 
-        if (userDetail != null && !userDetail.isExpired()) {
-            userDetail.setClientIp(ClientInfoExtractor.getClientIp(request));
-            userDetail.setClientType(ClientInfoExtractor.getClientType(request));
-            userDetail.setDeviceId(request.getHeader("X-Device-Id"));
-
-            SecurityContextHolder.set(userDetail);
+                SecurityContextHolder.set(userDetail);
+            }
+        } finally {
+            log.warn("access with anonymous");
         }
+//        String token = extractToken(request);
+//        UserDetails userDetail = tokenService.parseToken(token);
+//
+//        if (userDetail != null && !userDetail.isExpired()) {
+//            userDetail.setClientIp(ClientInfoExtractor.getClientIp(request));
+//            userDetail.setClientType(ClientInfoExtractor.getClientType(request));
+//            userDetail.setDeviceId(request.getHeader("X-Device-Id"));
+//
+//            SecurityContextHolder.set(userDetail);
+//        }
     }
 }

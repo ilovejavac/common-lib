@@ -1,5 +1,6 @@
-package com.dev.lib.security;
+package com.dev.lib.security.service;
 
+import com.dev.lib.security.model.EndpointPermission;
 import com.dev.lib.security.util.UserDetails;
 
 import java.util.Collection;

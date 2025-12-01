@@ -33,7 +33,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 注册权限校验拦截器
         registry.addInterceptor(authInterceptor)
                 .order(20)
-                .addPathPatterns("/**");
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/auth/**");
+
+        // internal
+
+        // public
     }
 
     @Override

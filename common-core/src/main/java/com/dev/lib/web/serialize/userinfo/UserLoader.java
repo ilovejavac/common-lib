@@ -1,6 +1,6 @@
 package com.dev.lib.web.serialize.userinfo;
 
-import com.dev.lib.security.AuthenticateService;
+import com.dev.lib.security.service.AuthenticateService;
 import com.dev.lib.security.util.UserDetails;
 import com.dev.lib.security.util.UserDetailsToUserLoader$UserItemMapper;
 import com.dev.lib.web.serialize.PopulateLoader;

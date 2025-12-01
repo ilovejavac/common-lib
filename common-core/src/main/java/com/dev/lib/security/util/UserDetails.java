@@ -11,6 +11,7 @@ import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,7 +37,7 @@ public class UserDetails implements Serializable {
     static {
         Anonymous = UserDetails.builder()
                 .id(ANONYMOUS_USER_ID)
-                .roles(Set.of(ANONYMOUS))
+                .roles(List.of(ANONYMOUS))
                 .status(EntityStatus.ENABLE)
                 .realName("Anonymous")
                 .username("anonymous")
@@ -49,7 +50,7 @@ public class UserDetails implements Serializable {
 
         Internal = UserDetails.builder()
                 .id(INTERNAL_USER_ID)
-                .roles(Set.of(INTERNAL))
+                .roles(List.of(INTERNAL))
                 .status(EntityStatus.ENABLE)
                 .realName("Internal")
                 .username("internal")
@@ -62,7 +63,7 @@ public class UserDetails implements Serializable {
 
         System = UserDetails.builder()
                 .id(SYSTEM_USER_ID)
-                .roles(Set.of(SYSTEM))
+                .roles(List.of(SYSTEM))
                 .status(EntityStatus.ENABLE)
                 .realName("System")
                 .username("system")
@@ -83,8 +84,8 @@ public class UserDetails implements Serializable {
     private String phone;
 
     // ===== 权限信息 =====
-    private Set<String> permissions;
-    private Set<String> roles;
+    private List<String> permissions;
+    private List<String> roles;
 
     // ===== 部门/组织信息 (数据权限) =====
     private Long deptId;              // 部门 ID

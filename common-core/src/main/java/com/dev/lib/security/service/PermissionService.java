@@ -1,4 +1,4 @@
-package com.dev.lib.security;
+package com.dev.lib.security.service;
 
 public interface PermissionService {
     /**

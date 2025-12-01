@@ -1,6 +1,7 @@
 package com.dev.lib.security.util;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -143,14 +144,14 @@ public class SecurityContextHolder {
 
     // ===== 权限方法 =====
 
-    public static Set<String> getPermissions() {
+    public static List<String> getPermissions() {
         return Optional.ofNullable(current().getPermissions())
-                .orElse(Collections.emptySet());
+                .orElse(Collections.emptyList());
     }
 
-    public static Set<String> getRoles() {
+    public static List<String> getRoles() {
         return Optional.ofNullable(current().getRoles())
-                .orElse(Collections.emptySet());
+                .orElse(Collections.emptyList());
     }
 
     /**

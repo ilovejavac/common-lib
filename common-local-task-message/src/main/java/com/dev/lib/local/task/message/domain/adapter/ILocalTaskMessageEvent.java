@@ -1,8 +1,8 @@
-package com.dev.lib.local.task.message.domain.adapter.event;
+package com.dev.lib.local.task.message.domain.adapter;
 
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 
-public interface LocalTaskMessageEvent {
+public interface ILocalTaskMessageEvent {
 
     void saveMessage(TaskMessageEntityCommand cmd);
 

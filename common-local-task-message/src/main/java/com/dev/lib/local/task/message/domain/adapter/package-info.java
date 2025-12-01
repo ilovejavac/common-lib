@@ -1,1 +1,0 @@
-package com.dev.lib.local.task.message.domain.adapter;

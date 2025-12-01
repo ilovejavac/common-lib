@@ -1,7 +1,7 @@
 package com.dev.lib.config;
 
-import com.dev.lib.security.AuthenticateService;
-import com.dev.lib.security.PermissionService;
+import com.dev.lib.security.service.AuthenticateService;
+import com.dev.lib.security.service.PermissionService;
 import com.dev.lib.security.util.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboReference;

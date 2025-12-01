@@ -7,6 +7,7 @@ import com.dev.lib.web.model.QueryRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,8 +18,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Getter
+@Setter
 public abstract class DslQuery<E extends CoreEntity> {
 
     @ConditionIgnore
@@ -40,10 +43,12 @@ public abstract class DslQuery<E extends CoreEntity> {
     public String updatedBy;
 
     @Condition(type = QueryType.EQ)
-    public Boolean deleted = false;
+    public Boolean deleted;
 
     @ConditionIgnore
     public String sortStr = "";
+    public Integer start;
+    public Integer limit;
 
     @JsonIgnore
     @ConditionIgnore
@@ -96,7 +101,11 @@ public abstract class DslQuery<E extends CoreEntity> {
 
     public Pageable toPageable() {
         if (pageRequest == null) {
-            return PageRequest.of(0, 1000, Sort.by(Sort.Direction.ASC, "id"));
+            return PageRequest.of(
+                    Optional.ofNullable(start).orElse(0),
+                    Math.min(1000, Optional.ofNullable(limit).orElse(1000)),
+                    Sort.by(Sort.Direction.ASC, "id")
+            );
         }
         return pageRequest.toPageable();
     }

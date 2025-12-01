@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class TaskMessageEventListener {
-
     @Async
     @EventListener
     public void onTaskMessageEvent(TaskMessageEntityCommand.Event event) {

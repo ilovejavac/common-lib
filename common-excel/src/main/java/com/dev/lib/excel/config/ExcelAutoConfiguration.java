@@ -2,9 +2,11 @@ package com.dev.lib.excel.config;
 
 import com.dev.lib.excel.resolve.ExcelExportReturnValueHandler;
 import com.dev.lib.excel.resolve.ExcelImportArgumentResolver;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
@@ -19,12 +21,13 @@ import java.util.List;
 @Configuration
 @RequiredArgsConstructor
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-public class ExcelAutoConfiguration {
+public class ExcelAutoConfiguration implements InitializingBean {
 
+    private final AppExcelProperties appExcelProperties;
     private final RequestMappingHandlerAdapter handlerAdapter;
 
-    @PostConstruct
-    public void init() {
+    @Override
+    public void afterPropertiesSet() throws Exception {
         configureReturnValueHandlers();
         configureArgumentResolvers();
     }
@@ -33,7 +36,7 @@ public class ExcelAutoConfiguration {
         List<HandlerMethodReturnValueHandler> handlers = handlerAdapter.getReturnValueHandlers();
         if (handlers != null) {
             List<HandlerMethodReturnValueHandler> newHandlers = new ArrayList<>(handlers.size() + 1);
-            newHandlers.add(new ExcelExportReturnValueHandler());
+            newHandlers.add(new ExcelExportReturnValueHandler(appExcelProperties));
             newHandlers.addAll(handlers);
             handlerAdapter.setReturnValueHandlers(newHandlers);
         }
