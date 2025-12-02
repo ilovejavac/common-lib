@@ -25,6 +25,9 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
     }
 
     default List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        if (dslQuery.getLimit() != null) {
+            return page(dslQuery, expressions).getContent();
+        }
         return findAll(toPredicate(dslQuery, expressions), dslQuery.toSort());
     }
 

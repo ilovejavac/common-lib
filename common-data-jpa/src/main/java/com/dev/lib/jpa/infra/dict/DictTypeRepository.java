@@ -27,7 +27,7 @@ public interface DictTypeRepository extends BaseRepository<DictType> {
 
     default Optional<DictType> getType(String id) {
         Query query = new Query();
-        query.id = id;
+        query.bizId = id;
 
         return load(query);
     }

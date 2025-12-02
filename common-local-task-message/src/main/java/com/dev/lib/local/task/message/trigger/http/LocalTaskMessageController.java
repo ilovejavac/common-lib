@@ -1,4 +1,4 @@
-package com.dev.lib.local.task.message.trigger;
+package com.dev.lib.local.task.message.trigger.http;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

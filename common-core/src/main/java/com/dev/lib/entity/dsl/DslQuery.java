@@ -27,8 +27,7 @@ public abstract class DslQuery<E extends CoreEntity> {
     @ConditionIgnore
     private QueryRequest<?> pageRequest;
 
-    @Condition(type = QueryType.EQ, field = "bizId")
-    public String id;
+    public String bizId;
 
     @Condition(type = QueryType.GE, field = "createAt")
     public LocalDateTime createStart;

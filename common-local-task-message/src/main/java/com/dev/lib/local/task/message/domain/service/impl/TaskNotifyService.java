@@ -1,16 +1,13 @@
 package com.dev.lib.local.task.message.domain.service.impl;
 
 import com.dev.lib.exceptions.BizException;
-import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageAdapt;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageEvent;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessagePort;
 import com.dev.lib.local.task.message.domain.model.NotifyType;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import com.dev.lib.local.task.message.domain.service.ITaskNotifyService;
-import com.dev.lib.local.task.message.domain.service.LocalTaskMessageHandleService;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
@@ -18,25 +15,27 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Function;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
-public class LocalTaskMessageService implements LocalTaskMessageHandleService {
+public class TaskNotifyService implements ITaskNotifyService, InitializingBean {
     @Resource
-    private ILocalTaskMessageEvent event;
+    private ILocalTaskMessagePort messageEvent;
+    private final Map<NotifyType, Function<TaskMessageEntityCommand, String>> notifyStrategy =
+            new EnumMap<>(NotifyType.class);
 
-    @Resource
-    private ILocalTaskMessageAdapt adapt;
-
-    @Override
-    public void handle(TaskMessageEntityCommand cmd) {
-        try {
-            adapt.saveMessage(cmd);
-            event.publish(cmd);
-        } catch (Exception e) {
-            log.error("受理任务消息执行失败 {}", cmd, e);
-            throw new BizException(50060, "受理任务消息执行失败");
+    public String notify(TaskMessageEntityCommand command) {
+        Function<TaskMessageEntityCommand, String> notifier =
+                notifyStrategy.get(command.getNotifyType());
+        if (notifier != null) {
+            return notifier.apply(command);
         }
+
+        throw new BizException(50050, "消息通知处理器不存在");
     }
 
+    @Override
+    public void afterPropertiesSet() {
+        notifyStrategy.put(NotifyType.HTTP, messageEvent::notify2http);
+        notifyStrategy.put(NotifyType.RABBIT, messageEvent::notify2rabbit);
+    }
 }

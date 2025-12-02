@@ -1,7 +1,11 @@
 package com.dev.lib.jpa.adapt;
 
+import com.dev.lib.exceptions.BizException;
 import com.dev.lib.jpa.infra.localTaskMessage.LocalTaskMessagePo;
+import com.dev.lib.jpa.infra.localTaskMessage.LocalTaskMessagePoToTaskMessageEntityCommandMapper;
+import com.dev.lib.jpa.infra.localTaskMessage.LocalTaskStatus;
 import com.dev.lib.jpa.infra.localTaskMessage.TaskMessageRepository;
+import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageAdapt;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageEvent;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommandToLocalTaskMessagePoMapper;
@@ -11,14 +15,18 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent {
+public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTaskMessageAdapt {
 
     private final ApplicationEventPublisher publisher;
     private final TaskMessageRepository repository;
     private final TaskMessageEntityCommandToLocalTaskMessagePoMapper commandToLocalTaskMessagePoMapper;
+    private final LocalTaskMessagePoToTaskMessageEntityCommandMapper taskMessageEntityCommandMapper;
 
     @Override
     public void publish(TaskMessageEntityCommand cmd) {
@@ -29,5 +37,35 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent {
     public void saveMessage(TaskMessageEntityCommand cmd) {
         LocalTaskMessagePo po = repository.save(commandToLocalTaskMessagePoMapper.convert(cmd));
         po.setHouseNumber(po.getId().hashCode() % 10);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTaskStatusToSuccess(String taskId) {
+        repository.loadById(taskId).ifPresent(it -> it.setStatus(LocalTaskStatus.SUCCESS));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTaskStatusToFailed(String taskId) {
+        repository.loadById(taskId).ifPresent(it -> it.setStatus(LocalTaskStatus.FAILED));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TaskMessageEntityCommand> selectByHouseNumber(List<Integer> houseNumbers, String taskId, Integer limit) {
+        LocalTaskMessagePo task = repository.loadById(taskId).orElseThrow(() -> new BizException(51060, "任务不存在"));
+        return repository.loadsByHouseNumber(houseNumbers, task.getId(), limit).stream()
+                .map(taskMessageEntityCommandMapper::convert).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String selectMinIdByHouseNumber(List<Integer> houseNumbers) {
+        return repository.loadsByHouseNumber(houseNumbers, 0L, 100).stream()
+                .findFirst()
+                .map(taskMessageEntityCommandMapper::convert)
+                .map(TaskMessageEntityCommand::getTaskId)
+                .orElseThrow(() -> new BizException(51060, "任务不存在"));
     }
 }

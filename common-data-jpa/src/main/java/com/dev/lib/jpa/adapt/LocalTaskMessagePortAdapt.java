@@ -1,6 +1,7 @@
 package com.dev.lib.jpa.adapt;
 
 import com.dev.lib.exceptions.BizException;
+import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageAdapt;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessagePort;
 import com.dev.lib.local.task.message.domain.adapter.IRabbitPublish;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
@@ -17,14 +18,22 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
     private final IRabbitPublish rabbitPublish;
     private final GenerichHttpGateway httpGateway;
     private final ObjectMapper mapper;
+    private final ILocalTaskMessageAdapt adapt;
 
     @Override
     public String notify2http(TaskMessageEntityCommand cmd) {
-        TaskMessageEntityCommand.NotifyConfig.Http config =
-                Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getHttp)
-                        .orElseThrow(() -> new BizException(50040, ""));
+        try {
+            TaskMessageEntityCommand.NotifyConfig.Http config =
+                    Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getHttp)
+                            .orElseThrow(() -> new BizException(50040, ""));
 
-        GenerichHttpGateway http = GenerichHttpGateway.resolve(config);
+            GenerichHttpGateway http = GenerichHttpGateway.resolve(config);
+
+            adapt.updateTaskStatusToSuccess(cmd.getTaskId());
+        } catch (Exception e) {
+            adapt.updateTaskStatusToFailed(cmd.getTaskId());
+
+        }
 
 
         return "";
@@ -42,10 +51,9 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
                     config.getTopic(),
                     mapper.writeValueAsString(config.getPayload())
             );
+            adapt.updateTaskStatusToSuccess(cmd.getTaskId());
         } catch (Exception e) {
-
-        } finally {
-
+            adapt.updateTaskStatusToFailed(cmd.getTaskId());
         }
 
         return "";
