@@ -17,13 +17,18 @@ import java.util.Optional;
 @Data
 @NoArgsConstructor
 public class QueryRequest<T> {
+    private static final Sort defaultSort = Sort.by(Sort.Direction.DESC, "createAt");
+
+    // 游标
+    private String cursor;
+
     private T query;
 
     @Min(1)
     private Integer page = 1;
 
     @Min(1)
-    @Max(1000)
+    @Max(500)
     private Integer size = 20;
 
     @Data
@@ -36,25 +41,24 @@ public class QueryRequest<T> {
 
     /**
      * 排序方式
-     *
+     * <p>
      * [{"property": "createAt", "direction": "DESC/ASC"}]
      */
     private List<Order> orders;
 
     public Sort toSort() {
         return orders == null || orders.isEmpty()
-                ? Sort.by(Sort.Order.desc("createdAt"))
+                ? defaultSort
                 : Sort.by(orders.stream()
                 .map(o -> new Sort.Order(o.getDirection(), o.getProperty()))
                 .toList());
     }
 
-    public Pageable toPageable() {
-        log.info("{}", this);
+    public Pageable toPageable(Sort orElse) {
         return PageRequest.of(
                 Math.max(0, Optional.ofNullable(page).orElse(1) - 1),
-                Math.min(Optional.ofNullable(size).orElse(20), 1000),
-                toSort()
+                Math.min(Optional.ofNullable(size).orElse(20), 500),
+                defaultSort.equals(toSort()) ? orElse : toSort()
         );
     }
 }

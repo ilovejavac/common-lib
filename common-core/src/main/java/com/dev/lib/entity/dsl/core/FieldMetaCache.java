@@ -25,13 +25,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * 支持三种字段类型：
  * 1. CONDITION - 普通条件/Join 条件
  * 2. GROUP - 条件分组
- * 3. SUB_QUERY - 子查询
+ * 3. SUB_QUERY - 子查询（包括关联子查询和同表子查询）
  *
  * 判断逻辑：
  * 1. 后缀有 Sub → 子查询
- * 2. 注解 field 指向 JPA 关联 → 子查询
- * 3. 字段类型是自定义类且非关联 → 分组
- * 4. 其他 → 普通条件
+ * 2. 注解 field 指向 JPA 关联 → 关联子查询
+ * 3. 后缀有 Sub 但 field 非关联 → 同表子查询
+ * 4. 字段类型是自定义类且非关联 → 分组
+ * 5. 其他 → 普通条件
  */
 public class FieldMetaCache {
 
@@ -84,13 +85,12 @@ public class FieldMetaCache {
         String targetField = resolveTargetField(condition, parsed);
         QueryType queryType = resolveQueryType(condition, parsed);
         LogicalOperator operator = resolveOperator(condition, parsed);
-        boolean isSubQuery = resolveIsSubQuery(condition, parsed, field, targetField, entityClass);
         String select = condition != null ? condition.select() : "";
         String orderBy = condition != null ? condition.orderBy() : "";
         boolean desc = condition == null || condition.desc();
 
-        // 判断字段类型
-        FieldMetaType metaType = determineMetaType(field, isSubQuery);
+        // 判断字段元数据类型
+        FieldMetaType metaType = determineMetaType(field, parsed, condition, targetField, entityClass);
 
         return switch (metaType) {
             case CONDITION -> FieldMeta.condition(field, targetField, queryType, operator);
@@ -101,14 +101,23 @@ public class FieldMetaCache {
             }
 
             case SUB_QUERY -> {
-                // 通过接口解析关联信息
+                // 尝试解析关联关系
                 RelationInfo relationInfo = resolveRelation(entityClass, targetField);
-                if (relationInfo == null) {
-                    throw new IllegalStateException(
-                            "无法解析关联关系: " + entityClass.getSimpleName() + "." + targetField);
+
+                if (relationInfo != null) {
+                    // 关联子查询（OneToMany, ManyToOne, ManyToMany, OneToOne）
+                    List<FieldMeta> filterMetas = resolveFieldMeta(field.getType(), relationInfo.getTargetEntity());
+                    yield FieldMeta.subQuery(field, operator, queryType, relationInfo, filterMetas, select, orderBy, desc);
+                } else {
+                    // 同表子查询（普通字段，如 id, status 等）
+                    if (!StringUtils.hasText(select)) {
+                        throw new IllegalStateException(
+                                "同表子查询必须指定 @Condition(select = \"...\") 属性: " +
+                                        (entityClass != null ? entityClass.getSimpleName() : "Unknown") + "." + field.getName());
+                    }
+                    List<FieldMeta> filterMetas = resolveFieldMeta(field.getType(), entityClass);
+                    yield FieldMeta.selfSubQuery(field, operator, queryType, entityClass, filterMetas, select, orderBy, desc, targetField);
                 }
-                List<FieldMeta> filterMetas = resolveFieldMeta(field.getType(), relationInfo.getTargetEntity());
-                yield FieldMeta.subQuery(field, operator, queryType, relationInfo, filterMetas, select, orderBy, desc);
             }
         };
     }
@@ -117,6 +126,9 @@ public class FieldMetaCache {
      * 通过 RelationResolver 接口解析关联关系
      */
     private static RelationInfo resolveRelation(Class<?> entityClass, String fieldName) {
+        if (entityClass == null || fieldName == null || fieldName.isEmpty()) {
+            return null;
+        }
         if (!RelationResolver.Holder.isRegistered()) {
             return null;
         }
@@ -124,56 +136,42 @@ public class FieldMetaCache {
     }
 
     /**
-     * 判断是否为子查询
+     * 判断字段元数据类型
      */
-    private static boolean resolveIsSubQuery(
-            Condition condition,
-            QueryFieldParser.ParsedField parsed,
+    private static FieldMetaType determineMetaType(
             Field field,
+            QueryFieldParser.ParsedField parsed,
+            Condition condition,
             String targetField,
             Class<?> entityClass
     ) {
-        // 1. 后缀有 Sub
+        // 1. 后缀有 Sub → 子查询
         if (parsed.subQuery()) {
-            return true;
-        }
-
-        // 2. 查询类型是 EXISTS / NOT_EXISTS
-        QueryType type = resolveQueryType(condition, parsed);
-        if (type == QueryType.EXISTS || type == QueryType.NOT_EXISTS) {
-            return true;
-        }
-
-        // 3. 注解 field 指向 JPA 关联
-        if (condition != null && StringUtils.hasText(condition.field()) && entityClass != null) {
-            String fieldPath = condition.field();
-            // 取第一段判断是否是关联字段
-            String firstPart = fieldPath.contains(".") ? fieldPath.substring(0, fieldPath.indexOf(".")) : fieldPath;
-            RelationInfo relation = resolveRelation(entityClass, firstPart);
-            if (relation != null && !fieldPath.contains(".")) {
-                // field 直接指向关联字段（非嵌套路径如 customer.name）
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * 判断字段元数据类型
-     */
-    private static FieldMetaType determineMetaType(Field field, boolean isSubQuery) {
-        // 1. 已确定是子查询
-        if (isSubQuery) {
             return FieldMetaType.SUB_QUERY;
         }
 
-        // 2. 基础类型 → 普通条件
+        // 2. 查询类型是 EXISTS / NOT_EXISTS → 子查询
+        QueryType type = resolveQueryType(condition, parsed);
+        if (type == QueryType.EXISTS || type == QueryType.NOT_EXISTS) {
+            return FieldMetaType.SUB_QUERY;
+        }
+
+        // 3. 注解 field 直接指向 JPA 关联字段 → 子查询
+        if (condition != null && StringUtils.hasText(condition.field()) && entityClass != null) {
+            String fieldPath = condition.field();
+            String firstPart = fieldPath.contains(".") ? fieldPath.substring(0, fieldPath.indexOf(".")) : fieldPath;
+            RelationInfo relation = resolveRelation(entityClass, firstPart);
+            if (relation != null && !fieldPath.contains(".")) {
+                return FieldMetaType.SUB_QUERY;
+            }
+        }
+
+        // 4. 基础类型 → 普通条件
         if (isSimpleType(field.getType())) {
             return FieldMetaType.CONDITION;
         }
 
-        // 3. 自定义类 → 分组
+        // 5. 自定义类 → 分组
         return FieldMetaType.GROUP;
     }
 
@@ -266,18 +264,23 @@ public class FieldMetaCache {
         // GROUP 字段
         private final List<FieldMeta> nestedMetas;
 
-        // SUB_QUERY 字段
+        // SUB_QUERY 字段（关联子查询）
         private final RelationInfo relationInfo;
         private final List<FieldMeta> filterMetas;
         private final String select;
         private final String orderBy;
         private final boolean desc;
 
+        // SUB_QUERY 字段（同表子查询）
+        private final Class<?> targetEntityClass;
+        private final String parentField;
+
         private FieldMeta(Field field, FieldMetaType metaType, LogicalOperator operator,
                           String targetField, QueryType queryType,
                           List<FieldMeta> nestedMetas,
                           RelationInfo relationInfo, List<FieldMeta> filterMetas,
-                          String select, String orderBy, boolean desc) {
+                          String select, String orderBy, boolean desc,
+                          Class<?> targetEntityClass, String parentField) {
             this.field = field;
             this.metaType = metaType;
             this.operator = operator;
@@ -289,24 +292,44 @@ public class FieldMetaCache {
             this.select = select;
             this.orderBy = orderBy;
             this.desc = desc;
+            this.targetEntityClass = targetEntityClass;
+            this.parentField = parentField;
         }
 
         public static FieldMeta condition(Field field, String targetField,
                                           QueryType queryType, LogicalOperator operator) {
             return new FieldMeta(field, FieldMetaType.CONDITION, operator,
-                    targetField, queryType, null, null, null, null, null, true);
+                    targetField, queryType, null, null, null, null, null, true, null, null);
         }
 
         public static FieldMeta group(Field field, LogicalOperator operator, List<FieldMeta> nestedMetas) {
             return new FieldMeta(field, FieldMetaType.GROUP, operator,
-                    null, null, nestedMetas, null, null, null, null, true);
+                    null, null, nestedMetas, null, null, null, null, true, null, null);
         }
 
+        /**
+         * 关联子查询（OneToMany, ManyToOne, ManyToMany, OneToOne）
+         */
         public static FieldMeta subQuery(Field field, LogicalOperator operator, QueryType queryType,
                                          RelationInfo relationInfo, List<FieldMeta> filterMetas,
                                          String select, String orderBy, boolean desc) {
             return new FieldMeta(field, FieldMetaType.SUB_QUERY, operator,
-                    null, queryType, null, relationInfo, filterMetas, select, orderBy, desc);
+                    null, queryType, null, relationInfo, filterMetas, select, orderBy, desc, null, null);
+        }
+
+        /**
+         * 同表子查询（普通字段，如游标分页）
+         *
+         * @param targetEntityClass 目标实体类（同表）
+         * @param filterMetas       子查询过滤条件
+         * @param select            子查询 SELECT 字段
+         * @param parentField       主表比较字段
+         */
+        public static FieldMeta selfSubQuery(Field field, LogicalOperator operator, QueryType queryType,
+                                             Class<?> targetEntityClass, List<FieldMeta> filterMetas,
+                                             String select, String orderBy, boolean desc, String parentField) {
+            return new FieldMeta(field, FieldMetaType.SUB_QUERY, operator,
+                    null, queryType, null, null, filterMetas, select, orderBy, desc, targetEntityClass, parentField);
         }
 
         public Object getValue(Object instance) {
@@ -329,9 +352,25 @@ public class FieldMetaCache {
         public String select() { return select; }
         public String orderBy() { return orderBy; }
         public boolean desc() { return desc; }
+        public Class<?> targetEntityClass() { return targetEntityClass; }
+        public String parentField() { return parentField; }
 
         public boolean isCondition() { return metaType == FieldMetaType.CONDITION; }
         public boolean isGroup() { return metaType == FieldMetaType.GROUP; }
         public boolean isSubQuery() { return metaType == FieldMetaType.SUB_QUERY; }
+
+        /**
+         * 判断是否为同表子查询
+         */
+        public boolean isSelfSubQuery() {
+            return isSubQuery() && relationInfo == null && targetEntityClass != null;
+        }
+
+        /**
+         * 判断是否为关联子查询
+         */
+        public boolean isRelationSubQuery() {
+            return isSubQuery() && relationInfo != null;
+        }
     }
 }

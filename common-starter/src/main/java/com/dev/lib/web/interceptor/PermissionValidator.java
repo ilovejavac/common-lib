@@ -33,23 +33,26 @@ public class PermissionValidator implements InitializingBean {
     private final AuthenticateService authenticateService;
     private final TokenService tokenService;
 
-    public void valid(
-            HttpServletRequest request,
-            HandlerMethod handlerMethod
-    ) {
+    public boolean anonymous(HandlerMethod handlerMethod) {
         Class<?> controllerClass = handlerMethod.getBeanType();
 
         // 2. 方法级别 @Anonymous 优先检查
         if (handlerMethod.hasMethodAnnotation(Anonymous.class)) {
             anonymous();
-            return;
+            return true;
         }
 
         // 3. 类级别 @Anonymous
         if (controllerClass.isAnnotationPresent(Anonymous.class)) {
             anonymous();
-            return;
+            return true;
         }
+
+        return false;
+    }
+
+    public void valid(HandlerMethod handlerMethod) {
+        Class<?> controllerClass = handlerMethod.getBeanType();
 
         // 6. 必须登录
         if (!SecurityContextHolder.isLogin()) {

@@ -4,7 +4,6 @@ import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
 import com.dev.lib.jpa.entity.BaseRepository;
-import com.dev.lib.storage.domain.model.StorageFile;
 import lombok.Data;
 
 import java.util.Collection;
@@ -23,7 +22,9 @@ public interface SysFileRepository extends BaseRepository<SysFile> {
         private Collection<String> bizIdIn;
     }
 
-    List<SysFile> findAllByBizIdIn(Collection<String> bizIds);
+    default List<SysFile> findAllByBizIdIn(Collection<String> bizIds) {
+        return loads(new Query().setBizIdIn(bizIds));
+    }
 
     Optional<SysFile> findByBizId(String bizId);
 

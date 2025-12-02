@@ -5,6 +5,8 @@ import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.web.model.QueryRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Strings;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,27 +29,50 @@ public abstract class DslQuery<E extends CoreEntity> {
     @ConditionIgnore
     private QueryRequest<?> pageRequest;
 
+    @Data
+    public static class CURSOR {
+        private String bizId;
+    }
+
+    // id > (select id from t where biz_id = ?)
+    @Condition(select = "id")
+    public CURSOR idGtSub;
+
+    @Condition(type = QueryType.EQ, field = "bizId")
     public String bizId;
 
     @Condition(type = QueryType.GE, field = "createAt")
-    public LocalDateTime createStart;
+    public LocalDateTime createGe;
 
     @Condition(type = QueryType.LE, field = "createAt")
-    public LocalDateTime createEnd;
+    public LocalDateTime createLe;
 
     @Condition(type = QueryType.EQ)
-    public String createdBy;
+    private Long creatorId;
 
     @Condition(type = QueryType.EQ)
-    public String updatedBy;
+    private Long modifierId;
 
     @Condition(type = QueryType.EQ)
     public Boolean deleted;
 
     @ConditionIgnore
-    public String sortStr = "";
+    public String sortStr = "id_asc";
+    @ConditionIgnore
     public Integer start;
+    @ConditionIgnore
     public Integer limit;
+
+    // 游标查询
+    public DslQuery<E> setCursor(String id) {
+        if (Strings.isNullOrEmpty(id) || id.isBlank()) {
+            return this;
+        }
+
+        setIdGtSub(new CURSOR().setBizId(id));
+
+        return this;
+    }
 
     @JsonIgnore
     @ConditionIgnore
@@ -69,6 +94,7 @@ public abstract class DslQuery<E extends CoreEntity> {
     public DslQuery<E> external(QueryRequest<?> pageRequest) {
         this.pageRequest = pageRequest;
         if (pageRequest != null) {
+            setCursor(pageRequest.getCursor());
             this.externalFields.addAll(QueryFieldMerger.resolve(pageRequest.getQuery()));
         }
         return this;
@@ -102,10 +128,10 @@ public abstract class DslQuery<E extends CoreEntity> {
         if (pageRequest == null) {
             return PageRequest.of(
                     Optional.ofNullable(start).orElse(0),
-                    Math.min(1000, Optional.ofNullable(limit).orElse(1000)),
-                    Sort.by(Sort.Direction.ASC, "id")
+                    Math.min(500, Optional.ofNullable(limit).orElse(30)),
+                    toSort()
             );
         }
-        return pageRequest.toPageable();
+        return pageRequest.toPageable(toSort());
     }
 }

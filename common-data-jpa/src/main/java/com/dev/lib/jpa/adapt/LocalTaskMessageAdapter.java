@@ -1,6 +1,5 @@
 package com.dev.lib.jpa.adapt;
 
-import com.dev.lib.exceptions.BizException;
 import com.dev.lib.jpa.infra.localTaskMessage.LocalTaskMessagePo;
 import com.dev.lib.jpa.infra.localTaskMessage.LocalTaskMessagePoToTaskMessageEntityCommandMapper;
 import com.dev.lib.jpa.infra.localTaskMessage.LocalTaskStatus;
@@ -9,6 +8,7 @@ import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageAdapt;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageEvent;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommandToLocalTaskMessagePoMapper;
+import com.google.common.collect.Lists;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -53,19 +53,24 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
 
     @Override
     @Transactional(readOnly = true)
-    public List<TaskMessageEntityCommand> selectByHouseNumber(List<Integer> houseNumbers, String taskId, Integer limit) {
-        LocalTaskMessagePo task = repository.loadById(taskId).orElseThrow(() -> new BizException(51060, "任务不存在"));
-        return repository.loadsByHouseNumber(houseNumbers, task.getId(), limit).stream()
-                .map(taskMessageEntityCommandMapper::convert).toList();
+    public List<TaskMessageEntityCommand> selectByHouseNumber(
+            List<Integer> houseNumbers,
+            String taskId,
+            Integer limit
+    ) {
+        Optional<LocalTaskMessagePo> loadtask = repository.loadById(taskId);
+        return loadtask.map(localTaskMessagePo -> repository.loadsByHouseNumber(houseNumbers, localTaskMessagePo.getId(), limit)
+                .stream().map(taskMessageEntityCommandMapper::convert).toList())
+                .orElseGet(Lists::newArrayList);
     }
 
     @Override
     @Transactional(readOnly = true)
     public String selectMinIdByHouseNumber(List<Integer> houseNumbers) {
-        return repository.loadsByHouseNumber(houseNumbers, 0L, 100).stream()
+        return repository.loadsByHouseNumber(houseNumbers, null, 2).stream()
                 .findFirst()
                 .map(taskMessageEntityCommandMapper::convert)
                 .map(TaskMessageEntityCommand::getTaskId)
-                .orElseThrow(() -> new BizException(51060, "任务不存在"));
+                .orElse("-1");
     }
 }

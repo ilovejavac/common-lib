@@ -30,6 +30,10 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        if (validator.anonymous(handlerMethod)) {
+            return true;
+        }
+
         // 1. 放行不需要认证的接口
         if (validator.shouldSkip(request)) {
             log.info("白名单放行, {}", request.getRequestURI());
@@ -39,7 +43,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         // 2.解析 token 设置用户信息
         validator.setContextInfo(request);
         // 3.校验请求权限
-        validator.valid(request, handlerMethod);
+        validator.valid(handlerMethod);
 
         return true;
     }

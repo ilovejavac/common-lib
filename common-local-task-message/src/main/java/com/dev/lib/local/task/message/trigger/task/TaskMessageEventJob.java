@@ -1,11 +1,9 @@
 package com.dev.lib.local.task.message.trigger.task;
 
 import com.dev.lib.local.task.message.config.LocalTaskConfigProperties;
-import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageAdapt;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import com.dev.lib.local.task.message.domain.service.ILocalTaskDataService;
 import com.dev.lib.local.task.message.domain.service.ITaskNotifyService;
-import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
@@ -18,7 +16,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Component
@@ -54,14 +51,17 @@ public class TaskMessageEventJob implements InitializingBean {
         }
 
         // 初始化 lastId
-        groupLastIdMap.computeIfAbsent(groupId, k -> {
-            return service.selectMinIdByHouseNumber(houseNumbers);
-        });
+        groupLastIdMap.computeIfAbsent(
+                groupId, k -> {
+                    return service.selectMinIdByHouseNumber(houseNumbers);
+                }
+        );
 
         Runnable task = () -> {
             try {
                 String lastId = groupLastIdMap.get(groupId);
-                List<TaskMessageEntityCommand> cmdList = service.selectByHouseNumber(houseNumbers, lastId, group.getLimit());
+                List<TaskMessageEntityCommand> cmdList =
+                        service.selectByHouseNumber(houseNumbers, lastId, group.getLimit());
                 if (cmdList == null || cmdList.isEmpty()) {
                     return;
                 }
@@ -72,7 +72,8 @@ public class TaskMessageEventJob implements InitializingBean {
                 }
 
                 // 更新 lastId
-                String maxId = cmdList.stream().map(TaskMessageEntityCommand::getTaskId).max(Comparator.naturalOrder()).orElse(lastId);
+                String maxId = cmdList.stream().map(TaskMessageEntityCommand::getTaskId).max(Comparator.naturalOrder())
+                        .orElse(lastId);
                 groupLastIdMap.put(groupId, maxId);
 
                 log.info("任务组 [{}] 处理完成：拉取{}条，lastId: {} -> {}", groupId, cmdList.size(), lastId, maxId);
