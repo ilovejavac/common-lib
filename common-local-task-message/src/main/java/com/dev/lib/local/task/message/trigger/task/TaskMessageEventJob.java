@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Component
 @RequiredArgsConstructor
 public class TaskMessageEventJob implements InitializingBean {
-    private final Map<String, AtomicLong> groupLastIdMap = new ConcurrentHashMap<>();
+    private final Map<String, String> groupLastIdMap = new ConcurrentHashMap<>();
 
     private final ITaskNotifyService notifyService;
     private final ILocalTaskDataService service;
@@ -55,15 +55,12 @@ public class TaskMessageEventJob implements InitializingBean {
 
         // 初始化 lastId
         groupLastIdMap.computeIfAbsent(groupId, k -> {
-            String minId = service.selectMinIdByHouseNumber(houseNumbers);
-            long startId = (minId == null ? 0L : minId);
-            log.info("任务组 [{}] 初始化起始ID为 {}，houseNumbers={}", groupId, startId, houseNumbers);
-            return new AtomicLong(startId);
+            return service.selectMinIdByHouseNumber(houseNumbers);
         });
 
         Runnable task = () -> {
             try {
-                long lastId = groupLastIdMap.get(groupId).get();
+                String lastId = groupLastIdMap.get(groupId);
                 List<TaskMessageEntityCommand> cmdList = service.selectByHouseNumber(houseNumbers, lastId, group.getLimit());
                 if (cmdList == null || cmdList.isEmpty()) {
                     return;
@@ -75,8 +72,8 @@ public class TaskMessageEventJob implements InitializingBean {
                 }
 
                 // 更新 lastId
-                long maxId = cmdList.stream().map(TaskMessageEntityCommand::getTaskId).max(Comparator.naturalOrder()).orElse(lastId);
-                groupLastIdMap.get(groupId).set(maxId);
+                String maxId = cmdList.stream().map(TaskMessageEntityCommand::getTaskId).max(Comparator.naturalOrder()).orElse(lastId);
+                groupLastIdMap.put(groupId, maxId);
 
                 log.info("任务组 [{}] 处理完成：拉取{}条，lastId: {} -> {}", groupId, cmdList.size(), lastId, maxId);
             } catch (Exception e) {
