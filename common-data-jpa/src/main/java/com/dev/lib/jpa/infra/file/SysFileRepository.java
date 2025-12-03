@@ -13,7 +13,6 @@ import java.util.Optional;
 public interface SysFileRepository extends BaseRepository<SysFile> {
     QSysFile q = QSysFile.sysFile;
 
-
     @Data
     class Query extends DslQuery<SysFile> {
         @Condition(type = QueryType.EQ)

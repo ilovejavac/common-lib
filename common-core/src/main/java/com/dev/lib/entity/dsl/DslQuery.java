@@ -38,6 +38,9 @@ public abstract class DslQuery<E extends CoreEntity> {
     @Condition(select = "id")
     public CURSOR idGtSub;
 
+    @Condition(select = "id")
+    public CURSOR idLtSub;
+
     @Condition(type = QueryType.EQ, field = "bizId")
     public String bizId;
 
@@ -64,12 +67,16 @@ public abstract class DslQuery<E extends CoreEntity> {
     public Integer limit;
 
     // 游标查询
-    public DslQuery<E> setCursor(String id) {
+    public DslQuery<E> setCursor(String id, Sort.Direction direction) {
         if (Strings.isNullOrEmpty(id) || id.isBlank()) {
             return this;
         }
 
-        setIdGtSub(new CURSOR().setBizId(id));
+        if (Sort.Direction.ASC.equals(direction)) {
+            setIdGtSub(new CURSOR().setBizId(id));
+        } else if (Sort.Direction.DESC.equals(direction)) {
+            setIdLtSub(new CURSOR().setBizId(id));
+        }
 
         return this;
     }
@@ -94,7 +101,13 @@ public abstract class DslQuery<E extends CoreEntity> {
     public DslQuery<E> external(QueryRequest<?> pageRequest) {
         this.pageRequest = pageRequest;
         if (pageRequest != null) {
-            setCursor(pageRequest.getCursor());
+            if (pageRequest.hasCursor()) {
+                if (Sort.Direction.ASC.equals(pageRequest.getCursor().getDirection())) {
+                    setIdGtSub(new CURSOR().setBizId(pageRequest.getCursor().getKey()));
+                } else if (Sort.Direction.DESC.equals(pageRequest.getCursor().getDirection())) {
+                    setIdLtSub(new CURSOR().setBizId(pageRequest.getCursor().getKey()));
+                }
+            }
             this.externalFields.addAll(QueryFieldMerger.resolve(pageRequest.getQuery()));
         }
         return this;

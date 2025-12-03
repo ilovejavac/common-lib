@@ -1,5 +1,6 @@
 package com.dev.lib.web.model;
 
+import com.google.common.base.Strings;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
@@ -20,7 +21,7 @@ public class QueryRequest<T> {
     private static final Sort defaultSort = Sort.by(Sort.Direction.DESC, "createAt");
 
     // 游标
-    private String cursor;
+    private Cursor cursor;
 
     private T query;
 
@@ -37,6 +38,19 @@ public class QueryRequest<T> {
     public static class Order {
         private String property;
         private Sort.Direction direction;
+    }
+
+    @Data
+    public static class Cursor {
+        private String key;
+        private Sort.Direction direction = Sort.Direction.ASC;
+    }
+
+    public boolean hasCursor() {
+        if (cursor == null) {
+            return false;
+        }
+        return !Strings.isNullOrEmpty(cursor.key) && !cursor.key.isBlank() && cursor.direction != null;
     }
 
     /**
@@ -58,7 +72,7 @@ public class QueryRequest<T> {
         return PageRequest.of(
                 Math.max(0, Optional.ofNullable(page).orElse(1) - 1),
                 Math.min(Optional.ofNullable(size).orElse(20), 500),
-                defaultSort.equals(toSort()) ? orElse : toSort()
+                toSort()
         );
     }
 }

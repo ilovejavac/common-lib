@@ -15,6 +15,7 @@ import lombok.ToString;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -24,7 +25,7 @@ import java.util.Map;
 @MappedSuperclass
 @DynamicUpdate
 @EntityListeners({BaseEntityListener.class, EncryptionListener.class, AuditListener.class, OnDeleteListener.class})
-public abstract class JpaEntity extends CoreEntity {
+public class JpaEntity extends CoreEntity implements Persistable<Long> {
     @Id
     @Column(length = 20)
     private Long id;
@@ -56,4 +57,9 @@ public abstract class JpaEntity extends CoreEntity {
     @EqualsAndHashCode.Include
     @Column(length = 11)
     private Integer reversion = 0;
+
+    @Override
+    public boolean isNew() {
+        return createdAt == null;  // 没有创建时间就是新实体
+    }
 }
