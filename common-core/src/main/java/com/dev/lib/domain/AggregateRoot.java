@@ -1,4 +1,5 @@
 package com.dev.lib.domain;
 
-public interface AggregateRoot {
+public abstract class AggregateRoot {
+
 }
