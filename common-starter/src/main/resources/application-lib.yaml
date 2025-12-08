@@ -68,7 +68,7 @@ spring:
 
         format_sql: true
         jdbc:
-          batch_size: 50
+          batch_size: 200
           fetch_size: 500
           time_zone: Asia/Shanghai
           use_enum_ordinal_type: false

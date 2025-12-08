@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.StreamReadConstraints;
-import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -71,7 +70,6 @@ public class JacksonConfig {
             );
             // 流式配置
             builder.featuresToEnable(
-                    StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN,
                     JsonReadFeature.ALLOW_JAVA_COMMENTS.mappedFeature(),
                     JsonReadFeature.ALLOW_SINGLE_QUOTES.mappedFeature()
             );
@@ -79,6 +77,7 @@ public class JacksonConfig {
             builder.featuresToEnable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
 
             builder.postConfigurer(mapper -> {
+                mapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
                 // 🔒 安全：限制反序列化深度和长度
                 mapper.getFactory().setStreamReadConstraints(
                         StreamReadConstraints.builder()

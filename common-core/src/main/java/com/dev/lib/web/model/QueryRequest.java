@@ -1,6 +1,5 @@
 package com.dev.lib.web.model;
 
-import com.dev.lib.util.StringUtils;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
@@ -12,16 +11,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 @Data
 @NoArgsConstructor
 public class QueryRequest<T> {
-    private static final Sort defaultSort = Sort.by(Sort.Direction.DESC, "createAt");
-
-    // 游标
-    private Cursor cursor;
+    private static final int MAX_SIZE = 200;
+    private static final Sort DEFAULT_SORT = Sort.by(Sort.Order.desc("id"));
 
     private T query;
 
@@ -29,8 +26,10 @@ public class QueryRequest<T> {
     private Integer page = 1;
 
     @Min(1)
-    @Max(500)
+    @Max(MAX_SIZE)
     private Integer size = 20;
+
+    private List<Order> orderBy;
 
     @Data
     @NoArgsConstructor
@@ -40,39 +39,24 @@ public class QueryRequest<T> {
         private Sort.Direction direction;
     }
 
-    @Data
-    public static class Cursor {
-        private String key;
-        private Sort.Direction direction = Sort.Direction.ASC;
-    }
-
-    public boolean hasCursor() {
-        if (cursor == null) {
-            return false;
+    public Sort toSort(Set<String> allowFields) {
+        if (orderBy == null || orderBy.isEmpty()) {
+            return DEFAULT_SORT;
         }
-        return StringUtils.isNotBlank(cursor.getKey()) && cursor.direction != null;
-    }
 
-    /**
-     * 排序方式
-     * <p>
-     * [{"property": "createAt", "direction": "DESC/ASC"}]
-     */
-    private List<Order> orders;
-
-    public Sort toSort() {
-        return orders == null || orders.isEmpty()
-                ? defaultSort
-                : Sort.by(orders.stream()
+        List<Sort.Order> validOrders = orderBy.stream()
+                .filter(o -> allowFields.contains(o.getProperty()))
                 .map(o -> new Sort.Order(o.getDirection(), o.getProperty()))
-                .toList());
+                .toList();
+
+        return validOrders.isEmpty() ? DEFAULT_SORT : Sort.by(validOrders);
     }
 
-    public Pageable toPageable(Sort orElse) {
+    public Pageable toPageable(Set<String> allowFields) {
         return PageRequest.of(
-                Math.max(0, Optional.ofNullable(page).orElse(1) - 1),
-                Math.min(Optional.ofNullable(size).orElse(20), 500),
-                toSort()
+                Math.max(1, page) - 1,
+                Math.min(size, MAX_SIZE),
+                toSort(allowFields)
         );
     }
 }

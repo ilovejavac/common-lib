@@ -11,7 +11,6 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import org.eclipse.collections.impl.factory.Strings;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,7 +20,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -102,22 +103,15 @@ public abstract class DslQuery<E extends CoreEntity> {
     public DslQuery<E> external(QueryRequest<?> pageRequest) {
         this.pageRequest = pageRequest;
         if (pageRequest != null) {
-            if (pageRequest.hasCursor()) {
-                if (Sort.Direction.ASC.equals(pageRequest.getCursor().getDirection())) {
-                    setIdGtSub(new CURSOR().setBizId(pageRequest.getCursor().getKey()));
-                } else if (Sort.Direction.DESC.equals(pageRequest.getCursor().getDirection())) {
-                    setIdLtSub(new CURSOR().setBizId(pageRequest.getCursor().getKey()));
-                }
-            }
             this.externalFields.addAll(QueryFieldMerger.resolve(pageRequest.getQuery()));
         }
         return this;
     }
 
-    public Sort toSort() {
-        if (pageRequest == null || CollectionUtils.isEmpty(pageRequest.getOrders())) {
+    public Sort toSort(Set<String> allowFields) {
+        if (pageRequest == null || CollectionUtils.isEmpty(pageRequest.getOrderBy())) {
             if (sortStr == null || sortStr.isBlank()) {
-                return Sort.by(Sort.Order.asc("id"));
+                return Sort.by(Sort.Order.desc("id"));
             }
 
             List<Sort.Order> orders = Arrays.stream(sortStr.split(","))
@@ -126,26 +120,31 @@ public abstract class DslQuery<E extends CoreEntity> {
                     .map(s -> {
                         String[] parts = s.split("_");
                         String field = parts[0];
+                        if (!allowFields.contains(field)) {
+                            return null;
+                        }
                         Sort.Direction dir = parts.length > 1 && "desc".equalsIgnoreCase(parts[1])
                                 ? Sort.Direction.DESC
                                 : Sort.Direction.ASC;
                         return new Sort.Order(dir, field);
                     })
+                    .filter(Objects::nonNull)
                     .toList();
 
-            return orders.isEmpty() ? Sort.by(Sort.Order.asc("id")) : Sort.by(orders);
+            return orders.isEmpty() ? Sort.by(Sort.Order.desc("id")) : Sort.by(orders);
         }
-        return pageRequest.toSort();
+
+        return pageRequest.toSort(allowFields);
     }
 
-    public Pageable toPageable() {
+    public Pageable toPageable(Set<String> allowFields) {
         if (pageRequest == null) {
             return PageRequest.of(
                     Optional.ofNullable(start).orElse(0),
                     Math.min(500, Optional.ofNullable(limit).orElse(30)),
-                    toSort()
+                    toSort(allowFields)
             );
         }
-        return pageRequest.toPageable(toSort());
+        return pageRequest.toPageable(allowFields);
     }
 }
