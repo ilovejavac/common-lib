@@ -30,16 +30,17 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <spring-boot.version>3.5.7</spring-boot.version>
-        <dubbo.version>3.3.5</dubbo.version>
+        <spring-boot.version>3.5.8</spring-boot.version>
+        <dubbo.version>3.3.6</dubbo.version>
         <nacos.version>2025.0.0.0</nacos.version>
         <redisson.version>3.52.0</redisson.version>
         <querydsl.version>5.1.0</querydsl.version>
         <opensearch.version>3.3.0</opensearch.version>
         <mapstruct-plus.version>1.5.0</mapstruct-plus.version>
         <lombok.version>1.18.42</lombok.version>
-        <minio.version>8.5.7</minio.version>
+        <minio.version>8.6.0</minio.version>
         <oss.version>3.17.4</oss.version>
+        <eclipse-collections.version>13.0.0</eclipse-collections.version>
 
         <lib.version>1.1.0</lib.version>
     </properties>
@@ -240,10 +241,6 @@
         <dependency>
             <groupId>io.github.linpeilie</groupId>
             <artifactId>mapstruct-plus-spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

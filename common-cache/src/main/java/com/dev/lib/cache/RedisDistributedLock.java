@@ -1,5 +1,6 @@
 package com.dev.lib.cache;
 
+import com.dev.lib.util.retry.Retryer;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +9,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -80,39 +82,44 @@ public class RedisDistributedLock {
         public <T> T execute(Supplier<T> block) {
             String lockKey = LOCK_PREFIX + key;
             RLock lock = instance.redissonClient.getLock(lockKey);
-            int attempts = 0;
 
-            while (attempts < retryTimes) {
-                try {
+            // 构建重试器
+            Retryer retryer = Retryer.builder()
+                    .maxDelay(Duration.ofSeconds(1))
+                    .retryOn(LockNotAcquiredException.class)
+                    .onRetry((attempt, e) -> log.debug("Lock retry attempt {}: {}", attempt, lockKey))
+                    .build();
+
+            try {
+                return retryer.execute(() -> {
                     boolean acquired = (leaseTime > 0)
                             ? lock.tryLock(waitTime, leaseTime, timeUnit)
                             : lock.tryLock(waitTime, timeUnit);
 
-                    if (acquired) {
-                        try {
-                            log.debug("Acquired lock: {}", lockKey);
-                            return block.get();
-                        } finally {
-                            if (lock.isHeldByCurrentThread()) {
-                                lock.unlock();
-                                log.debug("Released lock: {}", lockKey);
-                            }
+                    if (!acquired) {
+                        throw new LockNotAcquiredException("Lock not acquired: " + lockKey);
+                    }
+
+                    try {
+                        log.debug("Acquired lock: {}", lockKey);
+                        return block.get();
+                    } finally {
+                        if (lock.isHeldByCurrentThread()) {
+                            lock.unlock();
+                            log.debug("Released lock: {}", lockKey);
                         }
                     }
+                });
 
-                    attempts++;
-                    if (attempts < retryTimes) {
-                        long sleepTime = Math.min(RETRY_INTERVAL_MS * (1L << (attempts - 1)), 1000L);
-                        Thread.sleep(sleepTime);
-                    }
-
-                } catch (InterruptedException e) {
+            } catch (Retryer.RetryExhaustedException e) {
+                throw new LockAcquisitionException("Failed to acquire lock after " + retryTimes + " retries: " + key);
+            } catch (RuntimeException e) {
+                if (e.getCause() instanceof InterruptedException) {
                     Thread.currentThread().interrupt();
-                    throw new RuntimeException("Lock acquisition interrupted: " + key, e);
+                    throw new RuntimeException("Lock acquisition interrupted: " + key, e.getCause());
                 }
+                throw e;
             }
-
-            throw new LockAcquisitionException("Failed to acquire lock after " + retryTimes + " retries: " + key);
         }
 
         public void execute(Runnable block) {
@@ -120,6 +127,13 @@ public class RedisDistributedLock {
                 block.run();
                 return null;
             });
+        }
+    }
+
+    // 内部异常：用于触发重试
+    private static class LockNotAcquiredException extends RuntimeException {
+        LockNotAcquiredException(String message) {
+            super(message);
         }
     }
 

@@ -6,6 +6,7 @@ import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import org.eclipse.collections.api.factory.Maps;
 
 import java.time.LocalDateTime;
 
@@ -15,17 +16,11 @@ public class BaseEntityListener {
     public void prePersist(JpaEntity entity) {
         LocalDateTime now = LocalDateTime.now();
 
-        // 1. 生成 ID
         if (entity.getId() == null) {
             entity.setId(IDWorker.nextID());
         }
-        if (entity.getBizId() == null) {
-            entity.setBizId(IntEncoder.encode36(entity.getId()));
-        }
-
-        if (entity.getDeleted() == null) {
-            entity.setDeleted(false);
-        }
+        entity.setBizId(IntEncoder.encode36(entity.getId()));
+        entity.setDeleted(false);
 
         // 2. 设置创建时间
         entity.setCreatedAt(now);
@@ -33,13 +28,11 @@ public class BaseEntityListener {
 
         // 3. 设置创建人信息
         UserDetails user = SecurityContextHolder.current();
+        entity.setCreatorId(user.getId());
+        entity.setModifierId(user.getId());
 
-        if (entity.getCreatorId() == null) {
-            entity.setCreatorId(user.getId());
-        }
-        if (entity.getModifierId() == null) {
-            entity.setModifierId(user.getId());
-        }
+        entity.setReversion(0);
+        entity.setFeatures(Maps.mutable.empty());
     }
 
     @PreUpdate

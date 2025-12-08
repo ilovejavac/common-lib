@@ -3,6 +3,8 @@ package com.dev.lib.config;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.StreamReadConstraints;
+import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -34,7 +36,7 @@ public class JacksonConfig {
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
         return builder -> {
-            // 类型处理
+            // 自定义序列化器
             builder.serializerByType(BigDecimal.class, new BigDecimalSerializer());
             builder.deserializerByType(BigDecimal.class, new BigDecimalDeserializer());
             builder.serializerByType(LocalDateTime.class, new LocalDateTimeSerializer());
@@ -43,44 +45,52 @@ public class JacksonConfig {
             builder.deserializerByType(LocalDate.class, new LocalDateDeserializer());
             builder.serializerByType(Instant.class, new InstantSerializer());
             builder.deserializerByType(Instant.class, new InstantDeserializer());
-
-//            builder.modulesToInstall(new JavaTimeModule());
             builder.timeZone(TimeZone.getTimeZone(TIME_ZONE));
-
-            // 序列化配置
             builder.serializationInclusion(JsonInclude.Include.NON_NULL);
+            // 序列化配置
             builder.featuresToDisable(
                     SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
                     SerializationFeature.FAIL_ON_EMPTY_BEANS
             );
             builder.featuresToEnable(
-                    SerializationFeature.WRITE_ENUMS_USING_TO_STRING,
-                    JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN
+                    SerializationFeature.WRITE_ENUMS_USING_TO_STRING
             );
-
             // 反序列化配置
             builder.featuresToDisable(
-                    DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
+                    DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                    MapperFeature.DEFAULT_VIEW_INCLUSION  // 🔒 安全：防止视图泄露
             );
             builder.featuresToEnable(
                     DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS,
                     DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT,
                     DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY,
                     DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL,
-                    DeserializationFeature.READ_ENUMS_USING_TO_STRING
+                    DeserializationFeature.READ_ENUMS_USING_TO_STRING,
+                    DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY,  // 🔒 安全：防止重复键攻击
+                    MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS
             );
-
-            // 枚举大小写不敏感
-            builder.featuresToEnable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
-
-            // 宽松解析（支持注释、单引号）
+            // 流式配置
             builder.featuresToEnable(
+                    StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN,
                     JsonReadFeature.ALLOW_JAVA_COMMENTS.mappedFeature(),
                     JsonReadFeature.ALLOW_SINGLE_QUOTES.mappedFeature()
             );
-
-            // 安全：检测重复key
+            // 🔒 安全：检测重复 key + 限制解析深度
             builder.featuresToEnable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+
+            builder.postConfigurer(mapper -> {
+                // 🔒 安全：限制反序列化深度和长度
+                mapper.getFactory().setStreamReadConstraints(
+                        StreamReadConstraints.builder()
+                                .maxNestingDepth(1000)
+                                .maxNumberLength(1000)
+                                .maxStringLength(20_000_000)
+                                .build()
+                );
+
+                // 🔒 安全：禁用默认多态类型处理
+                mapper.deactivateDefaultTyping();
+            });
         };
     }
 

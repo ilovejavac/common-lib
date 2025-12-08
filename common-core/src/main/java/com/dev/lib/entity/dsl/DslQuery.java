@@ -3,14 +3,15 @@ package com.dev.lib.entity.dsl;
 import com.dev.lib.entity.CoreEntity;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
+import com.dev.lib.util.StringUtils;
 import com.dev.lib.web.model.QueryRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.common.base.Strings;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.eclipse.collections.impl.factory.Strings;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -68,7 +69,7 @@ public abstract class DslQuery<E extends CoreEntity> {
 
     // 游标查询
     public DslQuery<E> setCursor(String id, Sort.Direction direction) {
-        if (Strings.isNullOrEmpty(id) || id.isBlank()) {
+        if (StringUtils.isBlank(id)) {
             return this;
         }
 

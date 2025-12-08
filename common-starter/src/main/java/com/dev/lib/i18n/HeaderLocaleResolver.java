@@ -1,6 +1,6 @@
 package com.dev.lib.i18n;
 
-import com.google.common.base.Strings;
+import com.dev.lib.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
@@ -19,7 +19,7 @@ public class HeaderLocaleResolver implements LocaleResolver {
     public Locale resolveLocale(HttpServletRequest request) {
         String language = request.getHeader("Accept-Language");
 
-        if (Strings.isNullOrEmpty(language) || language.isBlank()) {
+        if (StringUtils.isBlank(language)) {
             return DEFAULT_LOCALE;
         }
 

@@ -1,24 +1,23 @@
 package com.dev.lib.domain;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-
+import org.eclipse.collections.impl.factory.Lists;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 public abstract class AggregateRoot {
-    private final List<DomainEvent> events = Lists.newArrayList();
+    private final List<DomainEvent> domainEvents = Lists.mutable.empty();
 
-    public Collection<? extends DomainEvent> domainEvents() {
-        return ImmutableList.copyOf(events);
+    protected Collection<DomainEvent> domainEvents() {
+        return Collections.unmodifiableList(domainEvents);
     }
 
-    protected void addEvent(DomainEvent ...events) {
-        this.events.addAll(Arrays.asList(events));
+    protected <T extends DomainEvent> void registerEvent(T... events) {
+        this.domainEvents.addAll(Arrays.asList(events));
     }
 
-    public void clearEvents() {
-        events.clear();
+    protected void clearDomainEvents() {
+        this.domainEvents.clear();
     }
 }

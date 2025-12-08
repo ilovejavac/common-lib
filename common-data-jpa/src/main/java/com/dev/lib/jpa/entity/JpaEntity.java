@@ -24,7 +24,7 @@ import java.util.Map;
 @Setter
 @MappedSuperclass
 @DynamicUpdate
-@EntityListeners({BaseEntityListener.class, EncryptionListener.class, AuditListener.class, OnDeleteListener.class})
+@EntityListeners({BaseEntityListener.class, EncryptionListener.class, AuditListener.class})
 public class JpaEntity extends CoreEntity implements Persistable<Long> {
     @Id
     @Column(length = 20)
@@ -55,11 +55,11 @@ public class JpaEntity extends CoreEntity implements Persistable<Long> {
     @Version
     @ToString.Include
     @EqualsAndHashCode.Include
-    @Column(length = 11)
-    private Integer reversion = 0;
+    @Column(length = 11, nullable = false)
+    private Integer reversion;
 
     @Override
     public boolean isNew() {
-        return createdAt == null;  // 没有创建时间就是新实体
+        return createdAt == null;
     }
 }

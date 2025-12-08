@@ -3,7 +3,7 @@ package com.dev.lib.jpa.entity;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
-import com.google.common.base.Strings;
+import com.dev.lib.util.StringUtils;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.data.domain.Page;
@@ -53,8 +53,8 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
 
             for (QueryFieldMerger.FieldMetaValue fieldMetaValue : self) {
                 fields.put(
-                        Strings.lenientFormat(
-                                "%s-%s",
+                        StringUtils.format(
+                                "{}-{}",
                                 fieldMetaValue.getFieldMeta().targetField(),
                                 fieldMetaValue.getFieldMeta().queryType()
                         ), fieldMetaValue
@@ -62,8 +62,8 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
             }
             query.getExternalFields().forEach(it ->
                     fields.put(
-                            Strings.lenientFormat(
-                                    "%s-%s",
+                            StringUtils.format(
+                                    "{}-{}",
                                     it.getFieldMeta().targetField(),
                                     it.getFieldMeta().queryType()
                             ), it

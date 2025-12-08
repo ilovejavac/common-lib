@@ -8,13 +8,13 @@ import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageAdapt;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageEvent;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommandToLocalTaskMessagePoMapper;
-import com.google.common.collect.Lists;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,9 +59,13 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
             Integer limit
     ) {
         Optional<LocalTaskMessagePo> loadtask = repository.loadById(taskId);
-        return loadtask.map(localTaskMessagePo -> repository.loadsByHouseNumber(houseNumbers, localTaskMessagePo.getId(), limit)
-                .stream().map(taskMessageEntityCommandMapper::convert).toList())
-                .orElseGet(Lists::newArrayList);
+        return loadtask.map(localTaskMessagePo -> repository.loadsByHouseNumber(
+                                houseNumbers,
+                                localTaskMessagePo.getId(),
+                                limit
+                        )
+                        .stream().map(taskMessageEntityCommandMapper::convert).toList())
+                .orElseGet(ArrayList::new);
     }
 
     @Override

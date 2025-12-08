@@ -1,6 +1,6 @@
 package com.dev.lib.web.model;
 
-import com.google.common.base.Strings;
+import com.dev.lib.util.StringUtils;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
@@ -50,7 +50,7 @@ public class QueryRequest<T> {
         if (cursor == null) {
             return false;
         }
-        return !Strings.isNullOrEmpty(cursor.key) && !cursor.key.isBlank() && cursor.direction != null;
+        return StringUtils.isNotBlank(cursor.getKey()) && cursor.direction != null;
     }
 
     /**
