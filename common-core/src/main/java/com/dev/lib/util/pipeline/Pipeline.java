@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.collections.api.list.ImmutableList;
-import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.api.factory.Lists;
 import org.springframework.lang.NonNull;
 import org.springframework.util.Assert;
 
@@ -19,6 +19,7 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
     private final ImmutableList<Stage<I, C, O>> stageList;
     @Setter
     private O defaultResult;
+    private final ImmutableList<StageFilter<O>> filters;
 
     // 1. 拦截器接口 (Stage, Context) -> void
     private final PipelineInterceptor<I, C, O> interceptor;
@@ -76,12 +77,18 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
     // --- Builder ---
     public static class Builder<I, C extends PipeLineContext<O>, O> {
         private final List<Stage<I, C, O>> stageList = Lists.mutable.empty();
+        private final List<StageFilter<O>> filters = Lists.mutable.empty();
         private O defaultResult;
         private PipelineInterceptor<I, C, O> interceptor;
         private BiPredicate<Throwable, C> errorHandler;
 
         public Builder<I, C, O> add(Stage<I, C, O> stage) {
             stageList.add(stage);
+            return this;
+        }
+
+        public Builder<I, C, O> filter(StageFilter<O> filter) {
+            filters.add(filter);
             return this;
         }
 
@@ -103,8 +110,11 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
         }
 
         public Pipeline<I, C, O> build() {
-            return new Pipeline<>(Lists.immutable.ofAll(stageList), interceptor, errorHandler)
-                    .setDefaultResult(defaultResult);
+            return new Pipeline<>(
+                    Lists.immutable.ofAll(stageList),
+                    Lists.immutable.ofAll(filters),
+                    interceptor, errorHandler
+            ).setDefaultResult(defaultResult);
         }
     }
 }
