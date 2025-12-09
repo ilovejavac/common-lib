@@ -19,7 +19,7 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
     private final ImmutableList<Stage<I, C, O>> stageList;
     @Setter
     private O defaultResult;
-    private final ImmutableList<StageFilter<O>> filters;
+    private final ImmutableList<StageFilter<C, O>> filters;
 
     // 1. 拦截器接口 (Stage, Context) -> void
     private final PipelineInterceptor<I, C, O> interceptor;
@@ -59,6 +59,11 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
 
             if (ctx.isTerminated()) break;
         }
+
+        for (StageFilter<C, O> filter : filters) {
+            ctx.setOutput(filter.doFilter(ctx));
+        }
+
         return Optional.ofNullable(ctx.getOutput()).orElse(defaultResult);
     }
 
@@ -77,7 +82,7 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
     // --- Builder ---
     public static class Builder<I, C extends PipeLineContext<O>, O> {
         private final List<Stage<I, C, O>> stageList = Lists.mutable.empty();
-        private final List<StageFilter<O>> filters = Lists.mutable.empty();
+        private final List<StageFilter<C, O>> filters = Lists.mutable.empty();
         private O defaultResult;
         private PipelineInterceptor<I, C, O> interceptor;
         private BiPredicate<Throwable, C> errorHandler;
@@ -87,7 +92,7 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
             return this;
         }
 
-        public Builder<I, C, O> filter(StageFilter<O> filter) {
+        public Builder<I, C, O> filter(StageFilter<C, O> filter) {
             filters.add(filter);
             return this;
         }

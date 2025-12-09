@@ -1,5 +1,5 @@
 package com.dev.lib.util.pipeline;
 
-public interface StageFilter <O> {
-    O doFilter(O input);
+public interface StageFilter<C extends PipeLineContext<O>, O> {
+    O doFilter(C ctx);
 }
