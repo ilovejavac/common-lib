@@ -3,15 +3,16 @@ spring:
   #    basename: i18n/messages
   #    encoding: UTF-8
   #    cache-duration: 3600
+  mvc:
+    static-path-pattern: /static/**
   servlet:
     multipart:
       enabled: true
-      max-file-size: 5GB
-      max-request-size: 5GB
-      file-size-threshold: 2MB
+      max-file-size: 100MB      # HTTP 上传限制改小
+      max-request-size: 100MB
+      file-size-threshold: 10MB  # 超过 10MB 才写磁盘
       location: ${UPLOAD_TEMP_DIR:/tmp}
       resolve-lazily: false
-
   config:
     import: optional:nacos:${spring.application.name}.${app.cloud.file-extension}
 
@@ -38,6 +39,84 @@ spring:
       add-mappings: false
 
   datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      # 连接池配置
+      initial-size: 7
+      min-idle: 7
+      max-active: 31
+      max-wait: 10000
+
+      # 连接检测
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      validation-query: SELECT 1
+      validation-query-timeout: 5000
+
+      # 连接生命周期（对应 hikari 的 idle-timeout 和 max-lifetime）
+      time-between-eviction-runs-millis: 60000           # 检测间隔 60秒
+      min-evictable-idle-time-millis: 600000             # 最小空闲时间 10分钟
+      max-evictable-idle-time-millis: 1800000            # 最大生命周期 30分钟
+
+      # 连接保活（对应 hikari 的 keepalive-time）
+      keep-alive: true
+      keep-alive-between-time-millis: 300000             # 5分钟
+
+      # 其他
+      pool-prepared-statements: false
+      max-pool-prepared-statement-per-connection-size: -1
+
+      # 监控统计
+      filters: stat,wall,slf4j
+
+      # Web 监控页面
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: 1qazXDR%
+        reset-enable: false
+#        allow: 127.0.0.1
+        # deny: 192.168.1.100
+
+      # Web 应用统计
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*"
+        session-stat-enable: true
+        session-stat-max-count: 1000
+
+      # SQL 监控配置
+      filter:
+        stat:
+          enabled: true
+          log-slow-sql: true
+          slow-sql-millis: 2000
+          merge-sql: true
+          db-type: mysql
+        wall:
+          enabled: true
+          config:
+            multi-statement-allow: true
+            delete-allow: true
+            update-allow: true
+        slf4j:
+          enabled: true
+          statement-log-enabled: false
+          statement-executable-sql-log-enable: true
+
+      # 连接泄漏检测（对应 hikari 的 leak-detection-threshold: 0 表示关闭）
+      remove-abandoned: false
+      # remove-abandoned-timeout: 300
+      # log-abandoned: true
+
+      # 快速失败（对应 hikari 的 initialization-fail-timeout: 1）
+      fail-fast: true
+
+      # 默认自动提交（对应 hikari 的 auto-commit: true）
+      default-auto-commit: true
     hikari:
       maximum-pool-size: 31
       minimum-idle: 7
@@ -52,6 +131,7 @@ spring:
 
       connection-test-query: SELECT 1                    # 连接测试查询
       initialization-fail-timeout: 1                      # 快速失败
+
   jpa:
     open-in-view: false
     show-sql: false
@@ -93,6 +173,8 @@ server:
     threads:
       max: 200
       min-spare: 10
+    max-connections: 8192
+    accept-count: 100
     max-http-form-post-size: 20MB
     max-swallow-size: -1
   http2:
@@ -132,6 +214,7 @@ dubbo:
     payload: 8388608
     buffer: 8192
     heartbeat: 60000
+    queues: 200
 
   registry:
     address: nacos://${app.cloud.hostport}?namespace=${app.cloud.namespace}&group=${app.cloud.group}
@@ -214,9 +297,6 @@ app:
   excel:
     load: download
     excel-load-header: X-geo-excel
-  sql:
-    enabled: true
-    save-enabled: true
 sa-token:
   token-style: tik
   token-prefix: Bearer

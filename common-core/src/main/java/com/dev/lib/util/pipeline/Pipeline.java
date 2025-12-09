@@ -3,8 +3,8 @@ package com.dev.lib.util.pipeline;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.springframework.lang.NonNull;
 import org.springframework.util.Assert;
 
@@ -16,15 +16,12 @@ import java.util.function.BiPredicate;
 @SuppressWarnings("all")
 @RequiredArgsConstructor
 public class Pipeline<I, C extends PipeLineContext<O>, O> {
-    private final ImmutableList<Stage<I, C, O>> stageList;
+    private final ImmutableList<PipelineStage<I, C, O>> stages;
+    private final ImmutableList<PipelineRefiner<C, O>> refiners;
+    private final PipelineInterceptor<I, C, O> interceptor;
+    private final BiPredicate<Throwable, C> errorHandler;
     @Setter
     private O defaultResult;
-    private final ImmutableList<StageFilter<C, O>> filters;
-
-    // 1. 拦截器接口 (Stage, Context) -> void
-    private final PipelineInterceptor<I, C, O> interceptor;
-    // 2. 异常处理器 (Throwable, Context) -> Boolean (返回 true 表示忽略异常继续执行，false 表示终止)
-    private final BiPredicate<Throwable, C> errorHandler;
 
     public static <I, C extends PipeLineContext<O>, O> Builder<I, C, O> builder() {
         return new Builder<>();
@@ -34,92 +31,74 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
         Assert.notNull(input, "input cannot be null");
         Assert.notNull(ctx, "ctx cannot be null");
 
-        for (Stage<I, C, O> stage : stageList) {
+        for (PipelineStage<I, C, O> stage : stages) {
             try {
-                // A. 前置拦截
                 if (interceptor != null) interceptor.before(stage, input, ctx);
-
-                // B. 执行核心逻辑
                 stage.execute(input, ctx);
-
-                // C. 后置拦截
                 if (interceptor != null) interceptor.after(stage, input, ctx);
-
             } catch (Exception e) {
-                // D. 容错处理
-                if (interceptor != null) interceptor.exception(stage, e, ctx);
-
-                // 如果没有配置 errorHandler，默认抛出异常 (Fail-Fast)
+                if (interceptor != null) interceptor.onException(stage, e, ctx);
                 if (errorHandler == null) throw e;
-
-                // 如果 errorHandler 返回 false，则中断链条；返回 true 则忽略异常继续下一个 Stage
-                boolean shouldContinue = errorHandler.test(e, ctx);
-                if (!shouldContinue) break;
+                if (!errorHandler.test(e, ctx)) break;
             }
-
             if (ctx.isTerminated()) break;
         }
 
-        for (StageFilter<C, O> filter : filters) {
-            ctx.setOutput(filter.doFilter(ctx));
+        for (PipelineRefiner<C, O> refiner : refiners) {
+            try {
+                refiner.refine(ctx);
+            } catch (Exception e) {
+                if (errorHandler == null) throw e;
+                if (!errorHandler.test(e, ctx)) break;
+            }
         }
 
         return Optional.ofNullable(ctx.getOutput()).orElse(defaultResult);
     }
 
-    // --- 定义简单的拦截接口 ---
-    public interface PipelineInterceptor<I, C extends PipeLineContext<O>, O> {
-        default void before(Stage<I, C, O> stage, I input, C ctx) {
-        }
-
-        default void after(Stage<I, C, O> stage, I input, C ctx) {
-        }
-
-        default void exception(Stage<I, C, O> stage, Exception e, C ctx) {
-        }
-    }
-
     // --- Builder ---
     public static class Builder<I, C extends PipeLineContext<O>, O> {
-        private final List<Stage<I, C, O>> stageList = Lists.mutable.empty();
-        private final List<StageFilter<C, O>> filters = Lists.mutable.empty();
+        private final List<PipelineStage<I, C, O>> stages = Lists.mutable.empty();
+        private final List<PipelineRefiner<C, O>> refiners = Lists.mutable.empty();
         private O defaultResult;
         private PipelineInterceptor<I, C, O> interceptor;
         private BiPredicate<Throwable, C> errorHandler;
 
-        public Builder<I, C, O> add(Stage<I, C, O> stage) {
-            stageList.add(stage);
+        public Builder<I, C, O> add(PipelineStage<I, C, O> stage) {
+            stages.add(stage);
             return this;
         }
 
-        public Builder<I, C, O> filter(StageFilter<C, O> filter) {
-            filters.add(filter);
+        public Builder<I, C, O> refine(PipelineRefiner<C, O> refiner) {
+            refiners.add(refiner);
             return this;
         }
 
-        public Builder<I, C, O> defaultResult(O result) {
+        public Builder<I, C, O> orElse(O result) {
+            Assert.notNull(result, "pipline default-result cannot be null");
             this.defaultResult = result;
             return this;
         }
 
-        // 注入拦截器
         public Builder<I, C, O> interceptor(PipelineInterceptor<I, C, O> interceptor) {
             this.interceptor = interceptor;
             return this;
         }
 
-        // 注入异常处理策略
         public Builder<I, C, O> errorHandler(BiPredicate<Throwable, C> errorHandler) {
             this.errorHandler = errorHandler;
             return this;
         }
 
         public Pipeline<I, C, O> build() {
-            return new Pipeline<>(
-                    Lists.immutable.ofAll(stageList),
-                    Lists.immutable.ofAll(filters),
-                    interceptor, errorHandler
-            ).setDefaultResult(defaultResult);
+            Pipeline<I, C, O> p = new Pipeline<>(
+                    Lists.immutable.ofAll(stages),
+                    Lists.immutable.ofAll(refiners),
+                    interceptor,
+                    errorHandler
+            );
+            p.setDefaultResult(defaultResult);
+            return p;
         }
     }
 }
