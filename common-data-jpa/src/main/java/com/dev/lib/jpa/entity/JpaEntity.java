@@ -60,6 +60,6 @@ public class JpaEntity extends CoreEntity implements Persistable<Long> {
 
     @Override
     public boolean isNew() {
-        return createdAt == null;
+        return id == null || createdAt == null;
     }
 }

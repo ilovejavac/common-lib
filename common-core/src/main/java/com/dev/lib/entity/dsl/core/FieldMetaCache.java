@@ -101,22 +101,39 @@ public class FieldMetaCache {
             }
 
             case SUB_QUERY -> {
-                // 尝试解析关联关系
                 RelationInfo relationInfo = resolveRelation(entityClass, targetField);
-
                 if (relationInfo != null) {
-                    // 关联子查询（OneToMany, ManyToOne, ManyToMany, OneToOne）
+                    // 关联子查询（JPA）
                     List<FieldMeta> filterMetas = resolveFieldMeta(field.getType(), relationInfo.getTargetEntity());
                     yield FieldMeta.subQuery(field, operator, queryType, relationInfo, filterMetas, select, orderBy, desc);
                 } else {
-                    // 同表子查询（普通字段，如 id, status 等）
+                    // 同表子查询（JPA）或嵌套文档查询（MongoDB）
+                    // 如果没有 select，尝试从字段名推断（供 MongoDB 使用）
+                    String inferredPath = null;
                     if (!StringUtils.hasText(select)) {
+                        String fieldName = field.getName();
+                        if (fieldName.endsWith("ExistsSub")) {
+                            inferredPath = fieldName.substring(0, fieldName.length() - 9);
+                        } else if (fieldName.endsWith("NotExistsSub")) {
+                            inferredPath = fieldName.substring(0, fieldName.length() - 12);
+                        } else if (fieldName.endsWith("Sub")) {
+                            inferredPath = fieldName.substring(0, fieldName.length() - 3);
+                        }
+                    }
+
+                    // 使用 select 或推断路径作为 parentField
+                    String parentField = StringUtils.hasText(select) ? select : inferredPath;
+
+                    // JPA 必须有 select，MongoDB 可以推断
+                    if (parentField == null) {
                         throw new IllegalStateException(
-                                "同表子查询必须指定 @Condition(select = \"...\") 属性: " +
+                                "同表子查询必须指定 @Condition(select = \"...\") 属性或使用 Sub 后缀: " +
                                         (entityClass != null ? entityClass.getSimpleName() : "Unknown") + "." + field.getName());
                     }
+
                     List<FieldMeta> filterMetas = resolveFieldMeta(field.getType(), entityClass);
-                    yield FieldMeta.selfSubQuery(field, operator, queryType, entityClass, filterMetas, select, orderBy, desc, targetField);
+                    yield FieldMeta.selfSubQuery(field, operator, queryType, entityClass, filterMetas,
+                            select, orderBy, desc, parentField);
                 }
             }
         };

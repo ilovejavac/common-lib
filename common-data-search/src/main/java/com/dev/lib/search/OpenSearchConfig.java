@@ -1,4 +1,4 @@
-package com.dev.lib.config;
+package com.dev.lib.search;
 
 import lombok.Data;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
@@ -52,5 +52,6 @@ public class OpenSearchConfig {
         private boolean enabled = false;
         private String hosts = "localhost:9200";
         private String indexPrefix = "app-logs";
+        private String index = "public";
     }
 }

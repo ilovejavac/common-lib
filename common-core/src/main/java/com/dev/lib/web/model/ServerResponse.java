@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.slf4j.MDC;
-import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 
 import java.util.List;
 
@@ -43,8 +43,12 @@ public class ServerResponse<T> {
         return result;
     }
 
-    public static <S, T> ServerResponse<List<T>> success(Page<S> page, Convert<S, T> convert) {
+    public static <S, T> ServerResponse<List<T>> success(Slice<S> page, Convert<S, T> convert) {
         ServerResponse<List<T>> result = new ServerResponse<>();
+        if (page == null || convert == null) {
+            return result;
+        }
+
         result.setData(page.getContent().stream().map(convert::convert).toList());
 
         setPage(page, result);
@@ -52,8 +56,11 @@ public class ServerResponse<T> {
         return result;
     }
 
-    public static <T> ServerResponse<List<T>> success(Page<T> page) {
+    public static <T> ServerResponse<List<T>> success(Slice<T> page) {
         ServerResponse<List<T>> result = new ServerResponse<>();
+        if (page == null) {
+            return result;
+        }
         result.setData(page.getContent());
 
         setPage(page, result);
@@ -61,14 +68,14 @@ public class ServerResponse<T> {
         return result;
     }
 
-    private static void setPage(Page<?> page, ServerResponse<?> result) {
+    private static void setPage(Slice<?> page, ServerResponse<?> result) {
         result.setCode(200);
         result.setMessage(SUCCESS);
 
         PageResult pager = new PageResult();
-        pager.setPage(page.getPageable().getPageNumber());
+        pager.setPage(page.getPageable().getPageNumber() + 1);
         pager.setSize(page.getPageable().getPageSize());
-        pager.setTotal(page.getTotalElements());
+//        pager.setTotal(page.getTotalElements());
         pager.setHasNext(page.hasNext());
         result.setPager(pager);
     }
@@ -86,6 +93,10 @@ public class ServerResponse<T> {
         if (this.data == null) {
             result.setData(null);
         } else {
+            if (convert == null) {
+                return result;
+            }
+
             List<S> list = (List<S>) this.data;
             result.setData(list.stream().map(convert::convert).toList());
         }

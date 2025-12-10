@@ -4,9 +4,9 @@ import com.dev.lib.dict.domain.adapter.DictAdapt;
 import com.dev.lib.dict.domain.model.dto.DictItemDTO;
 import com.dev.lib.dict.domain.model.dto.DictItemDTO$CreateItemToDictItemEntityMapper;
 import com.dev.lib.dict.domain.model.dto.DictItemDTO$UpdateItemToDictItemEntityMapper;
+import com.dev.lib.dict.domain.model.dto.DictTypeDTO;
 import com.dev.lib.dict.domain.model.dto.DictTypeDTO$CreateTypeToDictTypeMapper;
 import com.dev.lib.dict.domain.model.dto.DictTypeDTO$UpdateTypeToDictTypeMapper;
-import com.dev.lib.dict.domain.model.dto.DictTypeDTO;
 import com.dev.lib.dict.domain.model.valobj.DictItemVO;
 import com.dev.lib.dict.domain.model.valobj.DictTypeVO;
 import com.dev.lib.dict.serialize.DictItem;
@@ -21,7 +21,7 @@ import com.dev.lib.web.model.QueryRequest;
 import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,7 +71,7 @@ public class DictServiceAdapt implements DictAdapt {
     @Override
     @Transactional(readOnly = true)
     public ServerResponse<List<DictTypeVO>> pageType(QueryRequest<DictTypeDTO.Query> request) {
-        Page<DictType> page = typeRepository.list(request);
+        Slice<DictType> page = typeRepository.list(request);
 
         return ServerResponse.success(page, typeVOMapper::convert);
     }
@@ -100,7 +100,7 @@ public class DictServiceAdapt implements DictAdapt {
     @Override
     @Transactional(readOnly = true)
     public ServerResponse<List<DictItemVO>> pageItem(String id, QueryRequest<DictItemDTO.Query> request) {
-        Page<DictItemEntity> page = itemRepository.list(id, request);
+        Slice<DictItemEntity> page = itemRepository.list(id, request);
 
         return ServerResponse.success(page, itemVOMapper::convert);
     }

@@ -8,6 +8,7 @@ import com.dev.lib.entity.dsl.QueryType;
 import com.dev.lib.web.model.QueryRequest;
 import lombok.Data;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 
 import java.util.Collection;
 import java.util.List;
@@ -27,7 +28,7 @@ public interface DictItemRepository extends BaseRepository<DictItemEntity> {
         private String type;
     }
 
-    default Page<DictItemEntity> list(String type, QueryRequest<DictItemDTO.Query> request) {
+    default Slice<DictItemEntity> list(String type, QueryRequest<DictItemDTO.Query> request) {
         return page(new Query().setType(type).external(request));
     }
 

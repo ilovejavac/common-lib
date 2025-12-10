@@ -64,7 +64,7 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
         private PipelineInterceptor<I, C, O> interceptor;
         private BiPredicate<Throwable, C> errorHandler;
 
-        public Builder<I, C, O> add(PipelineStage<I, C, O> stage) {
+        public Builder<I, C, O> stage(PipelineStage<I, C, O> stage) {
             stages.add(stage);
             return this;
         }

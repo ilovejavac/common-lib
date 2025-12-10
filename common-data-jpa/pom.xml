@@ -30,12 +30,6 @@
         </dependency>
 
         <dependency>
-            <groupId>net.ttddyy</groupId>
-            <artifactId>datasource-proxy</artifactId>
-            <version>1.10</version>
-        </dependency>
-
-        <dependency>
             <groupId>com.dev.lib</groupId>
             <artifactId>common-dict</artifactId>
         </dependency>

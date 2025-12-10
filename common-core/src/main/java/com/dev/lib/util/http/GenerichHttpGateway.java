@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.springframework.stereotype.Component;
-import retrofit2.Retrofit;
 
 @Slf4j
 @Component

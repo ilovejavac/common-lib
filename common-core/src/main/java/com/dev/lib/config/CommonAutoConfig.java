@@ -1,6 +1,7 @@
 package com.dev.lib.config;
 
 import com.dev.lib.config.properties.AppSnowFlakeProperties;
+import com.dev.lib.config.properties.PaginationProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,9 @@ public class CommonAutoConfig {
         return new AppSnowFlakeProperties();
     }
 
+    @Bean
+    @ConfigurationProperties(prefix = "app.pagination")
+    public PaginationProperties properties() {return new PaginationProperties();}
 
     @Bean
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {

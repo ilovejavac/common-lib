@@ -9,6 +9,7 @@ import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.querydsl.ListQuerydslPredicateExecutor;
 import org.springframework.data.repository.NoRepositoryBean;
@@ -41,7 +42,7 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
         return findAll(toPredicate(dslQuery, expressions), dslQuery.toSort(allowFields));
     }
 
-    default Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    default Slice<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
         Class<?> entityClass = FieldMetaCache.getMeta(dslQuery.getClass()).entityClass();
         Set<String> allowFields =
                 Arrays.stream(entityClass.getDeclaredFields()).map(Field::getName).collect(Collectors.toSet());
