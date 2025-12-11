@@ -20,12 +20,15 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
+
     private final TokenManager tokenManager;
+
     private final ObjectMapper objectMapper;
 
     // ------------------------ Object 读写操作
     @Override
     public Object getObject(String key) {
+
         TokenItem token = tokenManager.getToken(key);
         if (token == null) {
             return null;
@@ -43,11 +46,13 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getObject(String key, Class<T> classType) {
+
         return (T) getObject(key);
     }
 
     @Override
     public void setObject(String key, Object object, long timeout) {
+
         try {
             TokenItem tokenItem = new TokenItem()
                     .setTokenKey(key)
@@ -69,51 +74,81 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
             tokenManager.createToken(tokenItem);
 
         } catch (Exception e) {
-            log.error("Failed to set object for key: {}", key, e);
-            throw new RuntimeException("Failed to save token", e);
+            log.error(
+                    "Failed to set object for key: {}",
+                    key,
+                    e
+            );
+            throw new RuntimeException(
+                    "Failed to save token",
+                    e
+            );
         }
     }
 
     @Override
     public void updateObject(String key, Object object) {
+
         try {
             if (isSimpleValue(object)) {
-                tokenManager.refreshToken(key, object.toString());
+                tokenManager.refreshToken(
+                        key,
+                        object.toString()
+                );
             } else {
-                tokenManager.refreshToken(key, serializeToMetadata(object));
+                tokenManager.refreshToken(
+                        key,
+                        serializeToMetadata(object)
+                );
             }
         } catch (Exception e) {
-            log.error("Failed to update object for key: {}", key, e);
+            log.error(
+                    "Failed to update object for key: {}",
+                    key,
+                    e
+            );
         }
     }
 
     @Override
     public void deleteObject(String key) {
+
         tokenManager.deleteToken(key);
     }
 
     @Override
     public long getObjectTimeout(String key) {
+
         return Optional.ofNullable(tokenManager.getToken(key)).map(TokenItem::getExpireTime).orElse(0L);
     }
 
     @Override
     public void updateObjectTimeout(String key, long timeout) {
-        tokenManager.refreshToken(key, timeout);
-    }
 
+        tokenManager.refreshToken(
+                key,
+                timeout
+        );
+    }
 
     // --------- 会话管理
 
     @Override
     public List<String> searchData(String prefix, String keyword, int start, int size, boolean sortType) {
-        return tokenManager.searchTokenKeys(prefix, keyword, start, size);
+
+        return tokenManager.searchTokenKeys(
+                prefix,
+                keyword,
+                start,
+                size
+        );
     }
 
     /**
      * 判断是否为简单值
      */
     private boolean isSimpleValue(Object object) {
+
         if (object == null) {
             return true;
         }
@@ -129,6 +164,7 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> serializeToMetadata(Object object) {
+
         try {
             if (object == null) {
                 return null;
@@ -142,12 +178,17 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
             // 序列化为 JSON，再转为 Map
             String json = objectMapper.writeValueAsString(object);
             return objectMapper.readValue(
-                    json, new TypeReference<Map<String, Object>>() {
+                    json,
+                    new TypeReference<Map<String, Object>>() {
                     }
             );
 
         } catch (Exception e) {
-            log.error("Failed to serialize object to metadata: {}", object.getClass(), e);
+            log.error(
+                    "Failed to serialize object to metadata: {}",
+                    object.getClass(),
+                    e
+            );
             return new HashMap<>();
         }
     }
@@ -156,6 +197,7 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
      * 从 metadata 反序列化对象
      */
     private Object deserializeFromMetadata(Map<String, Object> metadata) {
+
         try {
             if (metadata == null || metadata.isEmpty()) {
                 return null;
@@ -164,15 +206,22 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
             // 判断是否为 SaSession
             if (metadata.containsKey("loginId") || metadata.containsKey("type")) {
                 String json = objectMapper.writeValueAsString(metadata);
-                return objectMapper.readValue(json, cn.dev33.satoken.session.SaSession.class);
+                return objectMapper.readValue(
+                        json,
+                        cn.dev33.satoken.session.SaSession.class
+                );
             }
 
             // 其他情况返回 Map
             return metadata;
 
         } catch (Exception e) {
-            log.warn("Failed to deserialize metadata, returning raw map", e);
+            log.warn(
+                    "Failed to deserialize metadata, returning raw map",
+                    e
+            );
             return metadata;
         }
     }
+
 }

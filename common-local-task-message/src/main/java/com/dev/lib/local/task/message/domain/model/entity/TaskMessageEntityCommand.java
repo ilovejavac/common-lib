@@ -13,44 +13,61 @@ import java.util.Map;
 
 @Data
 public class TaskMessageEntityCommand implements Serializable {
+
     @Getter
     public static class Event extends ApplicationEvent {
+
         private final TaskMessageEntityCommand cmd;
 
         public Event(Object source, TaskMessageEntityCommand cmd) {
+
             super(source);
             this.cmd = cmd;
         }
+
     }
 
     @Data
     public static class NotifyConfig {
+
         @Data
         public static class Rabbit {
-            private String topic;
-            private String exchange;
+
+            private String              topic;
+
+            private String              exchange;
+
             private Map<String, Object> payload;  // 任务参数
 
         }
 
         @Data
         public static class Http {
+
             @RequestUrl
-            private String url;
-            private String method;
+            private String              url;
+
+            private String              method;
+
             @Header
-            private String contentType;
+            private String              contentType;
+
             @Header
-            private String authorization;
+            private String              authorization;
+
             @RequestData
             private Map<String, Object> payload;  // 任务参数
+
         }
 
         private Rabbit rabbit;
-        private Http http;
+
+        private Http   http;
+
     }
 
     private String taskId;
+
     private String taskName;
 
     private NotifyType notifyType;
@@ -62,4 +79,5 @@ public class TaskMessageEntityCommand implements Serializable {
     private String businessId;        // 业务ID（幂等 key）
 
     private int maxRetry = 3;             // 最大重试次数
+
 }

@@ -5,6 +5,7 @@ import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityComma
 import java.util.List;
 
 public interface ILocalTaskMessageAdapt {
+
     void saveMessage(TaskMessageEntityCommand cmd);
 
     void updateTaskStatusToSuccess(String taskId);
@@ -14,4 +15,5 @@ public interface ILocalTaskMessageAdapt {
     List<TaskMessageEntityCommand> selectByHouseNumber(List<Integer> houseNumbers, String taskId, Integer limit);
 
     String selectMinIdByHouseNumber(List<Integer> houseNumbers);
+
 }

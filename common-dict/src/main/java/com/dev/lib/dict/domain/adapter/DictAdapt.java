@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.List;
 
 public interface DictAdapt {
+
     String createType(DictTypeDTO.CreateType cmd);
 
     void deleteType(String id);
@@ -31,4 +32,5 @@ public interface DictAdapt {
     DictItem getItem(String code);
 
     Collection<DictItem> listItem(Collection<String> codes);
+
 }

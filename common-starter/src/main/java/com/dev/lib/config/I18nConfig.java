@@ -7,8 +7,10 @@ import org.springframework.context.support.ReloadableResourceBundleMessageSource
 
 @Configuration
 public class I18nConfig {
+
     @Bean
     public MessageSource messageSource() {
+
         ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
         messageSource.setBasenames(
                 "classpath:i18n/messages",   // 子项目优先
@@ -18,4 +20,5 @@ public class I18nConfig {
         messageSource.setUseCodeAsDefaultMessage(true);
         return messageSource;
     }
+
 }

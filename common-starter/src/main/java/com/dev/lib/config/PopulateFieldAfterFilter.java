@@ -18,33 +18,52 @@ public class PopulateFieldAfterFilter extends AfterFilter {
 
     @Override
     public void writeAfter(Object object) {
+
         if (object == null) return;
 
-        FieldMeta[] metas = CACHE.computeIfAbsent(object.getClass(), this::parseFields);
+        FieldMeta[] metas = CACHE.computeIfAbsent(
+                object.getClass(),
+                this::parseFields
+        );
 
         for (FieldMeta meta : metas) {
-            Object idValue = getFieldValue(object, meta.field);
-            Object populated = idValue != null 
-                    ? PopulateContextHolder.get(meta.loaderName, idValue)
-                    : null;
-            
+            Object idValue = getFieldValue(
+                    object,
+                    meta.field
+            );
+            Object populated = idValue != null
+                               ? PopulateContextHolder.get(
+                    meta.loaderName,
+                    idValue
+            )
+                               : null;
+
             // 写入额外字段：{fieldName}{suffix}
-            writeKeyValue(meta.outputName, populated);
+            writeKeyValue(
+                    meta.outputName,
+                    populated
+            );
         }
     }
 
     private FieldMeta[] parseFields(Class<?> clazz) {
+
         return java.util.Arrays.stream(clazz.getDeclaredFields())
                 .filter(f -> f.isAnnotationPresent(PopulateField.class))
                 .map(f -> {
                     PopulateField ann = f.getAnnotation(PopulateField.class);
                     ReflectionUtils.makeAccessible(f);
-                    return new FieldMeta(f, ann.loader(), f.getName() + ann.suffix());
+                    return new FieldMeta(
+                            f,
+                            ann.loader(),
+                            f.getName() + ann.suffix()
+                    );
                 })
                 .toArray(FieldMeta[]::new);
     }
 
     private Object getFieldValue(Object obj, Field field) {
+
         try {
             return field.get(obj);
         } catch (IllegalAccessException e) {
@@ -53,4 +72,5 @@ public class PopulateFieldAfterFilter extends AfterFilter {
     }
 
     private record FieldMeta(Field field, String loaderName, String outputName) {}
+
 }

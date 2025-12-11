@@ -20,6 +20,7 @@ public class LocalFileStorage implements StorageService {
 
     @Override
     public String upload(MultipartFile file, String path) throws IOException {
+
         File destFile = resolveSafePath(path);
 
         if (!destFile.getParentFile().exists()) {
@@ -32,26 +33,36 @@ public class LocalFileStorage implements StorageService {
 
     @Override
     public InputStream download(String path) throws IOException {
+
         File file = resolveSafePath(path);
         return new FileInputStream(file);
     }
 
     @Override
     public void delete(String path) {
+
         String basePath = fileProperties.getLocal().getPath();
-        File file = new File(basePath, path);
+        File   file     = new File(
+                basePath,
+                path
+        );
         file.delete();
     }
 
     @Override
     public String getUrl(String path) {
+
         return fileProperties.getLocal().getUrlPrefix() + "/" + path;
     }
 
     private File resolveSafePath(String path) throws IOException {
+
         String basePath = fileProperties.getLocal().getPath();
-        File base = new File(basePath).getCanonicalFile();
-        File target = new File(base, path).getCanonicalFile();
+        File   base     = new File(basePath).getCanonicalFile();
+        File   target   = new File(
+                base,
+                path
+        ).getCanonicalFile();
 
         if (!target.getPath().startsWith(base.getPath() + File.separator)) {
             throw new IOException("Invalid path: " + path);
@@ -59,4 +70,5 @@ public class LocalFileStorage implements StorageService {
 
         return target;
     }
+
 }

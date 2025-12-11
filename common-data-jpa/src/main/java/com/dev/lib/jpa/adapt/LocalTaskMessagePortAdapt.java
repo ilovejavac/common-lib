@@ -15,17 +15,25 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
-    private final IRabbitPublish rabbitPublish;
-    private final GenerichHttpGateway httpGateway;
-    private final ObjectMapper mapper;
+
+    private final IRabbitPublish         rabbitPublish;
+
+    private final GenerichHttpGateway    httpGateway;
+
+    private final ObjectMapper           mapper;
+
     private final ILocalTaskMessageAdapt adapt;
 
     @Override
     public String notify2http(TaskMessageEntityCommand cmd) {
+
         try {
             TaskMessageEntityCommand.NotifyConfig.Http config =
                     Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getHttp)
-                            .orElseThrow(() -> new BizException(50040, ""));
+                            .orElseThrow(() -> new BizException(
+                                    50040,
+                                    ""
+                            ));
 
             GenerichHttpGateway http = GenerichHttpGateway.resolve(config);
 
@@ -35,15 +43,18 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
 
         }
 
-
         return "";
     }
 
     @Override
     public String notify2rabbit(TaskMessageEntityCommand cmd) {
+
         TaskMessageEntityCommand.NotifyConfig.Rabbit config =
                 Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getRabbit)
-                        .orElseThrow(() -> new BizException(50041, ""));
+                        .orElseThrow(() -> new BizException(
+                                50041,
+                                ""
+                        ));
 
         try {
             rabbitPublish.publish(
@@ -58,4 +69,5 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
 
         return "";
     }
+
 }

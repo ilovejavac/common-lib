@@ -15,6 +15,7 @@ public class CorsConfig {
 
     @Bean
     public CorsFilter corsFilter(CorsProperties corsProperties) {
+
         CorsConfiguration config = new CorsConfiguration();
 
         if (corsProperties.getAllowedOrigins() != null) {
@@ -26,7 +27,13 @@ public class CorsConfig {
         if (corsProperties.getAllowedMethods() != null) {
             corsProperties.getAllowedMethods().forEach(config::addAllowedMethod);
         } else {
-            config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+            config.setAllowedMethods(Arrays.asList(
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "DELETE",
+                    "OPTIONS"
+            ));
         }
 
         config.addAllowedHeader("*");
@@ -34,7 +41,10 @@ public class CorsConfig {
         config.setMaxAge(corsProperties.getMaxAge());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+        source.registerCorsConfiguration(
+                "/**",
+                config
+        );
 
         return new CorsFilter(source);
     }
@@ -42,6 +52,8 @@ public class CorsConfig {
     @Bean
     @ConfigurationProperties(prefix = "app.cors")
     public CorsProperties corsProperties() {
+
         return new CorsProperties();
     }
+
 }

@@ -21,20 +21,31 @@ import java.util.stream.Collectors;
 public class UserLoader implements PopulateLoader<Long, UserLoader.UserItem> {
 
     private final AuthenticateService authenticateService;
+
     private final UserDetailsToUserLoader$UserItemMapper mapper;
 
     @Override
     public Map<Long, UserItem> batchLoad(Set<Long> ids) {
-       return authenticateService.batchLoadUserByIds(ids)
+
+        return authenticateService.batchLoadUserByIds(ids)
                 .stream()
-                .collect(Collectors.toMap(UserDetails::getId, mapper::convert));
+                .collect(Collectors.toMap(
+                        UserDetails::getId,
+                        mapper::convert
+                ));
     }
 
     @Data
     public static class UserItem {
+
         private String email;
+
         private String phone;
+
         private String username;
+
         private String realName;
+
     }
+
 }

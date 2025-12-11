@@ -9,9 +9,10 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface ExcelImport {
-    
+
     /**
      * 上传文件参数名
      */
     String fileParam() default "file";
+
 }

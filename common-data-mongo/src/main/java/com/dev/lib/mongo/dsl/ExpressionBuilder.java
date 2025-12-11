@@ -9,7 +9,9 @@ import java.util.Collection;
 
 public final class ExpressionBuilder {
 
-    private ExpressionBuilder() {}
+    private ExpressionBuilder() {
+
+    }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static BooleanExpression build(
@@ -18,6 +20,7 @@ public final class ExpressionBuilder {
             QueryType type,
             Object value
     ) {
+
         if (value == null && type != QueryType.IS_NULL && type != QueryType.IS_NOT_NULL) {
             return null;
         }
@@ -26,10 +29,22 @@ public final class ExpressionBuilder {
         return switch (type) {
             case EQ -> pathBuilder.get(field).eq(value);
             case NE -> pathBuilder.get(field).ne(value);
-            case GT -> pathBuilder.getComparable(field, (Class<Comparable>) value.getClass()).gt((Comparable) value);
-            case GE -> pathBuilder.getComparable(field, (Class<Comparable>) value.getClass()).goe((Comparable) value);
-            case LT -> pathBuilder.getComparable(field, (Class<Comparable>) value.getClass()).lt((Comparable) value);
-            case LE -> pathBuilder.getComparable(field, (Class<Comparable>) value.getClass()).loe((Comparable) value);
+            case GT -> pathBuilder.getComparable(
+                    field,
+                    (Class<Comparable>) value.getClass()
+            ).gt((Comparable) value);
+            case GE -> pathBuilder.getComparable(
+                    field,
+                    (Class<Comparable>) value.getClass()
+            ).goe((Comparable) value);
+            case LT -> pathBuilder.getComparable(
+                    field,
+                    (Class<Comparable>) value.getClass()
+            ).lt((Comparable) value);
+            case LE -> pathBuilder.getComparable(
+                    field,
+                    (Class<Comparable>) value.getClass()
+            ).loe((Comparable) value);
             case LIKE -> pathBuilder.getString(field).containsIgnoreCase(value.toString());
             case START_WITH -> pathBuilder.getString(field).startsWithIgnoreCase(value.toString());
             case END_WITH -> pathBuilder.getString(field).endsWithIgnoreCase(value.toString());
@@ -46,4 +61,5 @@ public final class ExpressionBuilder {
             default -> null;
         };
     }
+
 }

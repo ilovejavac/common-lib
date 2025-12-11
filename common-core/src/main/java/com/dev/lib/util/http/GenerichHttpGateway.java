@@ -9,12 +9,15 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class GenerichHttpGateway {
+
     // .header()/.body().post(object.class)
     // .headers().param().get(x.class)
     // execute("POST")
     private final OkHttpClient client;
 
     public static GenerichHttpGateway resolve(Object object) {
+
         return null;
     }
+
 }

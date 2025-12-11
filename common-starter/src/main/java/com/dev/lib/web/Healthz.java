@@ -8,8 +8,11 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 public class Healthz {
+
     @RequestMapping("/healthz")
     public String healthz() {
+
         return "response";
     }
+
 }

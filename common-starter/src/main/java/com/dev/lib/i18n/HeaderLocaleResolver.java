@@ -17,6 +17,7 @@ public class HeaderLocaleResolver implements LocaleResolver {
     @Override
     @NonNull
     public Locale resolveLocale(HttpServletRequest request) {
+
         String language = request.getHeader("Accept-Language");
 
         if (StringUtils.isBlank(language)) {
@@ -36,6 +37,8 @@ public class HeaderLocaleResolver implements LocaleResolver {
             HttpServletResponse response,
             Locale locale
     ) {
+
         throw new UnsupportedOperationException("Cannot change locale - use Accept-Language header");
     }
+
 }

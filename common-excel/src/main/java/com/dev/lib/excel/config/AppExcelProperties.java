@@ -4,6 +4,9 @@ import lombok.Data;
 
 @Data
 public class AppExcelProperties {
-    private ExcelLoadAction load = ExcelLoadAction.DOWNLOAD;
-    private String excelLoadHeader = "X-Excel-load";
+
+    private ExcelLoadAction load            = ExcelLoadAction.DOWNLOAD;
+
+    private String          excelLoadHeader = "X-Excel-load";
+
 }

@@ -4,7 +4,9 @@ import org.eclipse.collections.impl.factory.Strings;
 import org.eclipse.collections.impl.string.immutable.CharAdapter;
 
 public abstract class StringUtils {
+
     private StringUtils() {
+
     }
 
     public static String format(String template, Object... args) {
@@ -17,10 +19,10 @@ public abstract class StringUtils {
             return template;
         }
 
-        CharAdapter templateAdapter = Strings.asChars(template);
-        StringBuilder sb = new StringBuilder(template.length() + args.length * 10);
-        int argIndex = 0; // 当前待替换的参数索引
-        int templateLength = templateAdapter.size();
+        CharAdapter   templateAdapter = Strings.asChars(template);
+        StringBuilder sb              = new StringBuilder(template.length() + args.length * 10);
+        int           argIndex        = 0; // 当前待替换的参数索引
+        int           templateLength  = templateAdapter.size();
 
         // 遍历模板字符，替换{}占位符
         for (int i = 0; i < templateLength; i++) {
@@ -49,6 +51,7 @@ public abstract class StringUtils {
      * @return true=空白，false=非空白
      */
     public static boolean isBlank(String str) {
+
         if (str == null || str.isEmpty()) {
             return true;
         }
@@ -64,6 +67,7 @@ public abstract class StringUtils {
      * @return true=非空白，false=空白
      */
     public static boolean isNotBlank(String str) {
+
         return !isBlank(str);
     }
 
@@ -74,6 +78,7 @@ public abstract class StringUtils {
      * @return true=空，false=非空
      */
     public static boolean isEmpty(String str) {
+
         return str == null || str.isEmpty();
     }
 
@@ -84,6 +89,7 @@ public abstract class StringUtils {
      * @return true=非空，false=空
      */
     public static boolean isNotEmpty(String str) {
+
         return !isEmpty(str);
     }
 
@@ -96,6 +102,7 @@ public abstract class StringUtils {
      * @return 修剪后结果
      */
     public static String trim(String str) {
+
         return str == null ? null : str.trim();
     }
 
@@ -106,6 +113,7 @@ public abstract class StringUtils {
      * @return 处理后结果
      */
     public static String trimToNull(String str) {
+
         String trimmed = trim(str);
         return isBlank(trimmed) ? null : trimmed;
     }
@@ -117,7 +125,9 @@ public abstract class StringUtils {
      * @return 处理后结果
      */
     public static String trimToEmpty(String str) {
+
         String trimmed = trim(str);
         return isBlank(trimmed) ? "" : trimmed;
     }
+
 }

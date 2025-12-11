@@ -14,10 +14,12 @@ public record RuleResult<E>(
         List<E> errors,
         List<String> passedRules
 ) {
+
     /**
      * 是否通过所有规则
      */
     public boolean isPassed() {
+
         return passed;
     }
 
@@ -25,6 +27,7 @@ public record RuleResult<E>(
      * 是否失败
      */
     public boolean isFailed() {
+
         return !passed;
     }
 
@@ -32,6 +35,7 @@ public record RuleResult<E>(
      * 获取第一个错误
      */
     public E getFirstError() {
+
         return errors.isEmpty() ? null : errors.get(0);
     }
 
@@ -39,6 +43,7 @@ public record RuleResult<E>(
      * 错误数量
      */
     public int errorCount() {
+
         return errors.size();
     }
 
@@ -46,6 +51,7 @@ public record RuleResult<E>(
      * 如果失败则执行
      */
     public RuleResult<E> ifFailed(Consumer<List<E>> action) {
+
         if (isFailed()) {
             action.accept(errors);
         }
@@ -56,6 +62,7 @@ public record RuleResult<E>(
      * 如果通过则执行
      */
     public RuleResult<E> ifPassed(Runnable action) {
+
         if (isPassed()) {
             action.run();
         }
@@ -66,17 +73,24 @@ public record RuleResult<E>(
      * 转换错误信息
      */
     public <R> RuleResult<R> mapErrors(Function<E, R> mapper) {
+
         List<R> mapped = errors.stream().map(mapper).toList();
-        return new RuleResult<>(passed, mapped, passedRules);
+        return new RuleResult<>(
+                passed,
+                mapped,
+                passedRules
+        );
     }
 
     /**
      * 如果失败则抛出异常
      */
     public RuleResult<E> orElseThrow(Function<List<E>, ? extends RuntimeException> exceptionSupplier) {
+
         if (isFailed()) {
             throw exceptionSupplier.apply(errors);
         }
         return this;
     }
+
 }

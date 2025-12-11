@@ -9,9 +9,12 @@ import java.time.LocalDateTime;
 
 @Data
 public abstract class BaseVO {
+
     @JsonProperty("id")
-    private String bizId;
+    private String        bizId;
+
     private LocalDateTime createdAt;
+
     private LocalDateTime updatedAt;
 
     @JsonProperty("creator")
@@ -21,4 +24,5 @@ public abstract class BaseVO {
     @JsonProperty("modifier")
     @PopulateField(loader = FieldLoader.USER_LOADER)
     private Long modifierId;
+
 }

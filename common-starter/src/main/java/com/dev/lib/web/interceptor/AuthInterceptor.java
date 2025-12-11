@@ -26,6 +26,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             @NonNull HttpServletResponse response,
             @NonNull Object handler
     ) {
+
         if (!(handler instanceof HandlerMethod handlerMethod)) {
             return true;
         }
@@ -36,7 +37,10 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         // 1. 放行不需要认证的接口
         if (validator.shouldSkip(request)) {
-            log.info("白名单放行, {}", request.getRequestURI());
+            log.info(
+                    "白名单放行, {}",
+                    request.getRequestURI()
+            );
             return true;
         }
 
@@ -58,4 +62,5 @@ public class AuthInterceptor implements HandlerInterceptor {
         // 清理 ThreadLocal
         SecurityContextHolder.clear();
     }
+
 }

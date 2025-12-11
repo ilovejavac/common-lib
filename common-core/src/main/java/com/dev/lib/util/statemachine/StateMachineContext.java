@@ -10,6 +10,7 @@ import lombok.Data;
  */
 @Data
 public abstract class StateMachineContext<S> {
+
     /**
      * 当前状态
      */
@@ -29,8 +30,10 @@ public abstract class StateMachineContext<S> {
      * 更新状态
      */
     public void updateState(S newState) {
+
         this.currentState = newState;
         this.transitionCount++;
         this.lastTransitionTime = System.currentTimeMillis();
     }
+
 }

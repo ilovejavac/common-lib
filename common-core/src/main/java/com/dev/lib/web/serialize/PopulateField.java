@@ -1,22 +1,21 @@
 package com.dev.lib.web.serialize;
 
-import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.lang.annotation.*;
 
 /**
  * 标记字段需要在序列化时额外输出填充对象
- *
+ * <p>
  * 原字段保留，额外输出 {字段名}{suffix} 字段
- *
+ * <p>
  * 示例：
+ *
  * @PopulateField(loader = "userLoader")
  * private Long creatorId;
- *
+ * <p>
  * 输出：
  * {
- *     "creatorId": 123,
- *     "creatorIdInfo": { "username": "张三", ... }
+ * "creatorId": 123,
+ * "creatorIdInfo": { "username": "张三", ... }
  * }
  */
 @Target({ElementType.FIELD})
@@ -34,4 +33,5 @@ public @interface PopulateField {
      * 生成字段名 = 原字段名 + suffix
      */
     String suffix() default "Info";
+
 }

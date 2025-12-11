@@ -16,11 +16,14 @@ import java.time.format.DateTimeFormatter;
 
 public final class FastJson2Support {
 
-    public static final ZoneId ZONE_ID = ZoneId.of("Asia/Shanghai");
-    public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    public static final  ZoneId            ZONE_ID = ZoneId.of("Asia/Shanghai");
+
+    public static final  String            DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT);
 
     private FastJson2Support() {
+
     }
 
     // ============ Writer Features ============
@@ -45,6 +48,7 @@ public final class FastJson2Support {
     };
 
     // ============ 🔒 安全限制常量 ============
+
     /**
      * 最大嵌套深度（对标 Jackson 的 maxNestingDepth）
      * 防止深度嵌套 JSON 导致栈溢出
@@ -60,7 +64,10 @@ public final class FastJson2Support {
     // ============ ValueFilter：序列化时处理 BigDecimal、Instant 和 Long ============
     public static final ValueFilter VALUE_FILTER = (obj, name, value) -> {
         if (value instanceof BigDecimal bd) {
-            return bd.setScale(6, RoundingMode.HALF_UP);
+            return bd.setScale(
+                    6,
+                    RoundingMode.HALF_UP
+            );
         }
         if (value instanceof Instant instant) {
             return FORMATTER.format(instant.atZone(ZONE_ID));
@@ -74,11 +81,13 @@ public final class FastJson2Support {
 
     // ============ Instant 自定义序列化器 ============
     public static class InstantWriter implements ObjectWriter<Instant> {
+
         @Override
         public void write(
                 JSONWriter jsonWriter, Object object,
                 Object fieldName, Type fieldType, long features
         ) {
+
             if (object == null) {
                 jsonWriter.writeNull();
                 return;
@@ -86,15 +95,18 @@ public final class FastJson2Support {
             Instant instant = (Instant) object;
             jsonWriter.writeString(FORMATTER.format(instant.atZone(ZONE_ID)));
         }
+
     }
 
     // ============ Instant 自定义反序列化器 ============
     public static class InstantReader implements ObjectReader<Instant> {
+
         @Override
         public Instant readObject(
                 JSONReader jsonReader, Type fieldType,
                 Object fieldName, long features
         ) {
+
             if (jsonReader.nextIfNull()) {
                 return null;
             }
@@ -113,7 +125,12 @@ public final class FastJson2Support {
             if (text.contains("T")) {
                 return Instant.parse(text);
             }
-            return LocalDateTime.parse(text, FORMATTER).atZone(ZONE_ID).toInstant();
+            return LocalDateTime.parse(
+                    text,
+                    FORMATTER
+            ).atZone(ZONE_ID).toInstant();
         }
+
     }
+
 }

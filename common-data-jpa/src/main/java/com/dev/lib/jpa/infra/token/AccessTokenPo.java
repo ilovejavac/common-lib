@@ -5,12 +5,7 @@ import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.security.model.TokenItem;
 import com.dev.lib.security.model.TokenType;
 import io.github.linpeilie.annotations.AutoMapper;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -59,4 +54,5 @@ public class AccessTokenPo extends JpaEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")
     private Map<String, Object> metadata;
+
 }

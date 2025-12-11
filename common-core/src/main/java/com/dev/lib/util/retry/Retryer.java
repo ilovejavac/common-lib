@@ -21,16 +21,24 @@ import java.util.function.Predicate;
 @RequiredArgsConstructor
 public class Retryer {
 
-    private final int maxAttempts;
-    private final Duration delay;
-    private final BackoffStrategy backoffStrategy;
-    private final double backoffMultiplier;
-    private final Duration maxDelay;
+    private final int                                      maxAttempts;
+
+    private final Duration                                 delay;
+
+    private final BackoffStrategy                          backoffStrategy;
+
+    private final double                                   backoffMultiplier;
+
+    private final Duration                                 maxDelay;
+
     private final ImmutableSet<Class<? extends Throwable>> retryableExceptions;
-    private final Predicate<Throwable> retryPredicate;
-    private final RetryListener listener;
+
+    private final Predicate<Throwable>                     retryPredicate;
+
+    private final RetryListener                            listener;
 
     public static Builder builder() {
+
         return new Builder();
     }
 
@@ -42,8 +50,9 @@ public class Retryer {
      * @return 操作结果
      */
     public <T> T execute(@NonNull Callable<T> callable) {
+
         Throwable lastException = null;
-        long currentDelay = delay.toMillis();
+        long      currentDelay  = delay.toMillis();
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
@@ -56,17 +65,30 @@ public class Retryer {
             } catch (Throwable e) {
                 lastException = e;
 
-                if (!shouldRetry(e, attempt)) {
-                    log.debug("Exception not retryable or max attempts reached: {}", e.getClass().getSimpleName());
+                if (!shouldRetry(
+                        e,
+                        attempt
+                )) {
+                    log.debug(
+                            "Exception not retryable or max attempts reached: {}",
+                            e.getClass().getSimpleName()
+                    );
                     break;
                 }
 
                 if (listener != null) {
-                    listener.onRetry(attempt, e);
+                    listener.onRetry(
+                            attempt,
+                            e
+                    );
                 }
 
-                log.debug("Attempt {} failed, retrying in {}ms. Error: {}",
-                        attempt, currentDelay, e.getMessage());
+                log.debug(
+                        "Attempt {} failed, retrying in {}ms. Error: {}",
+                        attempt,
+                        currentDelay,
+                        e.getMessage()
+                );
 
                 sleep(currentDelay);
                 currentDelay = calculateNextDelay(currentDelay);
@@ -74,16 +96,23 @@ public class Retryer {
         }
 
         if (listener != null) {
-            listener.onFailure(maxAttempts, lastException);
+            listener.onFailure(
+                    maxAttempts,
+                    lastException
+            );
         }
 
-        throw new RetryExhaustedException(maxAttempts, lastException);
+        throw new RetryExhaustedException(
+                maxAttempts,
+                lastException
+        );
     }
 
     /**
      * 执行无返回值的操作
      */
     public void executeVoid(@NonNull Runnable runnable) {
+
         execute(() -> {
             runnable.run();
             return null;
@@ -91,6 +120,7 @@ public class Retryer {
     }
 
     private boolean shouldRetry(Throwable e, int attempt) {
+
         if (attempt >= maxAttempts) return false;
 
         // 自定义判断优先
@@ -105,20 +135,28 @@ public class Retryer {
     }
 
     private long calculateNextDelay(long currentDelay) {
+
         long nextDelay = switch (backoffStrategy) {
             case FIXED -> currentDelay;
             case LINEAR -> (long) (currentDelay + delay.toMillis());
             case EXPONENTIAL -> (long) (currentDelay * backoffMultiplier);
         };
-        return Math.min(nextDelay, maxDelay.toMillis());
+        return Math.min(
+                nextDelay,
+                maxDelay.toMillis()
+        );
     }
 
     private void sleep(long millis) {
+
         try {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Retry interrupted", e);
+            throw new RuntimeException(
+                    "Retry interrupted",
+                    e
+            );
         }
     }
 
@@ -131,63 +169,97 @@ public class Retryer {
 
     // --- 监听器接口 ---
     public interface RetryListener {
-        default void onRetry(int attempt, Throwable e) {}
-        default void onSuccess(int attempt) {}
-        default void onFailure(int totalAttempts, Throwable lastException) {}
+
+        default void onRetry(int attempt, Throwable e) {
+
+        }
+
+        default void onSuccess(int attempt) {
+
+        }
+
+        default void onFailure(int totalAttempts, Throwable lastException) {
+
+        }
+
     }
 
     // --- 重试耗尽异常 ---
     public static class RetryExhaustedException extends RuntimeException {
+
         private final int attempts;
 
         public RetryExhaustedException(int attempts, Throwable cause) {
-            super(String.format("Retry exhausted after %d attempts", attempts), cause);
+
+            super(
+                    String.format(
+                            "Retry exhausted after %d attempts",
+                            attempts
+                    ),
+                    cause
+            );
             this.attempts = attempts;
         }
 
         public int getAttempts() {
+
             return attempts;
         }
+
     }
 
     // --- Builder ---
     public static class Builder {
-        private int maxAttempts = 3;
-        private Duration delay = Duration.ofMillis(500);
-        private BackoffStrategy backoffStrategy = BackoffStrategy.EXPONENTIAL;
-        private double backoffMultiplier = 1.7;
-        private Duration maxDelay = Duration.ofSeconds(30);
+
+        private int                             maxAttempts         = 3;
+
+        private Duration                        delay               = Duration.ofMillis(500);
+
+        private BackoffStrategy                 backoffStrategy     = BackoffStrategy.EXPONENTIAL;
+
+        private double                          backoffMultiplier   = 1.7;
+
+        private Duration                        maxDelay            = Duration.ofSeconds(30);
+
         private Set<Class<? extends Throwable>> retryableExceptions = new HashSet<>();
-        private Predicate<Throwable> retryPredicate;
-        private RetryListener listener;
+
+        private Predicate<Throwable>            retryPredicate;
+
+        private RetryListener                   listener;
 
         public Builder maxAttempts(int maxAttempts) {
+
             this.maxAttempts = maxAttempts;
             return this;
         }
 
         public Builder delay(Duration delay) {
+
             this.delay = delay;
             return this;
         }
 
         public Builder backoff(BackoffStrategy strategy) {
+
             this.backoffStrategy = strategy;
             return this;
         }
 
         public Builder backoffMultiplier(double multiplier) {
+
             this.backoffMultiplier = multiplier;
             return this;
         }
 
         public Builder maxDelay(Duration maxDelay) {
+
             this.maxDelay = maxDelay;
             return this;
         }
 
         @SafeVarargs
         public final Builder retryOn(Class<? extends Throwable>... exceptions) {
+
             for (Class<? extends Throwable> ex : exceptions) {
                 retryableExceptions.add(ex);
             }
@@ -195,30 +267,46 @@ public class Retryer {
         }
 
         public Builder retryIf(Predicate<Throwable> predicate) {
+
             this.retryPredicate = predicate;
             return this;
         }
 
         public Builder onRetry(BiConsumer<Integer, Throwable> handler) {
+
             this.listener = new RetryListener() {
                 @Override
                 public void onRetry(int attempt, Throwable e) {
-                    handler.accept(attempt, e);
+
+                    handler.accept(
+                            attempt,
+                            e
+                    );
                 }
             };
             return this;
         }
 
         public Builder listener(RetryListener listener) {
+
             this.listener = listener;
             return this;
         }
 
         public Retryer build() {
+
             return new Retryer(
-                    maxAttempts, delay, backoffStrategy, backoffMultiplier, maxDelay,
-                    Sets.immutable.ofAll(retryableExceptions), retryPredicate, listener
+                    maxAttempts,
+                    delay,
+                    backoffStrategy,
+                    backoffMultiplier,
+                    maxDelay,
+                    Sets.immutable.ofAll(retryableExceptions),
+                    retryPredicate,
+                    listener
             );
         }
+
     }
+
 }

@@ -22,10 +22,12 @@ import java.io.InputStream;
 public class OssFileStorage implements StorageService, InitializingBean {
 
     private final AppStorageProperties fileProperties;
-    private OSS ossClient;
+
+    private       OSS                  ossClient;
 
     @Override
     public void afterPropertiesSet() throws Exception {
+
         AppStorageProperties.Oss oss = fileProperties.getOss();
         ossClient = new OSSClientBuilder().build(
                 oss.getEndpoint(),
@@ -36,35 +38,56 @@ public class OssFileStorage implements StorageService, InitializingBean {
 
     @Override
     public String upload(MultipartFile file, String path) throws IOException {
+
         String bucket = fileProperties.getOss().getBucket();
-        ossClient.putObject(bucket, path, file.getInputStream());
+        ossClient.putObject(
+                bucket,
+                path,
+                file.getInputStream()
+        );
         return path;
     }
 
     @Override
     public InputStream download(String path) throws IOException {
-        String bucket = fileProperties.getOss().getBucket();
-        OSSObject ossObject = ossClient.getObject(bucket, path);
+
+        String    bucket    = fileProperties.getOss().getBucket();
+        OSSObject ossObject = ossClient.getObject(
+                bucket,
+                path
+        );
         return ossObject.getObjectContent();
     }
 
     @Override
     public void delete(String path) {
+
         String bucket = fileProperties.getOss().getBucket();
-        ossClient.deleteObject(bucket, path);
+        ossClient.deleteObject(
+                bucket,
+                path
+        );
     }
 
     @Override
     public String getUrl(String path) {
-        String bucket = fileProperties.getOss().getBucket();
+
+        String bucket   = fileProperties.getOss().getBucket();
         String endpoint = fileProperties.getOss().getEndpoint();
-        return String.format("https://%s.%s/%s", bucket, endpoint, path);
+        return String.format(
+                "https://%s.%s/%s",
+                bucket,
+                endpoint,
+                path
+        );
     }
 
     @PreDestroy
     public void destroy() {
+
         if (ossClient != null) {
             ossClient.shutdown();
         }
     }
+
 }

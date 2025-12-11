@@ -19,6 +19,7 @@ public abstract class ListUtils {
      * 从列表随机获取一个元素
      */
     public static <T> T randomGet(List<T> list) {
+
         if (list == null || list.isEmpty()) {
             throw new IllegalArgumentException("List cannot be null or empty");
         }
@@ -30,6 +31,7 @@ public abstract class ListUtils {
      * 从ImmutableList随机获取一个元素
      */
     public static <T> T randomGet(ImmutableList<T> list) {
+
         if (list == null || list.isEmpty()) {
             throw new IllegalArgumentException("List cannot be null or empty");
         }
@@ -41,6 +43,7 @@ public abstract class ListUtils {
      * 安全获取元素（返回null而不抛异常）
      */
     public static <T> T randomGetOrNull(List<T> list) {
+
         if (list == null || list.isEmpty()) {
             return null;
         }
@@ -52,6 +55,7 @@ public abstract class ListUtils {
      * 随机获取N个不重复元素
      */
     public static <T> ImmutableList<T> randomGetN(List<T> list, int n) {
+
         if (list == null || list.isEmpty()) {
             return Lists.immutable.empty();
         }
@@ -70,6 +74,7 @@ public abstract class ListUtils {
      * 过滤后随机获取
      */
     public static <T> T randomGetFiltered(List<T> list, Predicate<T> filter) {
+
         if (list == null || list.isEmpty()) {
             throw new IllegalArgumentException("List cannot be null or empty");
         }
@@ -86,10 +91,12 @@ public abstract class ListUtils {
      * 判空
      */
     public static boolean isEmpty(List<?> list) {
+
         return list == null || list.isEmpty();
     }
 
     public static boolean isEmpty(ImmutableList<?> list) {
+
         return list == null || list.isEmpty();
     }
 
@@ -97,10 +104,13 @@ public abstract class ListUtils {
      * 判非空
      */
     public static boolean isNotEmpty(List<?> list) {
+
         return !isEmpty(list);
     }
 
     public static boolean isNotEmpty(ImmutableList<?> list) {
+
         return !isEmpty(list);
     }
+
 }

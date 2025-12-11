@@ -13,6 +13,8 @@ public class CustomStringJavaType extends StringJavaType {
 
     @Override
     public long getDefaultSqlLength(Dialect dialect, JdbcType jdbcType) {
+
         return TypeDefaults.STRING_LENGTH;
     }
+
 }

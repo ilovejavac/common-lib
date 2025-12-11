@@ -17,6 +17,7 @@ public class RedissonConfig {
 
     @Bean
     public RedissonAutoConfigurationCustomizer redissonCustomizer() {
+
         return config -> {
             config.setThreads(Runtime.getRuntime().availableProcessors() * 2);
             config.setNettyThreads(Runtime.getRuntime().availableProcessors() * 2);
@@ -24,4 +25,5 @@ public class RedissonConfig {
             config.setCodec(new FastJson2JsonRedissonSerializer());
         };
     }
+
 }

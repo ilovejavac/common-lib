@@ -12,14 +12,29 @@ public class HttpAutoConfig {
 
     @Bean
     public OkHttpClient okHttpClient() {
-        ConnectionPool pool = new ConnectionPool(10, 5, TimeUnit.MINUTES);
+
+        ConnectionPool pool = new ConnectionPool(
+                10,
+                5,
+                TimeUnit.MINUTES
+        );
 
         return new OkHttpClient.Builder()
                 .connectionPool(pool)
                 .retryOnConnectionFailure(true)
-                .connectTimeout(100, TimeUnit.SECONDS)
-                .readTimeout(100, TimeUnit.SECONDS)
-                .writeTimeout(100, TimeUnit.SECONDS)
+                .connectTimeout(
+                        100,
+                        TimeUnit.SECONDS
+                )
+                .readTimeout(
+                        100,
+                        TimeUnit.SECONDS
+                )
+                .writeTimeout(
+                        100,
+                        TimeUnit.SECONDS
+                )
                 .build();
     }
+
 }

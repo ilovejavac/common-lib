@@ -3,11 +3,7 @@ package com.dev.lib.jpa.entity;
 import com.dev.lib.entity.CoreEntity;
 import com.dev.lib.jpa.entity.audit.AuditListener;
 import com.dev.lib.jpa.entity.encrypt.EncryptionListener;
-import jakarta.persistence.Column;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.Version;
+import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,6 +22,7 @@ import java.util.Map;
 @DynamicUpdate
 @EntityListeners({BaseEntityListener.class, EncryptionListener.class, AuditListener.class})
 public class JpaEntity extends CoreEntity implements Persistable<Long> {
+
     @Id
     @Column(length = 20)
     private Long id;
@@ -60,6 +57,8 @@ public class JpaEntity extends CoreEntity implements Persistable<Long> {
 
     @Override
     public boolean isNew() {
+
         return id == null || createdAt == null;
     }
+
 }

@@ -20,6 +20,8 @@ public class FileLoader implements PopulateLoader<String, FileItem> {
 
     @Override
     public Map<String, FileItem> batchLoad(Set<String> ids) {
+
         return fileService.getItems(ids);
     }
+
 }

@@ -27,6 +27,7 @@ public class OperateLogAspect {
 
     @Around("@annotation(operateLog)")
     public Object around(ProceedingJoinPoint point, OperateLog operateLog) throws Throwable {
+
         long startTime = System.currentTimeMillis();
 
         OperateLogEntity log = new OperateLogEntity();
@@ -67,4 +68,5 @@ public class OperateLogAspect {
             CompletableFuture.runAsync(() -> operateLogRepository.save(log));
         }
     }
+
 }

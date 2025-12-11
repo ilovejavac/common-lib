@@ -17,23 +17,33 @@ import java.util.function.Supplier;
 public class AsyncRetryer {
 
     private final Retryer retryer;
+
     private final ScheduledExecutorService scheduler;
 
     public static AsyncRetryer of(Retryer retryer, ScheduledExecutorService scheduler) {
-        return new AsyncRetryer(retryer, scheduler);
+
+        return new AsyncRetryer(
+                retryer,
+                scheduler
+        );
     }
 
     /**
      * 异步执行带重试的操作
      */
     public <T> CompletableFuture<T> executeAsync(Supplier<T> supplier) {
-        return CompletableFuture.supplyAsync(() -> retryer.execute(supplier::get), scheduler);
+
+        return CompletableFuture.supplyAsync(
+                () -> retryer.execute(supplier::get),
+                scheduler
+        );
     }
 
     /**
      * 延迟执行
      */
     public <T> CompletableFuture<T> executeWithDelay(Supplier<T> supplier, Duration initialDelay) {
+
         CompletableFuture<T> future = new CompletableFuture<>();
         scheduler.schedule(
                 () -> {
@@ -49,4 +59,5 @@ public class AsyncRetryer {
         );
         return future;
     }
+
 }

@@ -10,18 +10,22 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class EntityPathManager {
+
     private EntityPathManager() {
+
     }
 
     private static final Map<Class<?>, EntityPathBase<?>> CACHE = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
     public static <E> EntityPathBase<E> getEntityPath(Class<E> entityClass) {
+
         return (EntityPathBase<E>) CACHE.computeIfAbsent(
-                entityClass, clazz -> {
+                entityClass,
+                clazz -> {
                     try {
-                        String qClassName = clazz.getPackage().getName() + ".Q" + clazz.getSimpleName();
-                        Class<?> qClass = Class.forName(qClassName);
+                        String   qClassName = clazz.getPackage().getName() + ".Q" + clazz.getSimpleName();
+                        Class<?> qClass     = Class.forName(qClassName);
 
                         String fieldName = Character.toLowerCase(clazz.getSimpleName().charAt(0))
                                 + clazz.getSimpleName().substring(1);
@@ -31,9 +35,13 @@ public class EntityPathManager {
 
                         return (EntityPathBase<?>) field.get(null);
                     } catch (Exception e) {
-                        throw new IllegalStateException("无法创建 Q 类实例: " + clazz.getName(), e);
+                        throw new IllegalStateException(
+                                "无法创建 Q 类实例: " + clazz.getName(),
+                                e
+                        );
                     }
                 }
         );
     }
+
 }

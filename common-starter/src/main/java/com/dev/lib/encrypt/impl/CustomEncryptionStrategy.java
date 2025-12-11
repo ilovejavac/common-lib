@@ -23,16 +23,20 @@ public class CustomEncryptionStrategy implements Encryptor {
 
     @Override
     public String getVersion() {
+
         return EncryptVersion.CUSTOM.getMsg();
     }
 
     @Override
     public String encrypt(String plainText) {
+
         return customEncryptor.doEncrypt(plainText);
     }
 
     @Override
     public String decrypt(String cipherText) {
+
         return customEncryptor.doDecrypt(cipherText);
     }
+
 }

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public interface StorageService {
+
     /**
      * 上传文件
      */
@@ -25,4 +26,5 @@ public interface StorageService {
      * 获取访问URL
      */
     String getUrl(String path);
+
 }

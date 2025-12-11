@@ -17,6 +17,7 @@ public enum EncryptVersion {
     private final String msg;
 
     public static EncryptVersion from(String msg) {
+
         for (EncryptVersion value : values()) {
             if (value.msg.equals(msg)) {
                 return value;

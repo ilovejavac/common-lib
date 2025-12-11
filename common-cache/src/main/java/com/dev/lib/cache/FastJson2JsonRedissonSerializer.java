@@ -19,7 +19,11 @@ public class FastJson2JsonRedissonSerializer extends BaseCodec {
         ByteBuf out = ByteBufAllocator.DEFAULT.buffer();
         try {
             ByteBufOutputStream os = new ByteBufOutputStream(out);
-            JSON.writeTo(os, in, JSONWriter.Feature.WriteClassName);
+            JSON.writeTo(
+                    os,
+                    in,
+                    JSONWriter.Feature.WriteClassName
+            );
             return os.buffer();
         } catch (Exception e) {
             out.release();
@@ -35,11 +39,13 @@ public class FastJson2JsonRedissonSerializer extends BaseCodec {
 
     @Override
     public Decoder<Object> getValueDecoder() {
+
         return decoder;
     }
 
     @Override
     public Encoder getValueEncoder() {
+
         return encoder;
     }
 

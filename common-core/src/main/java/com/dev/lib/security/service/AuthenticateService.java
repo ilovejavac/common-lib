@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 public interface AuthenticateService {
+
     /**
      * 加载用户信息
      */
@@ -16,4 +17,5 @@ public interface AuthenticateService {
     Collection<UserDetails> batchLoadUserByIds(Set<Long> ids);
 
     void registerPermissions(List<EndpointPermission> permissions);
+
 }

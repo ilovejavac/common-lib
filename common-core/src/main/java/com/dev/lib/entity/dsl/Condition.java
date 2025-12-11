@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 
 /**
  * 统一条件注解
- *
+ * <p>
  * 注解与字段名后缀两套配置方式，可二选一或互补：
  * - 注解优先级高于后缀
  * - 未指定的属性从后缀解析
@@ -88,4 +88,5 @@ public @interface Condition {
      * 排序方向（true=DESC, false=ASC）
      */
     boolean desc() default true;
+
 }

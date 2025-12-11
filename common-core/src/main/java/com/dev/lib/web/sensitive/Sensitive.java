@@ -16,5 +16,7 @@ import java.lang.annotation.Target;
 @JacksonAnnotationsInside
 @JsonSerialize(using = SensitiveSerializer.class)
 public @interface Sensitive {
+
     SensitiveType type();
+
 }

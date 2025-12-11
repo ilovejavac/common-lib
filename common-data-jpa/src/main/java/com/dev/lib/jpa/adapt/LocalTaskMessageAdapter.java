@@ -24,17 +24,25 @@ import java.util.Optional;
 public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTaskMessageAdapt {
 
     private final ApplicationEventPublisher publisher;
+
     private final TaskMessageRepository repository;
+
     private final TaskMessageEntityCommandToLocalTaskMessagePoMapper commandToLocalTaskMessagePoMapper;
+
     private final LocalTaskMessagePoToTaskMessageEntityCommandMapper taskMessageEntityCommandMapper;
 
     @Override
     public void publish(TaskMessageEntityCommand cmd) {
-        publisher.publishEvent(new TaskMessageEntityCommand.Event(this, cmd));
+
+        publisher.publishEvent(new TaskMessageEntityCommand.Event(
+                this,
+                cmd
+        ));
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void saveMessage(TaskMessageEntityCommand cmd) {
+
         LocalTaskMessagePo po = repository.save(commandToLocalTaskMessagePoMapper.convert(cmd));
         po.setHouseNumber(po.getId().hashCode() % 10);
     }
@@ -42,12 +50,14 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateTaskStatusToSuccess(String taskId) {
+
         repository.loadById(taskId).ifPresent(it -> it.setStatus(LocalTaskStatus.SUCCESS));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateTaskStatusToFailed(String taskId) {
+
         repository.loadById(taskId).ifPresent(it -> it.setStatus(LocalTaskStatus.FAILED));
     }
 
@@ -58,6 +68,7 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
             String taskId,
             Integer limit
     ) {
+
         Optional<LocalTaskMessagePo> loadtask = repository.loadById(taskId);
         return loadtask.map(localTaskMessagePo -> repository.loadsByHouseNumber(
                                 houseNumbers,
@@ -71,10 +82,16 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
     @Override
     @Transactional(readOnly = true)
     public String selectMinIdByHouseNumber(List<Integer> houseNumbers) {
-        return repository.loadsByHouseNumber(houseNumbers, null, 2).stream()
+
+        return repository.loadsByHouseNumber(
+                        houseNumbers,
+                        null,
+                        2
+                ).stream()
                 .findFirst()
                 .map(taskMessageEntityCommandMapper::convert)
                 .map(TaskMessageEntityCommand::getTaskId)
                 .orElse("-1");
     }
+
 }

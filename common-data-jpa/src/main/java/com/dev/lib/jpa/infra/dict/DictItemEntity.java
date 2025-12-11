@@ -7,15 +7,7 @@ import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.jpa.entity.JpaEntity;
 import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
-import io.github.linpeilie.annotations.AutoMapping;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.Comment;
 
@@ -32,6 +24,7 @@ import org.hibernate.annotations.Comment;
         @AutoMapper(target = DictItem.class),
 })
 public class DictItemEntity extends JpaEntity {
+
     @Comment("字典项编码")
     @Column(nullable = false, unique = true, length = 50)
     private String itemCode;
@@ -55,4 +48,5 @@ public class DictItemEntity extends JpaEntity {
     @ManyToOne
     @JoinColumn(name = "type_id", nullable = false)
     private DictType dictType;
+
 }

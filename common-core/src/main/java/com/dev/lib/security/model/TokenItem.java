@@ -10,6 +10,7 @@ import java.util.Map;
 
 @Data
 public class TokenItem implements Serializable {
+
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -29,6 +30,8 @@ public class TokenItem implements Serializable {
 
     private Long expireTime;
 
-    private String clientId;
+    private String              clientId;
+
     private Map<String, Object> metadata;
+
 }

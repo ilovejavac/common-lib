@@ -2,11 +2,7 @@ package com.dev.lib.jpa.entity.encrypt;
 
 import com.dev.lib.entity.encrypt.Encrypt;
 import com.dev.lib.entity.encrypt.EncryptionService;
-import jakarta.persistence.PostLoad;
-import jakarta.persistence.PostPersist;
-import jakarta.persistence.PostUpdate;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
+import jakarta.persistence.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,21 +23,34 @@ public class EncryptionListener {
     @PrePersist
     @PreUpdate
     public void encryptFields(Object entity) {
-        processFields(entity, true);
+
+        processFields(
+                entity,
+                true
+        );
     }
 
     @PostLoad
     public void decryptFields(Object entity) {
-        processFields(entity, false);
+
+        processFields(
+                entity,
+                false
+        );
     }
 
     @PostPersist
     @PostUpdate
     public void decryptAfterSave(Object entity) {
-        processFields(entity, false);
+
+        processFields(
+                entity,
+                false
+        );
     }
 
     private void processFields(Object entity, boolean isEncrypt) {
+
         Arrays.stream(entity.getClass().getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(Encrypt.class))
                 .forEach(field -> {
@@ -50,13 +59,21 @@ public class EncryptionListener {
                         String value = (String) field.get(entity);
                         if (value != null) {
                             String processed = isEncrypt
-                                    ? encryptionService.encrypt(value)
-                                    : encryptionService.decrypt(value);
-                            ReflectionUtils.setField(field, entity, processed);
+                                               ? encryptionService.encrypt(value)
+                                               : encryptionService.decrypt(value);
+                            ReflectionUtils.setField(
+                                    field,
+                                    entity,
+                                    processed
+                            );
                         }
                     } catch (IllegalAccessException e) {
-                        log.warn("Failed to process field: " + field.getName(), e);
+                        log.warn(
+                                "Failed to process field: " + field.getName(),
+                                e
+                        );
                     }
                 });
     }
+
 }

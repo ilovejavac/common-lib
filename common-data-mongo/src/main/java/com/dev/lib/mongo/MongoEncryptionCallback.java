@@ -19,7 +19,7 @@ import java.util.Arrays;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class MongoEncryptionCallback implements 
+public class MongoEncryptionCallback implements
         BeforeConvertCallback<Object>,
         AfterConvertCallback<Object>,
         AfterSaveCallback<Object>,
@@ -32,7 +32,11 @@ public class MongoEncryptionCallback implements
      */
     @Override
     public Object onBeforeConvert(Object entity, String collection) {
-        processFields(entity, true);
+
+        processFields(
+                entity,
+                true
+        );
         return entity;
     }
 
@@ -41,7 +45,11 @@ public class MongoEncryptionCallback implements
      */
     @Override
     public Object onAfterConvert(Object entity, org.bson.Document document, String collection) {
-        processFields(entity, false);
+
+        processFields(
+                entity,
+                false
+        );
         return entity;
     }
 
@@ -51,11 +59,16 @@ public class MongoEncryptionCallback implements
      */
     @Override
     public Object onAfterSave(Object entity, org.bson.Document document, String collection) {
-        processFields(entity, false);
+
+        processFields(
+                entity,
+                false
+        );
         return entity;
     }
 
     private void processFields(Object entity, boolean isEncrypt) {
+
         Arrays.stream(entity.getClass().getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(Encrypt.class))
                 .forEach(field -> {
@@ -64,18 +77,28 @@ public class MongoEncryptionCallback implements
                         String value = (String) field.get(entity);
                         if (value != null && !value.isEmpty()) {
                             String processed = isEncrypt
-                                    ? encryptionService.encrypt(value)
-                                    : encryptionService.decrypt(value);
-                            ReflectionUtils.setField(field, entity, processed);
+                                               ? encryptionService.encrypt(value)
+                                               : encryptionService.decrypt(value);
+                            ReflectionUtils.setField(
+                                    field,
+                                    entity,
+                                    processed
+                            );
                         }
                     } catch (Exception e) {
-                        log.warn("Failed to process field: {}", field.getName(), e);
+                        log.warn(
+                                "Failed to process field: {}",
+                                field.getName(),
+                                e
+                        );
                     }
                 });
     }
 
     @Override
     public int getOrder() {
+
         return 200;
     }
+
 }

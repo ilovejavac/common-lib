@@ -20,6 +20,8 @@ public class DictLoader implements PopulateLoader<String, DictItem> {
 
     @Override
     public Map<String, DictItem> batchLoad(Set<String> ids) {
+
         return dictService.getItems(ids);
     }
+
 }

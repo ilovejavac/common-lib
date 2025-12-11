@@ -13,11 +13,14 @@ public class CustomBigDecimalJavaType extends BigDecimalJavaType {
 
     @Override
     public int getDefaultSqlPrecision(Dialect dialect, JdbcType jdbcType) {
+
         return TypeDefaults.DECIMAL_PRECISION;
     }
 
     @Override
     public int getDefaultSqlScale(Dialect dialect, JdbcType jdbcType) {
+
         return TypeDefaults.DECIMAL_SCALE;
     }
+
 }

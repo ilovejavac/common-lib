@@ -25,9 +25,11 @@ import java.util.function.Consumer;
 public class StateMachine<S, E, C> {
 
     private final ImmutableMap<TransitionKey<S, E>, Transition<S, E, C>> transitions;
-    private final StateChangeListener<S, C> listener;
+
+    private final StateChangeListener<S, C>                              listener;
 
     public static <S, E, C> Builder<S, E, C> builder() {
+
         return new Builder<>();
     }
 
@@ -40,15 +42,29 @@ public class StateMachine<S, E, C> {
      * @return 转换后的新状态
      */
     public S fire(@NonNull S currentState, @NonNull E event, C context) {
-        Assert.notNull(currentState, "currentState cannot be null");
-        Assert.notNull(event, "event cannot be null");
 
-        TransitionKey<S, E> key = new TransitionKey<>(currentState, event);
+        Assert.notNull(
+                currentState,
+                "currentState cannot be null"
+        );
+        Assert.notNull(
+                event,
+                "event cannot be null"
+        );
+
+        TransitionKey<S, E> key = new TransitionKey<>(
+                currentState,
+                event
+        );
         Transition<S, E, C> transition = transitions.get(key);
 
         if (transition == null) {
             throw new IllegalStateException(
-                    String.format("No transition defined for state [%s] with event [%s]", currentState, event));
+                    String.format(
+                            "No transition defined for state [%s] with event [%s]",
+                            currentState,
+                            event
+                    ));
         }
 
         // 执行转换动作
@@ -60,10 +76,20 @@ public class StateMachine<S, E, C> {
 
         // 触发监听器
         if (listener != null) {
-            listener.onStateChange(currentState, newState, event, context);
+            listener.onStateChange(
+                    currentState,
+                    newState,
+                    event,
+                    context
+            );
         }
 
-        log.debug("State transition: {} --[{}]--> {}", currentState, event, newState);
+        log.debug(
+                "State transition: {} --[{}]--> {}",
+                currentState,
+                event,
+                newState
+        );
         return newState;
     }
 
@@ -71,10 +97,18 @@ public class StateMachine<S, E, C> {
      * 安全触发，不抛异常
      */
     public Optional<S> fireSafe(S currentState, E event, C context) {
+
         try {
-            return Optional.of(fire(currentState, event, context));
+            return Optional.of(fire(
+                    currentState,
+                    event,
+                    context
+            ));
         } catch (IllegalStateException e) {
-            log.warn("Transition failed: {}", e.getMessage());
+            log.warn(
+                    "Transition failed: {}",
+                    e.getMessage()
+            );
             return Optional.empty();
         }
     }
@@ -83,7 +117,11 @@ public class StateMachine<S, E, C> {
      * 检查是否可以触发某事件
      */
     public boolean canFire(S currentState, E event) {
-        return transitions.containsKey(new TransitionKey<>(currentState, event));
+
+        return transitions.containsKey(new TransitionKey<>(
+                currentState,
+                event
+        ));
     }
 
     // --- 内部记录类 ---
@@ -94,13 +132,17 @@ public class StateMachine<S, E, C> {
     // --- 监听器接口 ---
     @FunctionalInterface
     public interface StateChangeListener<S, C> {
+
         void onStateChange(S from, S to, Object event, C context);
+
     }
 
     // --- Builder ---
     public static class Builder<S, E, C> {
+
         private final Map<TransitionKey<S, E>, Transition<S, E, C>> transitions = new HashMap<>();
-        private StateChangeListener<S, C> listener;
+
+        private       StateChangeListener<S, C>                     listener;
 
         /**
          * 定义状态转换
@@ -111,33 +153,67 @@ public class StateMachine<S, E, C> {
          * @param action 转换时执行的动作 (可为null)
          */
         public Builder<S, E, C> transition(S source, E event, S target, Consumer<C> action) {
-            TransitionKey<S, E> key = new TransitionKey<>(source, event);
-            transitions.put(key, new Transition<>(source, event, target, action));
+
+            TransitionKey<S, E> key = new TransitionKey<>(
+                    source,
+                    event
+            );
+            transitions.put(
+                    key,
+                    new Transition<>(
+                            source,
+                            event,
+                            target,
+                            action
+                    )
+            );
             return this;
         }
 
         public Builder<S, E, C> transition(S source, E event, S target) {
-            return transition(source, event, target, null);
+
+            return transition(
+                    source,
+                    event,
+                    target,
+                    null
+            );
         }
 
         /**
          * 批量定义：同一事件触发多个状态的相同转换
          */
         public Builder<S, E, C> transitions(E event, S target, Consumer<C> action, S... sources) {
+
             for (S source : sources) {
-                transition(source, event, target, action);
+                transition(
+                        source,
+                        event,
+                        target,
+                        action
+                );
             }
             return this;
         }
 
         public Builder<S, E, C> onStateChange(StateChangeListener<S, C> listener) {
+
             this.listener = listener;
             return this;
         }
 
         public StateMachine<S, E, C> build() {
-            Assert.notEmpty(transitions, "At least one transition must be defined");
-            return new StateMachine<>(Maps.immutable.ofMap(transitions), listener);
+
+            Assert.notEmpty(
+                    transitions,
+                    "At least one transition must be defined"
+            );
+            return new StateMachine<>(
+                    Maps.immutable.ofMap(transitions),
+                    listener
+            );
         }
+
     }
+
 }

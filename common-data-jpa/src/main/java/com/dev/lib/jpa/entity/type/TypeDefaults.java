@@ -8,6 +8,7 @@ package com.dev.lib.jpa.entity.type;
 public final class TypeDefaults {
 
     private TypeDefaults() {
+
     }
 
     // ==================== 字符串类型 ====================
@@ -71,4 +72,5 @@ public final class TypeDefaults {
      * Duration 小数位数
      */
     public static final int DURATION_SCALE = 9;
+
 }

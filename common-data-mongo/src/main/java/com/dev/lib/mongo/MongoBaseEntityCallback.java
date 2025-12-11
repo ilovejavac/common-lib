@@ -18,8 +18,9 @@ public class MongoBaseEntityCallback implements BeforeConvertCallback<MongoEntit
 
     @Override
     public MongoEntity onBeforeConvert(MongoEntity entity, String collection) {
-        LocalDateTime now = LocalDateTime.now();
-        UserDetails user = SecurityContextHolder.current();
+
+        LocalDateTime now  = LocalDateTime.now();
+        UserDetails   user = SecurityContextHolder.current();
 
         if (entity.isNew()) {
             entity.setId(IDWorker.nextID());
@@ -37,6 +38,8 @@ public class MongoBaseEntityCallback implements BeforeConvertCallback<MongoEntit
 
     @Override
     public int getOrder() {
+
         return 100;
     }
+
 }

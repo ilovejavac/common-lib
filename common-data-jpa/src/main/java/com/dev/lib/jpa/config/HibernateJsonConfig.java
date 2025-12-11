@@ -11,10 +11,12 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class HibernateJsonConfig {
+
     @Bean
     public HibernatePropertiesCustomizer hibernatePropertiesCustomizer(
 //            ObjectMapper objectMapper
     ) {
+
         return properties -> properties.put(
                 "hibernate.type.json_format_mapper",
 //                new JacksonJsonFormatMapper(objectMapper)
@@ -23,12 +25,14 @@ public class HibernateJsonConfig {
     }
 
     static class FastJson2FormatMapper implements FormatMapper {
+
         @Override
         public <T> T fromString(
                 CharSequence charSequence,
                 JavaType<T> javaType,
                 WrapperOptions wrapperOptions
         ) {
+
             if (charSequence == null) {
                 return null;
             }
@@ -45,6 +49,7 @@ public class HibernateJsonConfig {
                 JavaType<T> javaType,
                 WrapperOptions wrapperOptions
         ) {
+
             if (value == null) {
                 return null;
             }
@@ -54,5 +59,7 @@ public class HibernateJsonConfig {
                     FastJson2Support.WRITER_FEATURES
             );
         }
+
     }
+
 }

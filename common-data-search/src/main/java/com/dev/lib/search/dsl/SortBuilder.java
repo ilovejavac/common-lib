@@ -11,9 +11,11 @@ import java.util.Set;
 public final class SortBuilder {
 
     private SortBuilder() {
+
     }
 
     public static List<SortOptions> build(Sort sort, Set<String> allowFields) {
+
         List<SortOptions> sortOptions = new ArrayList<>();
 
         if (sort == null || sort.isUnsorted()) {
@@ -35,4 +37,5 @@ public final class SortBuilder {
 
         return sortOptions;
     }
+
 }

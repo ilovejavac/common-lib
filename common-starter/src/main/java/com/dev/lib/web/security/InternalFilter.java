@@ -18,17 +18,23 @@ import java.io.IOException;
 @Component
 @RequiredArgsConstructor
 public class InternalFilter extends OncePerRequestFilter {
+
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+
         try {
             String token = request.getHeader("X-Internal-Id");
 
         } finally {
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(
+                    request,
+                    response
+            );
         }
     }
+
 }

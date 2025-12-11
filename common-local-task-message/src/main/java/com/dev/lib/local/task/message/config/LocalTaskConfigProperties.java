@@ -12,10 +12,17 @@ public class LocalTaskConfigProperties {
 
     @Data
     public static class TaskGroupConfig {
-        private String group = "default";
+
+        private String        group        = "default";
+
         private List<Integer> houseNumbers = new ArrayList<>();
-        private String cron;
-        private Long fixedDelayMs = 0L;
-        private Integer limit = 100;
+
+        private String        cron;
+
+        private Long          fixedDelayMs = 0L;
+
+        private Integer       limit        = 100;
+
     }
+
 }

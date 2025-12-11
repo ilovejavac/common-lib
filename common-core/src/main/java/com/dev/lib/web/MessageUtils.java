@@ -14,15 +14,27 @@ public class MessageUtils {
 
     @Autowired
     public void setMessageSource(MessageSource messageSource) {
+
         MessageUtils.messageSource = messageSource;
     }
 
     public static String get(String code, Object... args) {
+
         Locale locale = LocaleContextHolder.getLocale();
-        return messageSource.getMessage(code, args, code, locale);  // 找不到返回 code 本身
+        return messageSource.getMessage(
+                code,
+                args,
+                code,
+                locale
+        );  // 找不到返回 code 本身
     }
 
     public static String get(String code) {
-        return get(code, (Object[]) null);  // 避免歧义
+
+        return get(
+                code,
+                (Object[]) null
+        );  // 避免歧义
     }
+
 }

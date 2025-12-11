@@ -3,25 +3,18 @@ package com.dev.lib.local.task.message.domain.service.impl;
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageAdapt;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageEvent;
-import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessagePort;
-import com.dev.lib.local.task.message.domain.model.NotifyType;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
-import com.dev.lib.local.task.message.domain.service.ITaskNotifyService;
 import com.dev.lib.local.task.message.domain.service.LocalTaskMessageHandleService;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
-
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.function.Function;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class LocalTaskMessageService implements LocalTaskMessageHandleService {
+
     @Resource
     private ILocalTaskMessageEvent event;
 
@@ -30,12 +23,20 @@ public class LocalTaskMessageService implements LocalTaskMessageHandleService {
 
     @Override
     public void handle(TaskMessageEntityCommand cmd) {
+
         try {
             adapt.saveMessage(cmd);
             event.publish(cmd);
         } catch (Exception e) {
-            log.error("受理任务消息执行失败 {}", cmd, e);
-            throw new BizException(50060, "受理任务消息执行失败");
+            log.error(
+                    "受理任务消息执行失败 {}",
+                    cmd,
+                    e
+            );
+            throw new BizException(
+                    50060,
+                    "受理任务消息执行失败"
+            );
         }
     }
 

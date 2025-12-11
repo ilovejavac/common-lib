@@ -10,4 +10,5 @@ public interface DictService {
     DictItem getItem(String code);
 
     Map<String, DictItem> getItems(Collection<String> codes);
+
 }

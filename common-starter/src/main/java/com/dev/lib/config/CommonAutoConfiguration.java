@@ -21,18 +21,22 @@ public class CommonAutoConfiguration {
     @Bean
     @ConfigurationProperties(prefix = "app.cloud")
     public AppCloudProperties appCloudProperties() {
+
         return new AppCloudProperties();
     }
 
     @Bean
     @ConfigurationProperties(prefix = "app.dubbo")
     public AppDubboProperties appDubboProperties() {
+
         return new AppDubboProperties();
     }
 
     @Bean
     @ConfigurationProperties(prefix = "app.security")
     public AppSecurityProperties appSecurityProperties() {
+
         return new AppSecurityProperties();
     }
+
 }

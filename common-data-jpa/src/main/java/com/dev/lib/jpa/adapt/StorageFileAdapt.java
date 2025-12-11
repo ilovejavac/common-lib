@@ -17,25 +17,30 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class StorageFileAdapt implements StorageFileRepo {
+
     private final SysFileRepository fileRepository;
 
     private final SysFileToStorageFileMapper storageFileMapper;
+
     private final StorageFileToSysFileMapper sysFileMapper;
 
     @Override
     public Optional<StorageFile> findByMd5(String md5) {
+
         return fileRepository.findByMd5(md5).map(storageFileMapper::convert);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void remove(String bizId) {
+
         Optional<SysFile> loadedFile = fileRepository.findByBizId(bizId);
         loadedFile.ifPresent(fileRepository::delete);
     }
 
     @Override
     public StorageFile findByBizId(String value) {
+
         return storageFileMapper.convert(fileRepository.findByBizId(value).orElse(null));
     }
 
@@ -47,6 +52,8 @@ public class StorageFileAdapt implements StorageFileRepo {
 
     @Override
     public List<StorageFile> findByIds(Collection<String> ids) {
+
         return fileRepository.findAllByBizIdIn(ids).stream().map(storageFileMapper::convert).toList();
     }
+
 }

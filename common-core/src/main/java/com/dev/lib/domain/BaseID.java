@@ -10,11 +10,15 @@ import lombok.Getter;
 @EqualsAndHashCode
 @AllArgsConstructor
 public class BaseID {
-    private final Long id;
+
+    private final Long   id;
+
     private final String bizId;
 
     protected BaseID() {
+
         id = IDWorker.nextID();
         bizId = IntEncoder.encode36(id);
     }
+
 }

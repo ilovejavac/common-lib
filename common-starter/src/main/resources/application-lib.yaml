@@ -77,7 +77,7 @@ spring:
         login-username: admin
         login-password: 1qazXDR%
         reset-enable: false
-#        allow: 127.0.0.1
+        #        allow: 127.0.0.1
         # deny: 192.168.1.100
 
       # Web 应用统计

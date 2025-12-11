@@ -5,4 +5,5 @@ import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityComma
 public interface LocalTaskMessageHandleService {
 
     void handle(TaskMessageEntityCommand cmd);
+
 }

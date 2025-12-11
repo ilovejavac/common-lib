@@ -10,14 +10,17 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class RabbitMQ implements IRabbitPublish {
+
     private RabbitTemplate template;
 
     @Override
     public void publish(String exchange, String routingKey, String message) {
+
         try {
 
         } finally {
 
         }
     }
+
 }

@@ -18,9 +18,11 @@ public class SecurityConfig {
     @Bean
     @ConditionalOnMissingBean(PermissionService.class)
     public PermissionService permissionService() {
+
         return new PermissionService() {
             @Override
             public boolean hasPermission(String... permissions) {
+
                 if (!SecurityContextHolder.isLogin()) {
                     return false;
                 }
@@ -29,6 +31,7 @@ public class SecurityConfig {
 
             @Override
             public boolean hasRole(String... roles) {
+
                 if (!SecurityContextHolder.isLogin()) {
                     return false;
                 }
@@ -46,7 +49,10 @@ public class SecurityConfig {
 
         @Bean
         public AuthenticateService authenticateService() {
+
             return remoteService;
         }
+
     }
+
 }

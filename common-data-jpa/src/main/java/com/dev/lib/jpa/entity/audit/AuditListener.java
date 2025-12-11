@@ -18,17 +18,21 @@ import java.util.concurrent.CompletableFuture;
 @Component
 @RequiredArgsConstructor
 public class AuditListener {
+
     private static AuditRepo auditRepo;
+
     private static ObjectMapper mapper;
 
     @Autowired
     public void setDependencies(AuditRepo repo, ObjectMapper objectMapper) {
+
         AuditListener.auditRepo = repo;
         AuditListener.mapper = objectMapper;
     }
 
     @PostPersist
     public void afterInsert(Object entity) {
+
         if (entity instanceof JpaEntity base && !(entity instanceof AuditLog)) {
 //            save(base, AuditAction.INSERT, toJson(entity));
         }
@@ -36,6 +40,7 @@ public class AuditListener {
 
     @PostUpdate
     public void afterUpdate(Object entity) {
+
         if (entity instanceof JpaEntity base && !(entity instanceof AuditLog)) {
 //            save(base, AuditAction.UPDATE, toJson(entity));
         }
@@ -43,12 +48,14 @@ public class AuditListener {
 
     @PostRemove
     public void afterDelete(Object entity) {
+
         if (entity instanceof JpaEntity base && !(entity instanceof AuditLog)) {
 //            save(base, AuditAction.DELETE, toJson(entity));
         }
     }
 
     private void save(JpaEntity entity, AuditAction action, String values) {
+
         CompletableFuture.runAsync(() -> {
             try {
                 AuditLog log = new AuditLog();
@@ -65,16 +72,21 @@ public class AuditListener {
                 auditRepo.save(log);
             } catch (Exception e) {
                 // 审计失败不影响业务
-                log.warn("audit log error", e);
+                log.warn(
+                        "audit log error",
+                        e
+                );
             }
         });
     }
 
     private String toJson(Object obj) {
+
         try {
             return mapper.writeValueAsString(obj);
         } catch (Exception e) {
             return "{}";
         }
     }
+
 }

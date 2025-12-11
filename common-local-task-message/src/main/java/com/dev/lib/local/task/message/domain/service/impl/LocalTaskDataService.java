@@ -12,16 +12,24 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class LocalTaskDataService implements ILocalTaskDataService {
+
     @Resource
     private ILocalTaskMessageAdapt adapt;
 
     @Override
     public List<TaskMessageEntityCommand> selectByHouseNumber(List<Integer> houseNumbers, String taskId, Integer limit) {
-        return adapt.selectByHouseNumber(houseNumbers, taskId, limit);
+
+        return adapt.selectByHouseNumber(
+                houseNumbers,
+                taskId,
+                limit
+        );
     }
 
     @Override
     public String selectMinIdByHouseNumber(List<Integer> houseNumbers) {
+
         return adapt.selectMinIdByHouseNumber(houseNumbers);
     }
+
 }

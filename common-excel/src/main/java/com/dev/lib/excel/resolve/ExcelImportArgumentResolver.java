@@ -21,6 +21,7 @@ public class ExcelImportArgumentResolver implements HandlerMethodArgumentResolve
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
+
         return parameter.hasParameterAnnotation(ExcelData.class)
                 && parameter.hasMethodAnnotation(ExcelImport.class);
     }
@@ -30,6 +31,7 @@ public class ExcelImportArgumentResolver implements HandlerMethodArgumentResolve
             MethodParameter parameter, ModelAndViewContainer mavContainer,
             NativeWebRequest webRequest, WebDataBinderFactory binderFactory
     ) throws Exception {
+
         HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
 
         if (!(request instanceof MultipartRequest multipartRequest)) {
@@ -37,16 +39,21 @@ public class ExcelImportArgumentResolver implements HandlerMethodArgumentResolve
         }
 
         ExcelImport annotation = parameter.getMethodAnnotation(ExcelImport.class);
-        String fileParam = annotation != null ? annotation.fileParam() : "file";
-        MultipartFile file = multipartRequest.getFile(fileParam);
+        String fileParam       = annotation != null ? annotation.fileParam() : "file";
+        MultipartFile file     = multipartRequest.getFile(fileParam);
 
         if (file == null || file.isEmpty()) {
             throw new ExcelException("未找到上传文件或文件为空，参数名: " + fileParam);
         }
 
         Class<?> dataClass = ExcelUtils.extractGenericType(parameter);
-        return FastExcelFactory.read(file.getInputStream(), dataClass, null)
+        return FastExcelFactory.read(
+                        file.getInputStream(),
+                        dataClass,
+                        null
+                )
                 .sheet()
                 .doReadSync();
     }
+
 }

@@ -5,13 +5,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.*;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,20 +24,46 @@ import java.util.TimeZone;
 public class JacksonConfig {
 
     private static final String TIME_ZONE = "Asia/Shanghai";
-    private static final ZoneId ZONE_ID = ZoneId.of(TIME_ZONE);
+
+    private static final ZoneId ZONE_ID   = ZoneId.of(TIME_ZONE);
 
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
+
         return builder -> {
             // 自定义序列化器
-            builder.serializerByType(BigDecimal.class, new BigDecimalSerializer());
-            builder.deserializerByType(BigDecimal.class, new BigDecimalDeserializer());
-            builder.serializerByType(LocalDateTime.class, new LocalDateTimeSerializer());
-            builder.deserializerByType(LocalDateTime.class, new LocalDateTimeDeserializer());
-            builder.serializerByType(LocalDate.class, new LocalDateSerializer());
-            builder.deserializerByType(LocalDate.class, new LocalDateDeserializer());
-            builder.serializerByType(Instant.class, new InstantSerializer());
-            builder.deserializerByType(Instant.class, new InstantDeserializer());
+            builder.serializerByType(
+                    BigDecimal.class,
+                    new BigDecimalSerializer()
+            );
+            builder.deserializerByType(
+                    BigDecimal.class,
+                    new BigDecimalDeserializer()
+            );
+            builder.serializerByType(
+                    LocalDateTime.class,
+                    new LocalDateTimeSerializer()
+            );
+            builder.deserializerByType(
+                    LocalDateTime.class,
+                    new LocalDateTimeDeserializer()
+            );
+            builder.serializerByType(
+                    LocalDate.class,
+                    new LocalDateSerializer()
+            );
+            builder.deserializerByType(
+                    LocalDate.class,
+                    new LocalDateDeserializer()
+            );
+            builder.serializerByType(
+                    Instant.class,
+                    new InstantSerializer()
+            );
+            builder.deserializerByType(
+                    Instant.class,
+                    new InstantDeserializer()
+            );
             builder.timeZone(TimeZone.getTimeZone(TIME_ZONE));
             builder.serializationInclusion(JsonInclude.Include.NON_NULL);
             // 序列化配置
@@ -96,25 +116,35 @@ public class JacksonConfig {
     // ============ 序列化器 ============
 
     static class BigDecimalSerializer extends JsonSerializer<BigDecimal> {
+
         @Override
         public void serialize(BigDecimal value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+
             if (value == null) {
                 gen.writeNull();
             } else {
-                gen.writeNumber(value.setScale(6, RoundingMode.HALF_UP).toPlainString());
+                gen.writeNumber(value.setScale(
+                        6,
+                        RoundingMode.HALF_UP
+                ).toPlainString());
             }
         }
+
     }
 
     static class BigDecimalDeserializer extends JsonDeserializer<BigDecimal> {
+
         @Override
         public BigDecimal deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+
             String text = p.getText();
             return (text == null || text.isBlank()) ? null : new BigDecimal(text.trim());
         }
+
     }
 
     static class LocalDateTimeSerializer extends JsonSerializer<LocalDateTime> {
+
         private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         @Override
@@ -123,15 +153,19 @@ public class JacksonConfig {
                 JsonGenerator gen,
                 SerializerProvider serializers
         ) throws IOException {
+
             gen.writeString(value == null ? null : FORMATTER.format(value));
         }
+
     }
 
     static class LocalDateTimeDeserializer extends JsonDeserializer<LocalDateTime> {
+
         private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         @Override
         public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+
             String text = p.getText();
             if (text == null || text.isBlank()) return null;
             text = text.trim();
@@ -139,46 +173,66 @@ public class JacksonConfig {
             if (text.contains("T")) {
                 return LocalDateTime.parse(text);
             }
-            return LocalDateTime.parse(text, FORMATTER);
+            return LocalDateTime.parse(
+                    text,
+                    FORMATTER
+            );
         }
+
     }
 
     static class LocalDateSerializer extends JsonSerializer<LocalDate> {
+
         @Override
         public void serialize(LocalDate value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+
             gen.writeString(value == null ? null : value.toString());
         }
+
     }
 
     static class LocalDateDeserializer extends JsonDeserializer<LocalDate> {
+
         @Override
         public LocalDate deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+
             String text = p.getText();
             return (text == null || text.isBlank()) ? null : LocalDate.parse(text.trim());
         }
+
     }
 
     static class InstantSerializer extends JsonSerializer<Instant> {
+
         private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         @Override
         public void serialize(Instant value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+
             gen.writeString(value == null ? null : FORMATTER.format(value.atZone(ZONE_ID)));
         }
+
     }
 
     static class InstantDeserializer extends JsonDeserializer<Instant> {
+
         private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         @Override
         public Instant deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+
             String text = p.getText();
             if (text == null || text.isBlank()) return null;
             text = text.trim();
             if (text.contains("T")) {
                 return Instant.parse(text);
             }
-            return LocalDateTime.parse(text, FORMATTER).atZone(ZONE_ID).toInstant();
+            return LocalDateTime.parse(
+                    text,
+                    FORMATTER
+            ).atZone(ZONE_ID).toInstant();
         }
+
     }
+
 }

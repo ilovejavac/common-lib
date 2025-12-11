@@ -13,6 +13,8 @@ public class CustomInstantJavaType extends InstantJavaType {
 
     @Override
     public int getDefaultSqlPrecision(Dialect dialect, JdbcType jdbcType) {
+
         return TypeDefaults.TIMESTAMP_PRECISION;
     }
+
 }

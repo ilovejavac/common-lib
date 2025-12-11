@@ -23,6 +23,7 @@ public interface Specification<T> {
      * 与操作
      */
     default Specification<T> and(Specification<T> other) {
+
         return candidate -> this.isSatisfiedBy(candidate) && other.isSatisfiedBy(candidate);
     }
 
@@ -30,6 +31,7 @@ public interface Specification<T> {
      * 或操作
      */
     default Specification<T> or(Specification<T> other) {
+
         return candidate -> this.isSatisfiedBy(candidate) || other.isSatisfiedBy(candidate);
     }
 
@@ -37,6 +39,7 @@ public interface Specification<T> {
      * 非操作
      */
     default Specification<T> not() {
+
         return candidate -> !this.isSatisfiedBy(candidate);
     }
 
@@ -44,6 +47,7 @@ public interface Specification<T> {
      * 转换为 Predicate
      */
     default Predicate<T> toPredicate() {
+
         return this::isSatisfiedBy;
     }
 
@@ -51,6 +55,7 @@ public interface Specification<T> {
      * 过滤集合
      */
     default List<T> filter(Collection<T> candidates) {
+
         return candidates.stream().filter(this::isSatisfiedBy).toList();
     }
 
@@ -58,6 +63,7 @@ public interface Specification<T> {
      * 过滤流
      */
     default Stream<T> filter(Stream<T> stream) {
+
         return stream.filter(this::isSatisfiedBy);
     }
 
@@ -65,6 +71,7 @@ public interface Specification<T> {
      * 统计满足条件的数量
      */
     default long count(Collection<T> candidates) {
+
         return candidates.stream().filter(this::isSatisfiedBy).count();
     }
 
@@ -72,6 +79,7 @@ public interface Specification<T> {
      * 是否存在满足条件的元素
      */
     default boolean anyMatch(Collection<T> candidates) {
+
         return candidates.stream().anyMatch(this::isSatisfiedBy);
     }
 
@@ -79,6 +87,7 @@ public interface Specification<T> {
      * 是否所有元素都满足条件
      */
     default boolean allMatch(Collection<T> candidates) {
+
         return candidates.stream().allMatch(this::isSatisfiedBy);
     }
 
@@ -86,6 +95,7 @@ public interface Specification<T> {
      * 是否没有元素满足条件
      */
     default boolean noneMatch(Collection<T> candidates) {
+
         return candidates.stream().noneMatch(this::isSatisfiedBy);
     }
 
@@ -95,6 +105,7 @@ public interface Specification<T> {
      * 永远为真的规格
      */
     static <T> Specification<T> always() {
+
         return candidate -> true;
     }
 
@@ -102,6 +113,7 @@ public interface Specification<T> {
      * 永远为假的规格
      */
     static <T> Specification<T> never() {
+
         return candidate -> false;
     }
 
@@ -109,6 +121,7 @@ public interface Specification<T> {
      * 从 Predicate 创建
      */
     static <T> Specification<T> of(Predicate<T> predicate) {
+
         return predicate::test;
     }
 
@@ -117,6 +130,7 @@ public interface Specification<T> {
      */
     @SafeVarargs
     static <T> Specification<T> allOf(Specification<T>... specs) {
+
         return candidate -> {
             for (Specification<T> spec : specs) {
                 if (!spec.isSatisfiedBy(candidate)) return false;
@@ -130,6 +144,7 @@ public interface Specification<T> {
      */
     @SafeVarargs
     static <T> Specification<T> anyOf(Specification<T>... specs) {
+
         return candidate -> {
             for (Specification<T> spec : specs) {
                 if (spec.isSatisfiedBy(candidate)) return true;
@@ -143,6 +158,8 @@ public interface Specification<T> {
      */
     @SafeVarargs
     static <T> Specification<T> noneOf(Specification<T>... specs) {
+
         return anyOf(specs).not();
     }
+
 }

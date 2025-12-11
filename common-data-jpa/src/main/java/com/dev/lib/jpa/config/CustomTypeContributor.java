@@ -1,10 +1,6 @@
 package com.dev.lib.jpa.config;
 
-import com.dev.lib.jpa.entity.type.CustomBigDecimalJavaType;
-import com.dev.lib.jpa.entity.type.CustomBigIntegerJavaType;
-import com.dev.lib.jpa.entity.type.CustomInstantJavaType;
-import com.dev.lib.jpa.entity.type.CustomLocalDateTimeJavaType;
-import com.dev.lib.jpa.entity.type.CustomStringJavaType;
+import com.dev.lib.jpa.entity.type.*;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.boot.model.TypeContributor;
 import org.hibernate.service.ServiceRegistry;
@@ -37,4 +33,5 @@ public class CustomTypeContributor implements TypeContributor {
         typeContributions.contributeJavaType(CustomInstantJavaType.INSTANCE);
         typeContributions.contributeJavaType(CustomLocalDateTimeJavaType.INSTANCE);
     }
+
 }

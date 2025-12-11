@@ -6,6 +6,7 @@ import lombok.Data;
 
 @Data
 public class DictItemVO extends BaseVO {
+
     private String itemCode;
 
     private String itemLabel;
@@ -15,4 +16,5 @@ public class DictItemVO extends BaseVO {
     private Integer sort;
 
     private EntityStatus status;
+
 }

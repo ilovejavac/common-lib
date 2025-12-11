@@ -2,7 +2,7 @@ package com.dev.lib.entity.dsl.core;
 
 /**
  * 关联关系解析器接口
- *
+ * <p>
  * core 模块定义接口，JPA 模块提供实现
  */
 public interface RelationResolver {
@@ -20,13 +20,16 @@ public interface RelationResolver {
      * 静态持有者，用于注册和获取实现
      */
     class Holder {
+
         private static volatile RelationResolver instance;
 
         public static void register(RelationResolver resolver) {
+
             instance = resolver;
         }
 
         public static RelationResolver get() {
+
             if (instance == null) {
                 throw new IllegalStateException("RelationResolver 未注册，请确保 JPA 模块已初始化");
             }
@@ -34,7 +37,10 @@ public interface RelationResolver {
         }
 
         public static boolean isRegistered() {
+
             return instance != null;
         }
+
     }
+
 }

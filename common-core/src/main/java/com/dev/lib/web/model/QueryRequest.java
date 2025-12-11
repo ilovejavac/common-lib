@@ -24,9 +24,12 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 public class QueryRequest<T> {
+
     private static final int DEFAULT_PAGE = 1;
+
     private static final int DEFAULT_SIZE = 20;
-    private static final int MAX_SIZE = 50;
+
+    private static final int MAX_SIZE     = 50;
 
     /**
      * 最大可查询的总记录数（防止深度翻页）
@@ -64,8 +67,11 @@ public class QueryRequest<T> {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Order {
+
         private String property;
+
         private Sort.Direction direction;
+
     }
 
     /**
@@ -76,7 +82,11 @@ public class QueryRequest<T> {
      * @throws IllegalArgumentException 如果偏移量超过最大限制
      */
     public Pageable toPageable(Set<String> allowFields) {
-        return toPageable(allowFields, Sort.unsorted());
+
+        return toPageable(
+                allowFields,
+                Sort.unsorted()
+        );
     }
 
     /**
@@ -88,16 +98,23 @@ public class QueryRequest<T> {
      * @throws IllegalArgumentException 如果偏移量超过最大限制
      */
     public Pageable toPageable(Set<String> allowFields, Sort defaultSort) {
+
         int normalizedPage = normalizePage();
         int normalizedSize = normalizeSize();
 
         // 🔒 检查总偏移量是否超过限制
-        validateTotalRecords(normalizedPage, normalizedSize);
+        validateTotalRecords(
+                normalizedPage,
+                normalizedSize
+        );
 
         return PageRequest.of(
                 normalizedPage - 1,  // Spring Data 页码从 0 开始
                 normalizedSize,
-                toSort(allowFields, defaultSort)
+                toSort(
+                        allowFields,
+                        defaultSort
+                )
         );
     }
 
@@ -113,7 +130,10 @@ public class QueryRequest<T> {
         if (offset >= MAX_TOTAL_RECORDS) {
             String message = String.format(
                     "查询范围超出限制：最多只能查看前 %d 条数据，当前请求偏移量为 %d (page=%d, size=%d)",
-                    MAX_TOTAL_RECORDS, offset, page, size
+                    MAX_TOTAL_RECORDS,
+                    offset,
+                    page,
+                    size
             );
             log.warn(message);
             throw new IllegalArgumentException(message);
@@ -123,7 +143,9 @@ public class QueryRequest<T> {
         if (offset + size > MAX_TOTAL_RECORDS) {
             log.info(
                     "查询接近限制：offset={}, size={}, maxRecords={}",
-                    offset, size, MAX_TOTAL_RECORDS
+                    offset,
+                    size,
+                    MAX_TOTAL_RECORDS
             );
         }
     }
@@ -132,13 +154,18 @@ public class QueryRequest<T> {
      * 构建排序对象（无默认排序）
      */
     public Sort toSort(Set<String> allowFields) {
-        return toSort(allowFields, Sort.unsorted());
+
+        return toSort(
+                allowFields,
+                Sort.unsorted()
+        );
     }
 
     /**
      * 构建排序对象（带默认排序）
      */
     public Sort toSort(Set<String> allowFields, Sort defaultSort) {
+
         if (orderBy == null || orderBy.isEmpty()) {
             return defaultSort;
         }
@@ -147,7 +174,10 @@ public class QueryRequest<T> {
                 .filter(o -> StringUtils.hasText(o.getProperty()))
                 .filter(o -> o.getDirection() != null)
                 .filter(o -> allowFields.contains(o.getProperty()))
-                .map(o -> new Sort.Order(o.getDirection(), o.getProperty()))
+                .map(o -> new Sort.Order(
+                        o.getDirection(),
+                        o.getProperty()
+                ))
                 .toList();
 
         return validOrders.isEmpty() ? defaultSort : Sort.by(validOrders);
@@ -157,6 +187,7 @@ public class QueryRequest<T> {
      * 标准化页码
      */
     private int normalizePage() {
+
         if (page == null || page < 1) {
             return DEFAULT_PAGE;
         }
@@ -167,16 +198,22 @@ public class QueryRequest<T> {
      * 标准化页大小
      */
     private int normalizeSize() {
+
         if (size == null || size < 1) {
             return DEFAULT_SIZE;
         }
-        return Math.min(size, MAX_SIZE);
+        return Math.min(
+                size,
+                MAX_SIZE
+        );
     }
 
     /**
      * 获取最大可查询记录数（用于前端提示）
      */
     public static int getMaxTotalRecords() {
+
         return MAX_TOTAL_RECORDS;
     }
+
 }

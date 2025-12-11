@@ -16,8 +16,10 @@ public class Home {
 
     @RequestMapping("/")
     public ServerResponse<String> home() {
+
         return ServerResponse.success(
                 "welcome, here is %s server!".formatted(application)
         );
     }
+
 }

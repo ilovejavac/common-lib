@@ -4,11 +4,7 @@ import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.local.task.message.domain.model.NotifyType;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import io.github.linpeilie.annotations.AutoMapper;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
@@ -24,7 +20,9 @@ import java.util.Map;
 @Table(name = "sys_local_task_message")
 @AutoMapper(target = TaskMessageEntityCommand.class)
 public class LocalTaskMessagePo extends JpaEntity {
+
     private String taskId;
+
     private String taskName;
 
     @Column(nullable = false, length = 20)
@@ -61,4 +59,5 @@ public class LocalTaskMessagePo extends JpaEntity {
 
     @Comment("门牌号，用于 job 分组扫描")
     private Integer houseNumber;
+
 }

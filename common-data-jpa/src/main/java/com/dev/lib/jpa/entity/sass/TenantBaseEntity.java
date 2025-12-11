@@ -16,4 +16,5 @@ public abstract class TenantBaseEntity extends JpaEntity {
 
     @Column(name = "tenant_id", nullable = false, updatable = false)
     private Long tenantId;
+
 }

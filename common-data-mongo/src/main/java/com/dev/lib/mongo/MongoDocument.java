@@ -27,4 +27,5 @@ public @interface MongoDocument {
      */
     @AliasFor(annotation = Document.class, attribute = "value")
     String value() default "";
+
 }

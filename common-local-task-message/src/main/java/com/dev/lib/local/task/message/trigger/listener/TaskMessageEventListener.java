@@ -12,16 +12,30 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class TaskMessageEventListener {
+
     private final ITaskNotifyService notifyService;
 
     @Async
     @EventListener
     public void onTaskMessageEvent(TaskMessageEntityCommand.Event event) {
+
         try {
-            log.info("receive info: {} {}", event.getCmd(), event.getTimestamp());
-            log.info("通知结果 {}", notifyService.notify(event.getCmd()));
+            log.info(
+                    "receive info: {} {}",
+                    event.getCmd(),
+                    event.getTimestamp()
+            );
+            log.info(
+                    "通知结果 {}",
+                    notifyService.notify(event.getCmd())
+            );
         } catch (Exception e) {
-            log.error("处理任务消息是件失败 {}", event, e);
+            log.error(
+                    "处理任务消息是件失败 {}",
+                    event,
+                    e
+            );
         }
     }
+
 }

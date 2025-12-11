@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface StorageFileRepo {
+
     StorageFile findByBizId(String value);
 
     void remove(String bizId);
@@ -16,4 +17,5 @@ public interface StorageFileRepo {
     void saveFile(StorageFile storageFile);
 
     List<StorageFile> findByIds(Collection<String> ids);
+
 }

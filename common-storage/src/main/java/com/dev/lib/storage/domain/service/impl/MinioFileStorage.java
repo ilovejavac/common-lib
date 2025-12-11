@@ -1,12 +1,7 @@
 package com.dev.lib.storage.domain.service.impl;
 
 import com.dev.lib.storage.config.AppStorageProperties;
-import io.minio.BucketExistsArgs;
-import io.minio.GetObjectArgs;
-import io.minio.MakeBucketArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
+import io.minio.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -24,14 +19,19 @@ import java.io.InputStream;
 public class MinioFileStorage implements StorageService, InitializingBean {
 
     private final AppStorageProperties fileProperties;
-    private MinioClient minioClient;
+
+    private       MinioClient          minioClient;
 
     @Override
     public void afterPropertiesSet() throws Exception {
+
         AppStorageProperties.Minio minio = fileProperties.getMinio();
         minioClient = MinioClient.builder()
                 .endpoint(minio.getEndpoint())
-                .credentials(minio.getAccessKey(), minio.getSecretKey())
+                .credentials(
+                        minio.getAccessKey(),
+                        minio.getSecretKey()
+                )
                 .build();
 
         // 确保桶存在
@@ -42,24 +42,33 @@ public class MinioFileStorage implements StorageService, InitializingBean {
 
     @Override
     public String upload(MultipartFile file, String path) throws IOException {
+
         String bucket = fileProperties.getMinio().getBucket();
         try {
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(bucket)
                             .object(path)
-                            .stream(file.getInputStream(), file.getSize(), -1)
+                            .stream(
+                                    file.getInputStream(),
+                                    file.getSize(),
+                                    -1
+                            )
                             .contentType(file.getContentType())
                             .build()
             );
             return path;
         } catch (Exception e) {
-            throw new IOException("MinIO upload failed", e);
+            throw new IOException(
+                    "MinIO upload failed",
+                    e
+            );
         }
     }
 
     @Override
     public InputStream download(String path) throws IOException {
+
         String bucket = fileProperties.getMinio().getBucket();
         try {
             return minioClient.getObject(
@@ -69,12 +78,16 @@ public class MinioFileStorage implements StorageService, InitializingBean {
                             .build()
             );
         } catch (Exception e) {
-            throw new IOException("MinIO download failed", e);
+            throw new IOException(
+                    "MinIO download failed",
+                    e
+            );
         }
     }
 
     @Override
     public void delete(String path) {
+
         String bucket = fileProperties.getMinio().getBucket();
         try {
             minioClient.removeObject(
@@ -84,14 +97,24 @@ public class MinioFileStorage implements StorageService, InitializingBean {
                             .build()
             );
         } catch (Exception e) {
-            throw new RuntimeException("MinIO delete failed", e);
+            throw new RuntimeException(
+                    "MinIO delete failed",
+                    e
+            );
         }
     }
 
     @Override
     public String getUrl(String path) {
+
         String endpoint = fileProperties.getMinio().getEndpoint();
-        String bucket = fileProperties.getMinio().getBucket();
-        return String.format("%s/%s/%s", endpoint, bucket, path);
+        String bucket   = fileProperties.getMinio().getBucket();
+        return String.format(
+                "%s/%s/%s",
+                endpoint,
+                bucket,
+                path
+        );
     }
+
 }

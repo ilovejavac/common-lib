@@ -4,11 +4,7 @@ import com.dev.lib.entity.dsl.QueryType;
 import com.dev.lib.entity.dsl.core.FieldMetaCache.FieldMeta;
 import com.dev.lib.entity.dsl.core.RelationInfo;
 import com.querydsl.core.types.Expression;
-import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.ComparablePath;
-import com.querydsl.core.types.dsl.EntityPathBase;
-import com.querydsl.core.types.dsl.PathBuilder;
-import com.querydsl.core.types.dsl.StringPath;
+import com.querydsl.core.types.dsl.*;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.JPQLQuery;
 import org.springframework.util.StringUtils;
@@ -18,11 +14,11 @@ import java.util.Optional;
 
 /**
  * 子查询构建器
- *
+ * <p>
  * 支持两种子查询：
  * 1. 关联子查询（OneToMany, ManyToOne, ManyToMany, OneToOne）
  * 2. 同表子查询（普通字段，如游标分页）
- *
+ * <p>
  * 支持所有 QueryType 的子查询形式：
  * - EXISTS / NOT_EXISTS: EXISTS (SELECT 1 FROM ...)
  * - IN / NOT_IN: field IN (SELECT ... FROM ...)
@@ -30,7 +26,9 @@ import java.util.Optional;
  */
 public class SubQueryBuilder {
 
-    private SubQueryBuilder() {}
+    private SubQueryBuilder() {
+
+    }
 
     /**
      * 构建子查询表达式
@@ -40,6 +38,7 @@ public class SubQueryBuilder {
             FieldMeta subQueryMeta,
             Object filterValue
     ) {
+
         if (filterValue == null) {
             return null;
         }
@@ -48,11 +47,21 @@ public class SubQueryBuilder {
 
         // 同表子查询
         if (subQueryMeta.isSelfSubQuery()) {
-            return buildSelfSubQuery(parentPath, subQueryMeta, filterValue, queryType);
+            return buildSelfSubQuery(
+                    parentPath,
+                    subQueryMeta,
+                    filterValue,
+                    queryType
+            );
         }
 
         // 关联子查询
-        return buildRelationSubQuery(parentPath, subQueryMeta, filterValue, queryType);
+        return buildRelationSubQuery(
+                parentPath,
+                subQueryMeta,
+                filterValue,
+                queryType
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -61,7 +70,7 @@ public class SubQueryBuilder {
 
     /**
      * 构建同表子查询
-     *
+     * <p>
      * SQL 示例:
      * - id > (SELECT id FROM strategy WHERE biz_id = ?)
      * - status = (SELECT status FROM strategy WHERE biz_id = ? ORDER BY create_at DESC LIMIT 1)
@@ -73,26 +82,57 @@ public class SubQueryBuilder {
             Object filterValue,
             QueryType queryType
     ) {
+
         Class<?> targetEntity = subQueryMeta.targetEntityClass();
 
         // 获取子查询实体路径（同表，使用不同别名避免冲突）
-        String subAlias = parentPath.getMetadata().getName() + "_sub";
-        PathBuilder<?> subPath = new PathBuilder<>(targetEntity, subAlias);
+        String         subAlias = parentPath.getMetadata().getName() + "_sub";
+        PathBuilder<?> subPath  = new PathBuilder<>(
+                targetEntity,
+                subAlias
+        );
 
         // 构建过滤条件（无关联条件，直接使用用户提供的过滤条件）
         BooleanExpression filterCondition = buildFilterCondition(
-                subPath, subQueryMeta.filterMetas(), filterValue);
+                subPath,
+                subQueryMeta.filterMetas(),
+                filterValue
+        );
 
-        String select = subQueryMeta.select();
+        String select      = subQueryMeta.select();
         String parentField = subQueryMeta.parentField();  // @Condition(field = "id") 指定的主表字段
 
         // 根据查询类型构建不同的子查询
         return switch (queryType) {
-            case EXISTS -> buildSelfExistsQuery(subPath, filterCondition);
-            case NOT_EXISTS -> buildSelfNotExistsQuery(subPath, filterCondition);
-            case IN -> buildSelfInQuery(parentPath, subPath, filterCondition, select, parentField);
-            case NOT_IN -> buildSelfNotInQuery(parentPath, subPath, filterCondition, select, parentField);
-            default -> buildSelfScalarQuery(parentPath, subPath, filterCondition, subQueryMeta, queryType);
+            case EXISTS -> buildSelfExistsQuery(
+                    subPath,
+                    filterCondition
+            );
+            case NOT_EXISTS -> buildSelfNotExistsQuery(
+                    subPath,
+                    filterCondition
+            );
+            case IN -> buildSelfInQuery(
+                    parentPath,
+                    subPath,
+                    filterCondition,
+                    select,
+                    parentField
+            );
+            case NOT_IN -> buildSelfNotInQuery(
+                    parentPath,
+                    subPath,
+                    filterCondition,
+                    select,
+                    parentField
+            );
+            default -> buildSelfScalarQuery(
+                    parentPath,
+                    subPath,
+                    filterCondition,
+                    subQueryMeta,
+                    queryType
+            );
         };
     }
 
@@ -103,6 +143,7 @@ public class SubQueryBuilder {
             PathBuilder<?> subPath,
             BooleanExpression condition
     ) {
+
         JPQLQuery<?> subQuery = JPAExpressions
                 .selectOne()
                 .from(subPath)
@@ -117,6 +158,7 @@ public class SubQueryBuilder {
             PathBuilder<?> subPath,
             BooleanExpression condition
     ) {
+
         JPQLQuery<?> subQuery = JPAExpressions
                 .selectOne()
                 .from(subPath)
@@ -134,6 +176,7 @@ public class SubQueryBuilder {
             String select,
             String parentField
     ) {
+
         JPQLQuery<?> subQuery = JPAExpressions
                 .select(subPath.get(select))
                 .from(subPath)
@@ -152,6 +195,7 @@ public class SubQueryBuilder {
             String select,
             String parentField
     ) {
+
         JPQLQuery<?> subQuery = JPAExpressions
                 .select(subPath.get(select))
                 .from(subPath)
@@ -162,7 +206,7 @@ public class SubQueryBuilder {
 
     /**
      * 同表标量子查询（EQ / NE / GT / GE / LT / LE / LIKE 等）
-     *
+     * <p>
      * SQL: parent.parentField > (SELECT sub.select FROM sub WHERE conditions)
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -173,16 +217,22 @@ public class SubQueryBuilder {
             FieldMeta subQueryMeta,
             QueryType queryType
     ) {
-        String select = subQueryMeta.select();
-        String parentField = subQueryMeta.parentField();
-        String orderBy = subQueryMeta.orderBy();
-        boolean desc = subQueryMeta.desc();
+
+        String  select      = subQueryMeta.select();
+        String  parentField = subQueryMeta.parentField();
+        String  orderBy     = subQueryMeta.orderBy();
+        boolean desc        = subQueryMeta.desc();
 
         BooleanExpression finalCondition = condition;
 
         // 如果有 orderBy，添加 MAX/MIN 条件来模拟 LIMIT 1
         if (StringUtils.hasText(orderBy)) {
-            finalCondition = addSelfLatestCondition(subPath, condition, orderBy, desc);
+            finalCondition = addSelfLatestCondition(
+                    subPath,
+                    condition,
+                    orderBy,
+                    desc
+            );
         }
 
         // 构建子查询
@@ -193,7 +243,12 @@ public class SubQueryBuilder {
                 .where(finalCondition);
 
         // 根据查询类型构建比较表达式
-        return buildComparisonExpression(parentPath, parentField, subQuery, queryType);
+        return buildComparisonExpression(
+                parentPath,
+                parentField,
+                subQuery,
+                queryType
+        );
     }
 
     /**
@@ -206,15 +261,25 @@ public class SubQueryBuilder {
             String orderByField,
             boolean desc
     ) {
-        String innerAlias = subPath.getMetadata().getName() + "_inner";
-        PathBuilder<?> innerPath = new PathBuilder<>(subPath.getType(), innerAlias);
 
-        ComparablePath<Comparable> orderPath = subPath.getComparable(orderByField, Comparable.class);
-        ComparablePath<Comparable> innerOrderPath = innerPath.getComparable(orderByField, Comparable.class);
+        String         innerAlias = subPath.getMetadata().getName() + "_inner";
+        PathBuilder<?> innerPath  = new PathBuilder<>(
+                subPath.getType(),
+                innerAlias
+        );
+
+        ComparablePath<Comparable> orderPath      = subPath.getComparable(
+                orderByField,
+                Comparable.class
+        );
+        ComparablePath<Comparable> innerOrderPath = innerPath.getComparable(
+                orderByField,
+                Comparable.class
+        );
 
         Expression<Comparable> aggregateExpr = desc
-                ? innerOrderPath.max()
-                : innerOrderPath.min();
+                                               ? innerOrderPath.max()
+                                               : innerOrderPath.min();
 
         // 构建内层子查询（取最大/最小值）
         JPQLQuery<Comparable> innerSubQuery = JPAExpressions
@@ -246,8 +311,9 @@ public class SubQueryBuilder {
             Object filterValue,
             QueryType queryType
     ) {
+
         RelationInfo relationInfo = subQueryMeta.relationInfo();
-        Class<?> targetEntity = relationInfo.getTargetEntity();
+        Class<?>     targetEntity = relationInfo.getTargetEntity();
 
         // 获取子查询实体路径
         EntityPathBase<?> subEntityPath = EntityPathManager.getEntityPath(targetEntity);
@@ -257,11 +323,18 @@ public class SubQueryBuilder {
         );
 
         // 构建关联条件
-        BooleanExpression joinCondition = buildJoinCondition(parentPath, subPath, relationInfo);
+        BooleanExpression joinCondition = buildJoinCondition(
+                parentPath,
+                subPath,
+                relationInfo
+        );
 
         // 构建过滤条件
         BooleanExpression filterCondition = buildFilterCondition(
-                subPath, subQueryMeta.filterMetas(), filterValue);
+                subPath,
+                subQueryMeta.filterMetas(),
+                filterValue
+        );
 
         // 合并条件
         BooleanExpression fullCondition = joinCondition;
@@ -271,11 +344,33 @@ public class SubQueryBuilder {
 
         // 根据查询类型构建子查询
         return switch (queryType) {
-            case EXISTS -> buildExistsQuery(subPath, fullCondition);
-            case NOT_EXISTS -> buildNotExistsQuery(subPath, fullCondition);
-            case IN -> buildInQuery(parentPath, subPath, fullCondition, subQueryMeta);
-            case NOT_IN -> buildNotInQuery(parentPath, subPath, fullCondition, subQueryMeta);
-            default -> buildScalarQuery(parentPath, subPath, fullCondition, subQueryMeta, queryType);
+            case EXISTS -> buildExistsQuery(
+                    subPath,
+                    fullCondition
+            );
+            case NOT_EXISTS -> buildNotExistsQuery(
+                    subPath,
+                    fullCondition
+            );
+            case IN -> buildInQuery(
+                    parentPath,
+                    subPath,
+                    fullCondition,
+                    subQueryMeta
+            );
+            case NOT_IN -> buildNotInQuery(
+                    parentPath,
+                    subPath,
+                    fullCondition,
+                    subQueryMeta
+            );
+            default -> buildScalarQuery(
+                    parentPath,
+                    subPath,
+                    fullCondition,
+                    subQueryMeta,
+                    queryType
+            );
         };
     }
 
@@ -287,6 +382,7 @@ public class SubQueryBuilder {
             PathBuilder<?> subPath,
             RelationInfo relationInfo
     ) {
+
         String joinField = relationInfo.getJoinField();
 
         return switch (relationInfo.getRelationType()) {
@@ -307,6 +403,7 @@ public class SubQueryBuilder {
             List<FieldMeta> filterMetas,
             Object filterValue
     ) {
+
         if (filterMetas == null || filterMetas.isEmpty()) {
             return null;
         }
@@ -342,6 +439,7 @@ public class SubQueryBuilder {
             PathBuilder<?> subPath,
             BooleanExpression condition
     ) {
+
         JPQLQuery<?> subQuery = JPAExpressions
                 .selectOne()
                 .from(subPath)
@@ -353,6 +451,7 @@ public class SubQueryBuilder {
             PathBuilder<?> subPath,
             BooleanExpression condition
     ) {
+
         JPQLQuery<?> subQuery = JPAExpressions
                 .selectOne()
                 .from(subPath)
@@ -366,7 +465,7 @@ public class SubQueryBuilder {
 
     /**
      * IN 子查询
-     *
+     * <p>
      * SQL: parent.field IN (SELECT sub.selectField FROM sub WHERE ...)
      */
     private static BooleanExpression buildInQuery(
@@ -375,9 +474,13 @@ public class SubQueryBuilder {
             BooleanExpression condition,
             FieldMeta subQueryMeta
     ) {
-        String select = subQueryMeta.select();
-        String parentField = resolveParentField(select);
-        String subSelectField = resolveSubSelectField(select, subQueryMeta.relationInfo());
+
+        String select         = subQueryMeta.select();
+        String parentField    = resolveParentField(select);
+        String subSelectField = resolveSubSelectField(
+                select,
+                subQueryMeta.relationInfo()
+        );
 
         JPQLQuery<?> subQuery = JPAExpressions
                 .select(subPath.get(subSelectField))
@@ -393,9 +496,13 @@ public class SubQueryBuilder {
             BooleanExpression condition,
             FieldMeta subQueryMeta
     ) {
-        String select = subQueryMeta.select();
-        String parentField = resolveParentField(select);
-        String subSelectField = resolveSubSelectField(select, subQueryMeta.relationInfo());
+
+        String select         = subQueryMeta.select();
+        String parentField    = resolveParentField(select);
+        String subSelectField = resolveSubSelectField(
+                select,
+                subQueryMeta.relationInfo()
+        );
 
         JPQLQuery<?> subQuery = JPAExpressions
                 .select(subPath.get(subSelectField))
@@ -411,7 +518,7 @@ public class SubQueryBuilder {
 
     /**
      * 标量子查询
-     *
+     * <p>
      * SQL: parent.field = (SELECT sub.selectField FROM sub WHERE ... ORDER BY orderBy LIMIT 1)
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -422,23 +529,36 @@ public class SubQueryBuilder {
             FieldMeta subQueryMeta,
             QueryType queryType
     ) {
+
         String select = subQueryMeta.select();
         if (!StringUtils.hasText(select)) {
             // 没有 select 字段，退化为 EXISTS
-            return buildExistsQuery(subPath, condition);
+            return buildExistsQuery(
+                    subPath,
+                    condition
+            );
         }
 
-        String parentField = resolveParentField(select);
-        String subSelectField = resolveSubSelectField(select, subQueryMeta.relationInfo());
-        String orderBy = subQueryMeta.orderBy();
-        boolean desc = subQueryMeta.desc();
+        String  parentField    = resolveParentField(select);
+        String  subSelectField = resolveSubSelectField(
+                select,
+                subQueryMeta.relationInfo()
+        );
+        String  orderBy        = subQueryMeta.orderBy();
+        boolean desc           = subQueryMeta.desc();
 
         // 构建子查询
         BooleanExpression finalCondition = condition;
 
         // 如果有 orderBy，添加"取最新/最旧"逻辑
         if (StringUtils.hasText(orderBy)) {
-            finalCondition = addLatestCondition(subPath, condition, subQueryMeta.relationInfo(), orderBy, desc);
+            finalCondition = addLatestCondition(
+                    subPath,
+                    condition,
+                    subQueryMeta.relationInfo(),
+                    orderBy,
+                    desc
+            );
         }
 
         Expression<?> selectExpr = subPath.get(subSelectField);
@@ -448,7 +568,12 @@ public class SubQueryBuilder {
                 .where(finalCondition);
 
         // 根据查询类型构建比较表达式
-        return buildComparisonExpression(parentPath, parentField, subQuery, queryType);
+        return buildComparisonExpression(
+                parentPath,
+                parentField,
+                subQuery,
+                queryType
+        );
     }
 
     /**
@@ -462,8 +587,12 @@ public class SubQueryBuilder {
             String orderByField,
             boolean desc
     ) {
-        String innerAlias = subPath.getMetadata().getName() + "_inner";
-        PathBuilder<?> innerPath = new PathBuilder<>(subPath.getType(), innerAlias);
+
+        String         innerAlias = subPath.getMetadata().getName() + "_inner";
+        PathBuilder<?> innerPath  = new PathBuilder<>(
+                subPath.getType(),
+                innerAlias
+        );
 
         // 内层与外层关联
         String joinField = relationInfo.getJoinField();
@@ -471,12 +600,18 @@ public class SubQueryBuilder {
                 .eq(subPath.get(joinField).get("id"));
 
         // MAX / MIN 子查询
-        ComparablePath<Comparable> orderPath = subPath.getComparable(orderByField, Comparable.class);
-        ComparablePath<Comparable> innerOrderPath = innerPath.getComparable(orderByField, Comparable.class);
+        ComparablePath<Comparable> orderPath      = subPath.getComparable(
+                orderByField,
+                Comparable.class
+        );
+        ComparablePath<Comparable> innerOrderPath = innerPath.getComparable(
+                orderByField,
+                Comparable.class
+        );
 
         Expression<Comparable> aggregateExpr = desc
-                ? innerOrderPath.max()
-                : innerOrderPath.min();
+                                               ? innerOrderPath.max()
+                                               : innerOrderPath.min();
 
         // 构建子查询
         BooleanExpression latestCondition = orderPath.eq(
@@ -499,13 +634,26 @@ public class SubQueryBuilder {
             JPQLQuery<?> subQuery,
             QueryType queryType
     ) {
+
         return switch (queryType) {
             case EQ -> parentPath.get(parentField).eq(subQuery);
             case NE -> parentPath.get(parentField).ne(subQuery);
-            case GT -> parentPath.getComparable(parentField, Comparable.class).gt((Expression) subQuery);
-            case GE -> parentPath.getComparable(parentField, Comparable.class).goe((Expression) subQuery);
-            case LT -> parentPath.getComparable(parentField, Comparable.class).lt((Expression) subQuery);
-            case LE -> parentPath.getComparable(parentField, Comparable.class).loe((Expression) subQuery);
+            case GT -> parentPath.getComparable(
+                    parentField,
+                    Comparable.class
+            ).gt((Expression) subQuery);
+            case GE -> parentPath.getComparable(
+                    parentField,
+                    Comparable.class
+            ).goe((Expression) subQuery);
+            case LT -> parentPath.getComparable(
+                    parentField,
+                    Comparable.class
+            ).lt((Expression) subQuery);
+            case LE -> parentPath.getComparable(
+                    parentField,
+                    Comparable.class
+            ).loe((Expression) subQuery);
             case LIKE -> {
                 StringPath stringPath = parentPath.getString(parentField);
                 yield stringPath.like((Expression<String>) subQuery);
@@ -520,11 +668,12 @@ public class SubQueryBuilder {
 
     /**
      * 解析父表字段
-     *
+     * <p>
      * select = "order.id" → 返回 "id"（主表的 id）
      * select = "status" → 返回 "status"
      */
     private static String resolveParentField(String select) {
+
         if (!StringUtils.hasText(select)) {
             return "id";
         }
@@ -537,11 +686,12 @@ public class SubQueryBuilder {
 
     /**
      * 解析子查询 SELECT 字段
-     *
+     * <p>
      * select = "order.id" → 返回 "order.id"（子表指向主表的关联字段.id）
      * select = "status" → 返回 "status"
      */
     private static String resolveSubSelectField(String select, RelationInfo relationInfo) {
+
         if (!StringUtils.hasText(select)) {
             // 默认返回关联字段的 id
             String joinField = relationInfo.getJoinField();
@@ -554,4 +704,5 @@ public class SubQueryBuilder {
         }
         return select;
     }
+
 }

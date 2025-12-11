@@ -6,18 +6,23 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EncryptUtil {
+
     private static EncryptionService eC;
 
     @Autowired
     public void set(EncryptionService encryptionService) {
+
         eC = encryptionService;
     }
 
     public static String encrypt(String value) {
+
         return eC.encrypt(value);
     }
 
     public static String decrypt(String value) {
+
         return eC.decrypt(value);
     }
+
 }

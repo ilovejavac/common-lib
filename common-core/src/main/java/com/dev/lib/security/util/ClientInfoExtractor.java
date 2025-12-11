@@ -3,9 +3,13 @@ package com.dev.lib.security.util;
 import jakarta.servlet.http.HttpServletRequest;
 
 public abstract class ClientInfoExtractor {
-    private ClientInfoExtractor() {}
+
+    private ClientInfoExtractor() {
+
+    }
 
     public static String getClientIp(HttpServletRequest request) {
+
         String[] headers = {
                 "X-Forwarded-For",
                 "X-Real-IP",
@@ -33,6 +37,7 @@ public abstract class ClientInfoExtractor {
     }
 
     private static boolean isValidIp(String ip) {
+
         return ip != null
                 && !ip.isEmpty()
                 && !"unknown".equalsIgnoreCase(ip)
@@ -40,6 +45,7 @@ public abstract class ClientInfoExtractor {
     }
 
     public static String getClientType(HttpServletRequest request) {
+
         String explicit = request.getHeader("X-Client-Type");
         if (explicit != null) {
             return explicit.toUpperCase();
@@ -53,4 +59,5 @@ public abstract class ClientInfoExtractor {
         if (ua.contains("mobile") || ua.contains("android") || ua.contains("iphone")) return "APP";
         return "WEB";
     }
+
 }

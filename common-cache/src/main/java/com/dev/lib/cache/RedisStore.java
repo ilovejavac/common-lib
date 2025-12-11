@@ -9,10 +9,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RedisStore {
 
-    private static final String STORE_PREFIX = "store:";
-    private static final Duration PERSISTENT = null;
+    private static final String   STORE_PREFIX = "store:";
+
+    private static final Duration PERSISTENT   = null;
 
     public static RedisCache.CacheKey key(Object... keys) {
+
         if (keys == null || keys.length == 0) {
             throw new IllegalArgumentException("keys must not be empty");
         }
@@ -21,4 +23,5 @@ public class RedisStore {
                 .collect(Collectors.joining(":"));
         return RedisCache.key(keyStr).ttl(PERSISTENT);
     }
+
 }

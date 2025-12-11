@@ -9,7 +9,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface ExcelExport {
-    
+
     /**
      * 文件名模板，支持占位符：
      * ${date} - yyyyMMdd
@@ -17,9 +17,10 @@ public @interface ExcelExport {
      * ${timestamp} - 毫秒时间戳
      */
     String fileName() default "export_${datetime}";
-    
+
     /**
      * Sheet 名称
      */
     String sheetName() default "Sheet1";
+
 }

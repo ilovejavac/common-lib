@@ -11,36 +11,63 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SaUtil implements TokenService {
+
     private final AuthenticateService authenticateService;
 
     @Override
     public String generateToken(UserDetails userDetails) {
+
         StpUtil.login(userDetails.getId());
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
 
         SaSession session = StpUtil.getTokenSession();
-        session.set("userId", userDetails.getId());
-        session.set("username", userDetails.getUsername());
-        session.set("permissions", userDetails.getPermissions());
-        session.set("roles", userDetails.getRoles());
+        session.set(
+                "userId",
+                userDetails.getId()
+        );
+        session.set(
+                "username",
+                userDetails.getUsername()
+        );
+        session.set(
+                "permissions",
+                userDetails.getPermissions()
+        );
+        session.set(
+                "roles",
+                userDetails.getRoles()
+        );
 
         return tokenInfo.tokenValue;
     }
 
     @Override
     public UserDetails parseToken(String token) {
+
         SaSession session = StpUtil.getTokenSession();
         return new UserDetails()
-                .setId(session.get("userId", 0L))
-                .setUsername(session.get("username", ""))
-                .setPermissions(session.get("permissions", new ArrayList<>()))
-                .setRoles(session.get("roles", new ArrayList<>()))
+                .setId(session.get(
+                        "userId",
+                        0L
+                ))
+                .setUsername(session.get(
+                        "username",
+                        ""
+                ))
+                .setPermissions(session.get(
+                        "permissions",
+                        new ArrayList<>()
+                ))
+                .setRoles(session.get(
+                        "roles",
+                        new ArrayList<>()
+                ))
                 .setTokenId(token);
     }
+
 }

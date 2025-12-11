@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 
 public interface FileService {
 
@@ -23,4 +22,5 @@ public interface FileService {
     void delete(StorageFile sf);
 
     Map<String, FileItem> getItems(Collection<String> ids);
+
 }

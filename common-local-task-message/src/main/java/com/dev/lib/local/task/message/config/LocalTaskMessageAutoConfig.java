@@ -13,12 +13,15 @@ public class LocalTaskMessageAutoConfig {
     @Bean
     @ConditionalOnMissingBean(IRabbitPublish.class)
     public IRabbitPublish rabbitPublish() {
+
         return new DefaultRabbitMQ();
     }
 
     @Bean
     @ConfigurationProperties(prefix = "app.local-task-message")
     public LocalTaskConfigProperties localTaskConfigProperties() {
+
         return new LocalTaskConfigProperties();
     }
+
 }

@@ -11,6 +11,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface OperateLog {
+
     String module();           // 模块
 
     String type();            // 操作类型
@@ -20,4 +21,5 @@ public @interface OperateLog {
     boolean recordParams() default true;   // 记录参数
 
     boolean recordResult() default false;  // 记录返回值
+
 }

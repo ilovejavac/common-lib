@@ -7,14 +7,19 @@ import java.time.LocalDateTime;
 
 @Getter
 public abstract class DomainEvent extends ApplicationEvent {
+
     private final LocalDateTime occurAt;
-    private final String name;
-    private final Integer version;
+
+    private final String        name;
+
+    private final Integer       version;
 
     public DomainEvent(String name, Integer version) {
+
         super(name);
         this.name = name;
         this.version = version;
         this.occurAt = LocalDateTime.now();
     }
+
 }

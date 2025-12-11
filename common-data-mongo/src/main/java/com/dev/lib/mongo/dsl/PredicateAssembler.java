@@ -23,6 +23,7 @@ import java.util.Optional;
 public final class PredicateAssembler {
 
     private PredicateAssembler() {
+
     }
 
     @SuppressWarnings("unchecked")
@@ -31,15 +32,22 @@ public final class PredicateAssembler {
             Collection<QueryFieldMerger.FieldMetaValue> fields,
             BooleanExpression... expressions
     ) {
+
         BooleanBuilder builder = new BooleanBuilder();
 
         if (query != null && fields != null && !fields.isEmpty()) {
-            Class<?> entityClass = FieldMetaCache.getMeta(query.getClass()).entityClass();
-            EntityPathBase<E> entityPath = EntityPathManager.getEntityPath((Class<E>) entityClass);
-            PathBuilder<E> pathBuilder = new PathBuilder<>(entityPath.getType(), entityPath.getMetadata());
+            Class<?>          entityClass = FieldMetaCache.getMeta(query.getClass()).entityClass();
+            EntityPathBase<E> entityPath  = EntityPathManager.getEntityPath((Class<E>) entityClass);
+            PathBuilder<E>    pathBuilder = new PathBuilder<>(
+                    entityPath.getType(),
+                    entityPath.getMetadata()
+            );
 
-            List<ExpressionItem> items = collectExpressions(pathBuilder, fields);
-            Predicate predicate = buildWithPrecedence(items);
+            List<ExpressionItem> items     = collectExpressions(
+                    pathBuilder,
+                    fields
+            );
+            Predicate            predicate = buildWithPrecedence(items);
             if (predicate != null) {
                 builder.and(predicate);
             }
@@ -58,11 +66,12 @@ public final class PredicateAssembler {
             PathBuilder<E> pathBuilder,
             Collection<QueryFieldMerger.FieldMetaValue> fields
     ) {
+
         List<ExpressionItem> items = new ArrayList<>();
 
         for (QueryFieldMerger.FieldMetaValue fv : fields) {
-            FieldMeta fm = fv.getFieldMeta();
-            Object value = fv.getValue();
+            FieldMeta fm    = fv.getFieldMeta();
+            Object    value = fv.getValue();
             if (value == null) continue;
 
             switch (fm.metaType()) {
@@ -74,22 +83,39 @@ public final class PredicateAssembler {
                             value
                     );
                     if (expr != null) {
-                        items.add(new ExpressionItem(expr, fm.operator()));
+                        items.add(new ExpressionItem(
+                                expr,
+                                fm.operator()
+                        ));
                     }
                 }
 
                 case GROUP -> {
-                    Predicate groupPred = buildGroupPredicate(pathBuilder, fm, value);
+                    Predicate groupPred = buildGroupPredicate(
+                            pathBuilder,
+                            fm,
+                            value
+                    );
                     if (groupPred != null) {
-                        items.add(new ExpressionItem(groupPred, fm.operator()));
+                        items.add(new ExpressionItem(
+                                groupPred,
+                                fm.operator()
+                        ));
                     }
                 }
 
                 case SUB_QUERY -> {
                     // MongoDB 嵌入文档查询（替代 JPA 子查询）
-                    Predicate embeddedPred = buildEmbeddedPredicate(pathBuilder, fm, value);
+                    Predicate embeddedPred = buildEmbeddedPredicate(
+                            pathBuilder,
+                            fm,
+                            value
+                    );
                     if (embeddedPred != null) {
-                        items.add(new ExpressionItem(embeddedPred, fm.operator()));
+                        items.add(new ExpressionItem(
+                                embeddedPred,
+                                fm.operator()
+                        ));
                     }
                 }
             }
@@ -102,6 +128,7 @@ public final class PredicateAssembler {
             FieldMeta groupMeta,
             Object groupValue
     ) {
+
         List<FieldMeta> nestedMetas = groupMeta.nestedMetas();
         if (nestedMetas == null || nestedMetas.isEmpty()) return null;
 
@@ -109,13 +136,19 @@ public final class PredicateAssembler {
         for (FieldMeta nested : nestedMetas) {
             Object nestedValue = nested.getValue(groupValue);
             if (nestedValue != null) {
-                nestedFields.add(new QueryFieldMerger.FieldMetaValue(nestedValue, nested));
+                nestedFields.add(new QueryFieldMerger.FieldMetaValue(
+                        nestedValue,
+                        nested
+                ));
             }
         }
 
         if (nestedFields.isEmpty()) return null;
 
-        List<ExpressionItem> nestedItems = collectExpressions(pathBuilder, nestedFields);
+        List<ExpressionItem> nestedItems = collectExpressions(
+                pathBuilder,
+                nestedFields
+        );
         return buildWithPrecedence(nestedItems);
     }
 
@@ -131,7 +164,10 @@ public final class PredicateAssembler {
         String embeddedPath = resolveEmbeddedPath(fm);
 
         if (embeddedPath == null) {
-            log.warn("MongoDB 嵌入文档查询无法推断路径，已忽略: {}", fm.field().getName());
+            log.warn(
+                    "MongoDB 嵌入文档查询无法推断路径，已忽略: {}",
+                    fm.field().getName()
+            );
             return null;
         }
 
@@ -167,7 +203,10 @@ public final class PredicateAssembler {
     private static String resolveEmbeddedPath(FieldMeta fm) {
         // 1. 关联子查询（JPA）- MongoDB 不支持，返回 null
         if (fm.relationInfo() != null) {
-            log.warn("MongoDB 不支持 JPA 关联子查询，已忽略: {}", fm.field().getName());
+            log.warn(
+                    "MongoDB 不支持 JPA 关联子查询，已忽略: {}",
+                    fm.field().getName()
+            );
             return null;
         }
 
@@ -179,27 +218,36 @@ public final class PredicateAssembler {
         // 3. 从字段名推断：itemsSub → items
         String fieldName = fm.field().getName();
         if (fieldName.endsWith("ExistsSub")) {
-            return fieldName.substring(0, fieldName.length() - 9);
+            return fieldName.substring(
+                    0,
+                    fieldName.length() - 9
+            );
         }
         if (fieldName.endsWith("NotExistsSub")) {
-            return fieldName.substring(0, fieldName.length() - 12);
+            return fieldName.substring(
+                    0,
+                    fieldName.length() - 12
+            );
         }
         if (fieldName.endsWith("Sub")) {
-            return fieldName.substring(0, fieldName.length() - 3);
+            return fieldName.substring(
+                    0,
+                    fieldName.length() - 3
+            );
         }
 
         // 4. 无法推断
         return null;
     }
 
-
     private static Predicate buildWithPrecedence(List<ExpressionItem> items) {
+
         if (items.isEmpty()) return null;
         if (items.size() == 1) return items.get(0).expression;
 
         // 按 OR 分组，实现 AND 优先级高于 OR
-        List<List<ExpressionItem>> andGroups = new ArrayList<>();
-        List<ExpressionItem> currentGroup = new ArrayList<>();
+        List<List<ExpressionItem>> andGroups    = new ArrayList<>();
+        List<ExpressionItem>       currentGroup = new ArrayList<>();
 
         for (ExpressionItem item : items) {
             currentGroup.add(item);
@@ -236,4 +284,5 @@ public final class PredicateAssembler {
 
     private record ExpressionItem(Predicate expression, LogicalOperator operator) {
     }
+
 }

@@ -9,5 +9,6 @@ public enum StorageType {
     LOCAL("本地"),
     OSS("oss"),
     MINIO("minio");
+
     private final String msg;
 }

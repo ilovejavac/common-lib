@@ -13,6 +13,8 @@ public class CustomLocalDateTimeJavaType extends LocalDateTimeJavaType {
 
     @Override
     public int getDefaultSqlPrecision(Dialect dialect, JdbcType jdbcType) {
+
         return TypeDefaults.TIMESTAMP_PRECISION;
     }
+
 }

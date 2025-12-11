@@ -29,11 +29,15 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class PermissionValidator implements InitializingBean {
+
     private final PermissionService permissionService;
+
     private final AuthenticateService authenticateService;
+
     private final TokenService tokenService;
 
     public boolean anonymous(HandlerMethod handlerMethod) {
+
         Class<?> controllerClass = handlerMethod.getBeanType();
 
         // 2. 方法级别 @Anonymous 优先检查
@@ -52,18 +56,25 @@ public class PermissionValidator implements InitializingBean {
     }
 
     public void valid(HandlerMethod handlerMethod) {
+
         Class<?> controllerClass = handlerMethod.getBeanType();
 
         // 6. 必须登录
         if (!SecurityContextHolder.isLogin()) {
-            throw new BizException(401, "认证失败，请先登录");
+            throw new BizException(
+                    401,
+                    "认证失败，请先登录"
+            );
         }
 
         // 7. 方法级别 @RequireRole
         RequireRole methodRole = handlerMethod.getMethodAnnotation(RequireRole.class);
         if (methodRole != null) {
             if (!permissionService.hasRole(methodRole.value())) {
-                throw new BizException(403, "无权限访问");
+                throw new BizException(
+                        403,
+                        "无权限访问"
+                );
             }
             return;
         }
@@ -71,14 +82,20 @@ public class PermissionValidator implements InitializingBean {
         // 8. 类级别 @RequireRole
         RequireRole classRole = controllerClass.getAnnotation(RequireRole.class);
         if (classRole != null && !permissionService.hasRole(classRole.value())) {
-            throw new BizException(403, "无权限访问");
+            throw new BizException(
+                    403,
+                    "无权限访问"
+            );
         }
 
         // 9. 方法级别 @RequirePermission
         RequirePermission methodPermission = handlerMethod.getMethodAnnotation(RequirePermission.class);
         if (methodPermission != null) {
             if (!permissionService.hasPermission(methodPermission.value())) {
-                throw new BizException(403, "无权限访问");
+                throw new BizException(
+                        403,
+                        "无权限访问"
+                );
             }
             return;
         }
@@ -86,11 +103,15 @@ public class PermissionValidator implements InitializingBean {
         // 10. 类级别 @RequirePermission
         RequirePermission classPermission = controllerClass.getAnnotation(RequirePermission.class);
         if (classPermission != null && !permissionService.hasPermission(classPermission.value())) {
-            throw new BizException(403, "无权限访问");
+            throw new BizException(
+                    403,
+                    "无权限访问"
+            );
         }
     }
 
     private void anonymous() {
+
         if (!SecurityContextHolder.isLogin()) {
             SecurityContextHolder.set(UserDetails.Anonymous);
         }
@@ -120,6 +141,7 @@ public class PermissionValidator implements InitializingBean {
 //    }
 
     public boolean shouldSkip(HttpServletRequest request) {
+
         if (SecurityContextHolder.validated()) {
             return true;
         }
@@ -143,28 +165,36 @@ public class PermissionValidator implements InitializingBean {
                     "/v3/api-docs/**"
             )
     );
-    private final PathMatcher pathMatcher = new AntPathMatcher();
+
+    private final PathMatcher pathMatcher       = new AntPathMatcher();
 
     private boolean isWhitelistRequest(String uri) {
+
         return whitelistPatterns.stream()
-                .anyMatch(pattern -> pathMatcher.match(pattern, uri));
+                .anyMatch(pattern -> pathMatcher.match(
+                        pattern,
+                        uri
+                ));
     }
 
     @Override
     public void afterPropertiesSet() {
+
         if (securityProperties.getWhiteListRequest() != null) {
             whitelistPatterns.addAll(securityProperties.getWhiteListRequest());
         }
     }
 
     private String extractToken(HttpServletRequest request) {
+
         String bearerToken = request.getHeader("Authorization");
         return (bearerToken != null && bearerToken.startsWith("Bearer "))
-                ? bearerToken.substring(7)
-                : null;
+               ? bearerToken.substring(7)
+               : null;
     }
 
     public void setContextInfo(HttpServletRequest request) {
+
         try {
             UserDetails userDetail = tokenService.parseToken(StpUtil.getTokenValue());
             if (userDetail != null) {
@@ -188,4 +218,5 @@ public class PermissionValidator implements InitializingBean {
 //            SecurityContextHolder.set(userDetail);
 //        }
     }
+
 }

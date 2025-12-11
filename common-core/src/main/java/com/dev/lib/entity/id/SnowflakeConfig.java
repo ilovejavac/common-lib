@@ -13,44 +13,71 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SnowflakeConfig implements InitializingBean {
 
-    private final AppSnowFlakeProperties snowFlakeProperties;
-    private static final String LOCK_KEY_PREFIX = "snowflake:worker:";
-    private static final int MAX_RETRY_TIMES = 3;
-    private static final long RETRY_DELAY_MS = 1000L;
+    private final        AppSnowFlakeProperties snowFlakeProperties;
+
+    private static final String                 LOCK_KEY_PREFIX = "snowflake:worker:";
+
+    private static final int                    MAX_RETRY_TIMES = 3;
+
+    private static final long                   RETRY_DELAY_MS  = 1000L;
 
     //    private final RedissonClient redissonClient;
     @Getter
     private static SnowflakeDistributeId worker;
 
-    private long acquiredWorkerId = -1;
+    private long acquiredWorkerId     = -1;
+
     private long acquiredDatacenterId = -1;
 
     @Override
     public void afterPropertiesSet() throws Exception {
+
         log.info("=".repeat(60));
         log.info("Initializing Snowflake");
         log.info("=".repeat(60));
 
         try {
             long datacenterId = getDatacenterId();
-            long workerId = acquireWorkerId(datacenterId);
+            long workerId     = acquireWorkerId(datacenterId);
 
             acquiredWorkerId = workerId;
             acquiredDatacenterId = datacenterId;
 
-            worker = SnowflakeDistributeId.getInstance(workerId, datacenterId);
+            worker = SnowflakeDistributeId.getInstance(
+                    workerId,
+                    datacenterId
+            );
 
             log.info("✓ Snowflake initialized!");
-            log.info("  WorkerId: {}", workerId);
-            log.info("  DatacenterId: {}", datacenterId);
+            log.info(
+                    "  WorkerId: {}",
+                    workerId
+            );
+            log.info(
+                    "  DatacenterId: {}",
+                    datacenterId
+            );
         } catch (Exception e) {
-            log.error("✗ Failed to initialize Snowflake!", e);
-            throw new RuntimeException("Snowflake initialization failed", e);
+            log.error(
+                    "✗ Failed to initialize Snowflake!",
+                    e
+            );
+            throw new RuntimeException(
+                    "Snowflake initialization failed",
+                    e
+            );
         }
     }
 
     private long getDatacenterId() {
-        return Math.max(0, Math.min(snowFlakeProperties.getDataCenterId(), 15));
+
+        return Math.max(
+                0,
+                Math.min(
+                        snowFlakeProperties.getDataCenterId(),
+                        15
+                )
+        );
     }
 
     private long acquireWorkerId(long datacenterId) {
@@ -92,6 +119,7 @@ public class SnowflakeConfig implements InitializingBean {
 
     @PreDestroy
     public void destroy() {
+
         log.info("Shutting down Snowflake, releasing workerId...");
 //
 //        try {
@@ -103,4 +131,5 @@ public class SnowflakeConfig implements InitializingBean {
 //            log.error("Failed to release workerId", e);
 //        }
     }
+
 }

@@ -51,6 +51,7 @@ public interface TokenManager {
      * @param timeout  新的过期时间（秒）
      */
     void refreshToken(String tokenKey, long timeout);
+
     void refreshToken(String tokenKey, String tokenValue);
 
     void refreshToken(String tokenKey, Map<String, Object> metadata);
@@ -127,4 +128,5 @@ public interface TokenManager {
      * @return token key 列表
      */
     List<String> searchTokenKeys(String prefix, String keyword, int start, int size);
+
 }

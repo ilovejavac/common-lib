@@ -6,23 +6,14 @@ import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.util.StringUtils;
 import com.dev.lib.web.model.QueryRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Getter
 @Setter
@@ -33,7 +24,9 @@ public abstract class DslQuery<E extends CoreEntity> {
 
     @Data
     public static class CURSOR {
+
         private String bizId;
+
     }
 
     // id > (select id from t where biz_id = ?)
@@ -63,13 +56,16 @@ public abstract class DslQuery<E extends CoreEntity> {
 
     @ConditionIgnore
     public String sortStr = "id_asc";
+
     @ConditionIgnore
     public Integer start;
+
     @ConditionIgnore
     public Integer limit;
 
     // 游标查询
     public DslQuery<E> setCursor(String id, Sort.Direction direction) {
+
         if (StringUtils.isBlank(id)) {
             return this;
         }
@@ -94,6 +90,7 @@ public abstract class DslQuery<E extends CoreEntity> {
     protected LogicalOperator selfOperator = LogicalOperator.AND;
 
     public DslQuery<E> external(Object query) {
+
         if (query != null) {
             this.externalFields.addAll(QueryFieldMerger.resolve(query));
         }
@@ -101,6 +98,7 @@ public abstract class DslQuery<E extends CoreEntity> {
     }
 
     public DslQuery<E> external(QueryRequest<?> pageRequest) {
+
         this.pageRequest = pageRequest;
         if (pageRequest != null) {
             this.externalFields.addAll(QueryFieldMerger.resolve(pageRequest.getQuery()));
@@ -109,6 +107,7 @@ public abstract class DslQuery<E extends CoreEntity> {
     }
 
     public Sort toSort(Set<String> allowFields) {
+
         if (pageRequest == null || CollectionUtils.isEmpty(pageRequest.getOrderBy())) {
             if (sortStr == null || sortStr.isBlank()) {
                 return Sort.by(Sort.Order.desc("id"));
@@ -119,14 +118,17 @@ public abstract class DslQuery<E extends CoreEntity> {
                     .filter(s -> !s.isEmpty())
                     .map(s -> {
                         String[] parts = s.split("_");
-                        String field = parts[0];
+                        String   field = parts[0];
                         if (!allowFields.contains(field)) {
                             return null;
                         }
                         Sort.Direction dir = parts.length > 1 && "desc".equalsIgnoreCase(parts[1])
-                                ? Sort.Direction.DESC
-                                : Sort.Direction.ASC;
-                        return new Sort.Order(dir, field);
+                                             ? Sort.Direction.DESC
+                                             : Sort.Direction.ASC;
+                        return new Sort.Order(
+                                dir,
+                                field
+                        );
                     })
                     .filter(Objects::nonNull)
                     .toList();
@@ -138,13 +140,18 @@ public abstract class DslQuery<E extends CoreEntity> {
     }
 
     public Pageable toPageable(Set<String> allowFields) {
+
         if (pageRequest == null) {
             return PageRequest.of(
                     Optional.ofNullable(start).orElse(0),
-                    Math.min(500, Optional.ofNullable(limit).orElse(30)),
+                    Math.min(
+                            500,
+                            Optional.ofNullable(limit).orElse(30)
+                    ),
                     toSort(allowFields)
             );
         }
         return pageRequest.toPageable(allowFields);
     }
+
 }

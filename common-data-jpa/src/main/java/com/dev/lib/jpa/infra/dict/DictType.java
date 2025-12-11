@@ -6,14 +6,7 @@ import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.jpa.entity.JpaEntity;
 import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Index;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.Comment;
 
@@ -31,6 +24,7 @@ import java.util.List;
         @AutoMapper(target = DictTypeVO.class),
 })
 public class DictType extends JpaEntity {
+
     @Comment("字典类型编码")
     @Column(nullable = false, unique = true, length = 50)
     private String typeCode;
@@ -51,12 +45,15 @@ public class DictType extends JpaEntity {
     private List<DictItemEntity> items = new ArrayList<>();
 
     public void addItem(DictItemEntity item) {
+
         item.setDictType(this);
         items.add(item);
     }
 
     public void removeItem(DictItemEntity item) {
+
         item.setDictType(null);
         items.remove(item);
     }
+
 }

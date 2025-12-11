@@ -13,18 +13,23 @@ import java.util.Base64;
 @Component
 @ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "base64")
 public class Base64EncryptionStrategy implements Encryptor {
+
     @Override
     public String getVersion() {
+
         return EncryptVersion.BASE64.getMsg();
     }
 
     @Override
     public String encrypt(String plainText) {
+
         return Base64.getEncoder().encodeToString(plainText.getBytes());
     }
 
     @Override
     public String decrypt(String cipherText) {
+
         return new String(Base64.getDecoder().decode(cipherText));
     }
+
 }

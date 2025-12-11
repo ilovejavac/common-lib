@@ -10,14 +10,23 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class AccessTokenClear {
+
     private final TokenManager tokenManager;
 
     @Scheduled(cron = "0 0 0 * * *")
     public void clear() {
+
         try {
-            log.info("clear {} Expired tokens", tokenManager.cleanExpiredTokens());
+            log.info(
+                    "clear {} Expired tokens",
+                    tokenManager.cleanExpiredTokens()
+            );
         } catch (Exception e) {
-            log.warn("clear expired token fail", e);
+            log.warn(
+                    "clear expired token fail",
+                    e
+            );
         }
     }
+
 }

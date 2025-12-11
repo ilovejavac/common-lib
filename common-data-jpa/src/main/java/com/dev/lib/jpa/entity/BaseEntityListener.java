@@ -14,6 +14,7 @@ public class BaseEntityListener {
 
     @PrePersist
     public void prePersist(JpaEntity entity) {
+
         LocalDateTime now = LocalDateTime.now();
 
         if (entity.getId() == null) {

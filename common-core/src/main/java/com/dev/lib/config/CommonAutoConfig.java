@@ -9,18 +9,24 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 @Configuration
 public class CommonAutoConfig {
+
     @Bean
     @ConfigurationProperties(prefix = "app.snow-flake")
     public AppSnowFlakeProperties appSnowFlakeProperties() {
+
         return new AppSnowFlakeProperties();
     }
 
     @Bean
     @ConfigurationProperties(prefix = "app.pagination")
-    public PaginationProperties properties() {return new PaginationProperties();}
+    public PaginationProperties properties() {
+
+        return new PaginationProperties();
+    }
 
     @Bean
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {
+
         ThreadPoolTaskScheduler pool = new ThreadPoolTaskScheduler();
 
         pool.setPoolSize(20);
@@ -29,4 +35,5 @@ public class CommonAutoConfig {
 
         return pool;
     }
+
 }

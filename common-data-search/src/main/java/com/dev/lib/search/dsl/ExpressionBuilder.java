@@ -11,30 +11,74 @@ import java.util.List;
 
 public final class ExpressionBuilder {
 
-    private ExpressionBuilder() {}
+    private ExpressionBuilder() {
+
+    }
 
     public static Query build(String field, QueryType type, Object value) {
+
         if (value == null && type != QueryType.IS_NULL && type != QueryType.IS_NOT_NULL) {
             return null;
         }
 
         return switch (type) {
-            case EQ -> term(field, value);
-            case NE -> mustNot(term(field, value));
-            case GT -> range(field, "gt", value);
-            case GE -> range(field, "gte", value);
-            case LT -> range(field, "lt", value);
-            case LE -> range(field, "lte", value);
-            case LIKE -> wildcard(field, "*" + value + "*");
-            case START_WITH -> prefix(field, value.toString());
-            case END_WITH -> wildcard(field, "*" + value);
-            case IN -> terms(field, (Collection<?>) value);
-            case NOT_IN -> mustNot(terms(field, (Collection<?>) value));
+            case EQ -> term(
+                    field,
+                    value
+            );
+            case NE -> mustNot(term(
+                    field,
+                    value
+            ));
+            case GT -> range(
+                    field,
+                    "gt",
+                    value
+            );
+            case GE -> range(
+                    field,
+                    "gte",
+                    value
+            );
+            case LT -> range(
+                    field,
+                    "lt",
+                    value
+            );
+            case LE -> range(
+                    field,
+                    "lte",
+                    value
+            );
+            case LIKE -> wildcard(
+                    field,
+                    "*" + value + "*"
+            );
+            case START_WITH -> prefix(
+                    field,
+                    value.toString()
+            );
+            case END_WITH -> wildcard(
+                    field,
+                    "*" + value
+            );
+            case IN -> terms(
+                    field,
+                    (Collection<?>) value
+            );
+            case NOT_IN -> mustNot(terms(
+                    field,
+                    (Collection<?>) value
+            ));
             case IS_NULL -> mustNot(exists(field));
             case IS_NOT_NULL -> exists(field);
             case BETWEEN -> {
                 if (value instanceof Object[] arr && arr.length == 2) {
-                    yield rangeBetween(field, arr[0], arr[1]);
+                    yield rangeBetween(
+                            field,
+                            arr[0],
+                            arr[1]
+                    );
                 }
                 yield null;
             }
@@ -43,10 +87,12 @@ public final class ExpressionBuilder {
     }
 
     private static Query term(String field, Object value) {
+
         return Query.of(q -> q.term(t -> t.field(field).value(toFieldValue(value))));
     }
 
     private static Query terms(String field, Collection<?> values) {
+
         if (CollectionUtils.isEmpty(values)) return null;
         List<FieldValue> fieldValues = values.stream()
                 .map(ExpressionBuilder::toFieldValue)
@@ -55,6 +101,7 @@ public final class ExpressionBuilder {
     }
 
     private static Query range(String field, String op, Object value) {
+
         return Query.of(q -> q.range(r -> {
             r.field(field);
             JsonData jsonValue = JsonData.of(value);
@@ -69,6 +116,7 @@ public final class ExpressionBuilder {
     }
 
     private static Query rangeBetween(String field, Object from, Object to) {
+
         return Query.of(q -> q.range(r -> r
                 .field(field)
                 .gte(JsonData.of(from))
@@ -77,6 +125,7 @@ public final class ExpressionBuilder {
     }
 
     private static Query wildcard(String field, String pattern) {
+
         return Query.of(q -> q.wildcard(w -> w
                 .field(field)
                 .value(pattern)
@@ -85,19 +134,23 @@ public final class ExpressionBuilder {
     }
 
     private static Query prefix(String field, String value) {
+
         return Query.of(q -> q.prefix(p -> p.field(field).value(value)));
     }
 
     private static Query exists(String field) {
+
         return Query.of(q -> q.exists(e -> e.field(field)));
     }
 
     private static Query mustNot(Query query) {
+
         if (query == null) return null;
         return Query.of(q -> q.bool(b -> b.mustNot(query)));
     }
 
     private static FieldValue toFieldValue(Object value) {
+
         if (value == null) return FieldValue.NULL;
         if (value instanceof Number n) {
             if (n instanceof Double || n instanceof Float) {
@@ -109,4 +162,5 @@ public final class ExpressionBuilder {
         if (value instanceof Enum<?> e) return FieldValue.of(e.name());
         return FieldValue.of(value.toString());
     }
+
 }

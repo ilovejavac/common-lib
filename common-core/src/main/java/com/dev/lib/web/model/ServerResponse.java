@@ -13,17 +13,25 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ServerResponse<T> {
-    private Integer code;
-    private String message;
-    private String error;
-    private T data;
+
+    private Integer    code;
+
+    private String     message;
+
+    private String     error;
+
+    private T          data;
+
     private PageResult pager;
 
-    private Long timestamp = System.currentTimeMillis();
-    private String traceId = MDC.get("trace_id");
-    private static final String SUCCESS = "success";
+    private              Long   timestamp = System.currentTimeMillis();
+
+    private              String traceId   = MDC.get("trace_id");
+
+    private static final String SUCCESS   = "success";
 
     public static <T> ServerResponse<T> ok() {
+
         ServerResponse<T> result = new ServerResponse<>();
 
         result.setCode(200);
@@ -34,6 +42,7 @@ public class ServerResponse<T> {
     }
 
     public static <T> ServerResponse<T> success(T data) {
+
         ServerResponse<T> result = new ServerResponse<>();
 
         result.setCode(200);
@@ -44,6 +53,7 @@ public class ServerResponse<T> {
     }
 
     public static <S, T> ServerResponse<List<T>> success(Page<S> page, Convert<S, T> convert) {
+
         ServerResponse<List<T>> result = new ServerResponse<>();
         if (page == null || convert == null) {
             return result;
@@ -51,24 +61,32 @@ public class ServerResponse<T> {
 
         result.setData(page.getContent().stream().map(convert::convert).toList());
 
-        setPage(page, result);
+        setPage(
+                page,
+                result
+        );
 
         return result;
     }
 
     public static <T> ServerResponse<List<T>> success(Page<T> page) {
+
         ServerResponse<List<T>> result = new ServerResponse<>();
         if (page == null) {
             return result;
         }
         result.setData(page.getContent());
 
-        setPage(page, result);
+        setPage(
+                page,
+                result
+        );
 
         return result;
     }
 
     private static void setPage(Page<?> page, ServerResponse<?> result) {
+
         result.setCode(200);
         result.setMessage(SUCCESS);
 
@@ -82,6 +100,7 @@ public class ServerResponse<T> {
 
     @SuppressWarnings("unchecked")
     public <S, R> ServerResponse<List<R>> convert(Convert<S, R> convert) {
+
         ServerResponse<List<R>> result = new ServerResponse<>();
         result.setCode(this.code);
         result.setMessage(this.message);
@@ -105,14 +124,25 @@ public class ServerResponse<T> {
     }
 
     public static ServerResponse<Void> fail(Integer code, String message) {
-        return fail(code, message, null);
+
+        return fail(
+                code,
+                message,
+                null
+        );
     }
 
     public static ServerResponse<Void> fail(BizException e) {
-        return fail(e.getCoder(), e.getMsger(), null);
+
+        return fail(
+                e.getCoder(),
+                e.getMsger(),
+                null
+        );
     }
 
     public static <T> ServerResponse<T> fail(Integer code, String message, T data) {
+
         ServerResponse<T> result = new ServerResponse<>();
 
         result.setCode(code);

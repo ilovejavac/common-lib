@@ -5,8 +5,6 @@ import com.dev.lib.excel.resolve.ExcelImportArgumentResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
@@ -23,16 +21,19 @@ import java.util.List;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class ExcelAutoConfiguration implements InitializingBean {
 
-    private final AppExcelProperties appExcelProperties;
+    private final AppExcelProperties           appExcelProperties;
+
     private final RequestMappingHandlerAdapter handlerAdapter;
 
     @Override
     public void afterPropertiesSet() throws Exception {
+
         configureReturnValueHandlers();
         configureArgumentResolvers();
     }
 
     private void configureReturnValueHandlers() {
+
         List<HandlerMethodReturnValueHandler> handlers = handlerAdapter.getReturnValueHandlers();
         if (handlers != null) {
             List<HandlerMethodReturnValueHandler> newHandlers = new ArrayList<>(handlers.size() + 1);
@@ -43,6 +44,7 @@ public class ExcelAutoConfiguration implements InitializingBean {
     }
 
     private void configureArgumentResolvers() {
+
         List<HandlerMethodArgumentResolver> resolvers = handlerAdapter.getArgumentResolvers();
         if (resolvers != null) {
             List<HandlerMethodArgumentResolver> newResolvers = new ArrayList<>(resolvers.size() + 1);
@@ -51,4 +53,5 @@ public class ExcelAutoConfiguration implements InitializingBean {
             handlerAdapter.setArgumentResolvers(newResolvers);
         }
     }
+
 }

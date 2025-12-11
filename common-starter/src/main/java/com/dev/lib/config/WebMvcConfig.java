@@ -21,20 +21,35 @@ import java.util.Set;
 @Configuration
 @RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
+
     private final NullToEmptyFilter nullToEmptyFilter;
+
     private final AuthInterceptor authInterceptor;
+
     private final PopulateFieldAfterFilter populateFieldAfterFilter;
 
-    private static final Set<String> EXCLUDE_FIELDS = Set.of("id", "reversion", "deleted");  // 移除了 "id"
+    private static final Set<String> EXCLUDE_FIELDS = Set.of(
+            "id",
+            "reversion",
+            "deleted"
+    );
 
     @Override
     public void afterPropertiesSet() {
-        JSON.register(Instant.class, new FastJson2Support.InstantWriter());
-        JSON.registerIfAbsent(Instant.class, new FastJson2Support.InstantReader());
+
+        JSON.register(
+                Instant.class,
+                new FastJson2Support.InstantWriter()
+        );
+        JSON.registerIfAbsent(
+                Instant.class,
+                new FastJson2Support.InstantReader()
+        );
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+
         registry.addInterceptor(authInterceptor)
                 .order(20)
                 .addPathPatterns("/api/**")
@@ -43,8 +58,9 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
 
     @Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
+
         FastJsonHttpMessageConverter converter = new FastJsonHttpMessageConverter();
-        FastJsonConfig config = new FastJsonConfig();
+        FastJsonConfig               config    = new FastJsonConfig();
 
         config.setDateFormat(FastJson2Support.DATE_FORMAT);
         config.setCharset(StandardCharsets.UTF_8);
@@ -65,9 +81,16 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
         converter.setFastJsonConfig(config);
         converter.setSupportedMediaTypes(List.of(
                 MediaType.APPLICATION_JSON,
-                new MediaType("application", "*+json")
+                new MediaType(
+                        "application",
+                        "*+json"
+                )
         ));
 
-        converters.add(0, converter);
+        converters.add(
+                0,
+                converter
+        );
     }
+
 }

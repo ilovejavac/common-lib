@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * JPA 关联关系解析器
- *
+ * <p>
  * 从实体类读取 @OneToMany, @ManyToOne, @OneToOne, @ManyToMany 关联信息
  */
 @Component
@@ -36,21 +36,32 @@ public class JpaRelationResolver implements RelationResolver {
 
     @Override
     public RelationInfo resolve(Class<?> entityClass, String fieldName) {
+
         if (entityClass == null || fieldName == null || fieldName.isEmpty()) {
             return null;
         }
         String cacheKey = entityClass.getName() + "#" + fieldName;
-        return CACHE.computeIfAbsent(cacheKey, k -> doResolve(entityClass, fieldName));
+        return CACHE.computeIfAbsent(
+                cacheKey,
+                k -> doResolve(
+                        entityClass,
+                        fieldName
+                )
+        );
     }
 
     private RelationInfo doResolve(Class<?> entityClass, String fieldName) {
-        Field field = findField(entityClass, fieldName);
+
+        Field field = findField(
+                entityClass,
+                fieldName
+        );
         if (field == null) {
             return null;
         }
 
         RelationType relationType = null;
-        String mappedBy = null;
+        String       mappedBy     = null;
 
         if (field.isAnnotationPresent(OneToMany.class)) {
             OneToMany ann = field.getAnnotation(OneToMany.class);
@@ -73,12 +84,24 @@ public class JpaRelationResolver implements RelationResolver {
         }
 
         Class<?> targetEntity = resolveTargetEntity(field);
-        String joinField = resolveJoinField(entityClass, targetEntity, mappedBy, relationType);
+        String   joinField    = resolveJoinField(
+                entityClass,
+                targetEntity,
+                mappedBy,
+                relationType
+        );
 
-        return new RelationInfo(relationType, targetEntity, fieldName, joinField, mappedBy);
+        return new RelationInfo(
+                relationType,
+                targetEntity,
+                fieldName,
+                joinField,
+                mappedBy
+        );
     }
 
     private Class<?> resolveTargetEntity(Field field) {
+
         Class<?> fieldType = field.getType();
 
         if (Collection.class.isAssignableFrom(fieldType)) {
@@ -100,18 +123,23 @@ public class JpaRelationResolver implements RelationResolver {
             String mappedBy,
             RelationType relationType
     ) {
+
         if (mappedBy != null && !mappedBy.isEmpty()) {
             return mappedBy;
         }
 
         if (relationType == RelationType.MANY_TO_ONE || relationType == RelationType.ONE_TO_ONE) {
-            return findReverseField(targetEntity, entityClass);
+            return findReverseField(
+                    targetEntity,
+                    entityClass
+            );
         }
 
         return null;
     }
 
     private String findReverseField(Class<?> targetEntity, Class<?> sourceEntity) {
+
         Class<?> current = targetEntity;
         while (current != null && current != Object.class) {
             for (Field field : current.getDeclaredFields()) {
@@ -126,6 +154,7 @@ public class JpaRelationResolver implements RelationResolver {
     }
 
     private Field findField(Class<?> clazz, String fieldName) {
+
         Class<?> current = clazz;
         while (current != null && current != Object.class) {
             try {
@@ -138,4 +167,5 @@ public class JpaRelationResolver implements RelationResolver {
         }
         return null;
     }
+
 }

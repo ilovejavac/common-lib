@@ -17,15 +17,21 @@ public class DictServiceImpl implements DictService {
 
     @Override
     public DictItem getItem(String code) {
+
         return adapt.getItem(code);
     }
 
     @Override
     public Map<String, DictItem> getItems(Collection<String> codes) {
+
         if (codes == null || codes.isEmpty()) {
             return Map.of();
         }
 
-        return adapt.listItem(codes).stream().collect(Collectors.toMap(DictItem::getItemCode, item -> item));
+        return adapt.listItem(codes).stream().collect(Collectors.toMap(
+                DictItem::getItemCode,
+                item -> item
+        ));
     }
+
 }

@@ -47,6 +47,8 @@ public abstract class MongoEntity extends CoreEntity implements Persistable<Long
 
     @Override
     public boolean isNew() {
+
         return id == null || createdAt == null;
     }
+
 }

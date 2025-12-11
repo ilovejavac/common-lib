@@ -18,6 +18,7 @@ import java.util.Optional;
 public final class PredicateAssembler {
 
     private PredicateAssembler() {
+
     }
 
     public static <E extends SearchEntity> Query assemble(
@@ -25,6 +26,7 @@ public final class PredicateAssembler {
             Collection<QueryFieldMerger.FieldMetaValue> fields,
             Query... extraQueries
     ) {
+
         List<QueryItem> items = new ArrayList<>();
 
         if (fields != null && !fields.isEmpty()) {
@@ -34,7 +36,10 @@ public final class PredicateAssembler {
         // 额外查询条件
         for (Query extra : extraQueries) {
             if (extra != null) {
-                items.add(new QueryItem(extra, LogicalOperator.AND));
+                items.add(new QueryItem(
+                        extra,
+                        LogicalOperator.AND
+                ));
             }
         }
 
@@ -46,11 +51,12 @@ public final class PredicateAssembler {
     }
 
     private static List<QueryItem> collectQueries(Collection<QueryFieldMerger.FieldMetaValue> fields) {
+
         List<QueryItem> items = new ArrayList<>();
 
         for (QueryFieldMerger.FieldMetaValue fv : fields) {
-            FieldMeta fm = fv.getFieldMeta();
-            Object value = fv.getValue();
+            FieldMeta fm    = fv.getFieldMeta();
+            Object    value = fv.getValue();
             if (value == null) continue;
 
             switch (fm.metaType()) {
@@ -61,21 +67,36 @@ public final class PredicateAssembler {
                             value
                     );
                     if (q != null) {
-                        items.add(new QueryItem(q, fm.operator()));
+                        items.add(new QueryItem(
+                                q,
+                                fm.operator()
+                        ));
                     }
                 }
 
                 case GROUP -> {
-                    Query groupQuery = buildGroupQuery(fm, value);
+                    Query groupQuery = buildGroupQuery(
+                            fm,
+                            value
+                    );
                     if (groupQuery != null) {
-                        items.add(new QueryItem(groupQuery, fm.operator()));
+                        items.add(new QueryItem(
+                                groupQuery,
+                                fm.operator()
+                        ));
                     }
                 }
 
                 case SUB_QUERY -> {
-                    Query nestedQuery = buildNestedQuery(fm, value);
+                    Query nestedQuery = buildNestedQuery(
+                            fm,
+                            value
+                    );
                     if (nestedQuery != null) {
-                        items.add(new QueryItem(nestedQuery, fm.operator()));
+                        items.add(new QueryItem(
+                                nestedQuery,
+                                fm.operator()
+                        ));
                     }
                 }
             }
@@ -85,6 +106,7 @@ public final class PredicateAssembler {
     }
 
     private static Query buildGroupQuery(FieldMeta groupMeta, Object groupValue) {
+
         List<FieldMeta> nestedMetas = groupMeta.nestedMetas();
         if (nestedMetas == null || nestedMetas.isEmpty()) return null;
 
@@ -92,7 +114,10 @@ public final class PredicateAssembler {
         for (FieldMeta nested : nestedMetas) {
             Object nestedValue = nested.getValue(groupValue);
             if (nestedValue != null) {
-                nestedFields.add(new QueryFieldMerger.FieldMetaValue(nestedValue, nested));
+                nestedFields.add(new QueryFieldMerger.FieldMetaValue(
+                        nestedValue,
+                        nested
+                ));
             }
         }
 
@@ -110,9 +135,13 @@ public final class PredicateAssembler {
      * 2. object 类型字段 - 直接路径拼接
      */
     private static Query buildNestedQuery(FieldMeta fm, Object filterValue) {
+
         String path = resolveNestedPath(fm);
         if (path == null) {
-            log.warn("OpenSearch 嵌套查询无法推断路径，已忽略: {}", fm.field().getName());
+            log.warn(
+                    "OpenSearch 嵌套查询无法推断路径，已忽略: {}",
+                    fm.field().getName()
+            );
             return null;
         }
 
@@ -156,7 +185,10 @@ public final class PredicateAssembler {
     private static String resolveNestedPath(FieldMeta fm) {
         // 1. 关联子查询不支持
         if (fm.relationInfo() != null) {
-            log.warn("OpenSearch 不支持关联子查询，已忽略: {}", fm.field().getName());
+            log.warn(
+                    "OpenSearch 不支持关联子查询，已忽略: {}",
+                    fm.field().getName()
+            );
             return null;
         }
 
@@ -168,13 +200,22 @@ public final class PredicateAssembler {
         // 3. 从字段名推断
         String fieldName = fm.field().getName();
         if (fieldName.endsWith("ExistsSub")) {
-            return fieldName.substring(0, fieldName.length() - 9);
+            return fieldName.substring(
+                    0,
+                    fieldName.length() - 9
+            );
         }
         if (fieldName.endsWith("NotExistsSub")) {
-            return fieldName.substring(0, fieldName.length() - 12);
+            return fieldName.substring(
+                    0,
+                    fieldName.length() - 12
+            );
         }
         if (fieldName.endsWith("Sub")) {
-            return fieldName.substring(0, fieldName.length() - 3);
+            return fieldName.substring(
+                    0,
+                    fieldName.length() - 3
+            );
         }
 
         return null;
@@ -185,12 +226,13 @@ public final class PredicateAssembler {
      * AND 优先级高于 OR
      */
     private static Query buildWithPrecedence(List<QueryItem> items) {
+
         if (items.isEmpty()) return null;
         if (items.size() == 1) return items.get(0).query;
 
         // 按 OR 分组
-        List<List<QueryItem>> andGroups = new ArrayList<>();
-        List<QueryItem> currentGroup = new ArrayList<>();
+        List<List<QueryItem>> andGroups    = new ArrayList<>();
+        List<QueryItem>       currentGroup = new ArrayList<>();
 
         for (QueryItem item : items) {
             currentGroup.add(item);
@@ -223,4 +265,5 @@ public final class PredicateAssembler {
 
     private record QueryItem(Query query, LogicalOperator operator) {
     }
+
 }

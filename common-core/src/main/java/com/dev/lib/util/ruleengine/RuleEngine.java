@@ -23,10 +23,13 @@ import java.util.function.Predicate;
 public class RuleEngine<I, E> {
 
     private final ImmutableList<Rule<I, E>> rules;
-    private final boolean failFast;
-    private final RuleListener<I, E> listener;
+
+    private final boolean                   failFast;
+
+    private final RuleListener<I, E>        listener;
 
     public static <I, E> Builder<I, E> builder() {
+
         return new Builder<>();
     }
 
@@ -37,9 +40,13 @@ public class RuleEngine<I, E> {
      * @return 校验结果
      */
     public RuleResult<E> evaluate(@NonNull I input) {
-        Assert.notNull(input, "input cannot be null");
 
-        List<E> errors = new ArrayList<>();
+        Assert.notNull(
+                input,
+                "input cannot be null"
+        );
+
+        List<E>      errors      = new ArrayList<>();
         List<String> passedRules = new ArrayList<>();
 
         for (Rule<I, E> rule : rules) {
@@ -48,31 +55,57 @@ public class RuleEngine<I, E> {
 
                 if (passed) {
                     passedRules.add(rule.name());
-                    if (listener != null) listener.onPass(rule.name(), input);
+                    if (listener != null) listener.onPass(
+                            rule.name(),
+                            input
+                    );
                 } else {
                     errors.add(rule.errorMessage());
-                    if (listener != null) listener.onFail(rule.name(), input, rule.errorMessage());
+                    if (listener != null) listener.onFail(
+                            rule.name(),
+                            input,
+                            rule.errorMessage()
+                    );
 
                     if (failFast) {
-                        log.debug("Rule [{}] failed, fail-fast enabled, stopping evaluation", rule.name());
+                        log.debug(
+                                "Rule [{}] failed, fail-fast enabled, stopping evaluation",
+                                rule.name()
+                        );
                         break;
                     }
                 }
             } catch (Exception e) {
-                log.error("Rule [{}] execution error: {}", rule.name(), e.getMessage());
-                if (listener != null) listener.onError(rule.name(), input, e);
+                log.error(
+                        "Rule [{}] execution error: {}",
+                        rule.name(),
+                        e.getMessage()
+                );
+                if (listener != null) listener.onError(
+                        rule.name(),
+                        input,
+                        e
+                );
 
-                if (failFast) throw new RuleExecutionException(rule.name(), e);
+                if (failFast) throw new RuleExecutionException(
+                        rule.name(),
+                        e
+                );
             }
         }
 
-        return new RuleResult<>(errors.isEmpty(), errors, passedRules);
+        return new RuleResult<>(
+                errors.isEmpty(),
+                errors,
+                passedRules
+        );
     }
 
     /**
      * 简单校验，仅返回是否通过
      */
     public boolean isValid(I input) {
+
         return evaluate(input).isPassed();
     }
 
@@ -81,23 +114,42 @@ public class RuleEngine<I, E> {
 
     // --- 监听器接口 ---
     public interface RuleListener<I, E> {
-        default void onPass(String ruleName, I input) {}
-        default void onFail(String ruleName, I input, E error) {}
-        default void onError(String ruleName, I input, Exception e) {}
+
+        default void onPass(String ruleName, I input) {
+
+        }
+
+        default void onFail(String ruleName, I input, E error) {
+
+        }
+
+        default void onError(String ruleName, I input, Exception e) {
+
+        }
+
     }
 
     // --- 规则执行异常 ---
     public static class RuleExecutionException extends RuntimeException {
+
         public RuleExecutionException(String ruleName, Throwable cause) {
-            super("Rule execution failed: " + ruleName, cause);
+
+            super(
+                    "Rule execution failed: " + ruleName,
+                    cause
+            );
         }
+
     }
 
     // --- Builder ---
     public static class Builder<I, E> {
-        private final List<Rule<I, E>> rules = new ArrayList<>();
-        private boolean failFast = true;
-        private RuleListener<I, E> listener;
+
+        private final List<Rule<I, E>>   rules    = new ArrayList<>();
+
+        private       boolean            failFast = true;
+
+        private       RuleListener<I, E> listener;
 
         /**
          * 添加规则
@@ -107,11 +159,23 @@ public class RuleEngine<I, E> {
          * @param errorMessage 不通过时的错误信息
          */
         public Builder<I, E> rule(String name, Predicate<I> condition, E errorMessage) {
-            return rule(name, condition, errorMessage, 0);
+
+            return rule(
+                    name,
+                    condition,
+                    errorMessage,
+                    0
+            );
         }
 
         public Builder<I, E> rule(String name, Predicate<I> condition, E errorMessage, int priority) {
-            rules.add(new Rule<>(name, condition, errorMessage, priority));
+
+            rules.add(new Rule<>(
+                    name,
+                    condition,
+                    errorMessage,
+                    priority
+            ));
             return this;
         }
 
@@ -119,11 +183,13 @@ public class RuleEngine<I, E> {
          * 是否快速失败 (遇到第一个失败规则即停止)
          */
         public Builder<I, E> failFast(boolean failFast) {
+
             this.failFast = failFast;
             return this;
         }
 
         public Builder<I, E> listener(RuleListener<I, E> listener) {
+
             this.listener = listener;
             return this;
         }
@@ -131,9 +197,18 @@ public class RuleEngine<I, E> {
         public RuleEngine<I, E> build() {
             // 按优先级排序
             List<Rule<I, E>> sorted = rules.stream()
-                    .sorted((r1, r2) -> Integer.compare(r2.priority(), r1.priority()))
+                    .sorted((r1, r2) -> Integer.compare(
+                            r2.priority(),
+                            r1.priority()
+                    ))
                     .toList();
-            return new RuleEngine<>(Lists.immutable.ofAll(sorted), failFast, listener);
+            return new RuleEngine<>(
+                    Lists.immutable.ofAll(sorted),
+                    failFast,
+                    listener
+            );
         }
+
     }
+
 }

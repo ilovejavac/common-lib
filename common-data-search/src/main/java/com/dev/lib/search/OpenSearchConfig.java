@@ -16,14 +16,15 @@ public class OpenSearchConfig {
 
     @Bean
     public OpenSearchClient openSearchClient(OpenSearchProperties properties) {
+
         HttpHost[] httpHosts = parseHosts(properties.getHosts());
 
         var transport = ApacheHttpClient5TransportBuilder
                 .builder(httpHosts)
                 .setHttpClientConfigCallback(httpClientBuilder ->
-                        httpClientBuilder.setConnectionManager(
-                                PoolingAsyncClientConnectionManagerBuilder.create().build()
-                        )
+                                                     httpClientBuilder.setConnectionManager(
+                                                             PoolingAsyncClientConnectionManagerBuilder.create().build()
+                                                     )
                 )
                 .build();
 
@@ -31,12 +32,17 @@ public class OpenSearchConfig {
     }
 
     private HttpHost[] parseHosts(String hosts) {
-        String[] hostArray = hosts.split(",");
+
+        String[]   hostArray = hosts.split(",");
         HttpHost[] httpHosts = new HttpHost[hostArray.length];
 
         for (int i = 0; i < hostArray.length; i++) {
             String[] parts = hostArray[i].trim().split(":");
-            httpHosts[i] = new HttpHost("http", parts[0], Integer.parseInt(parts[1]));
+            httpHosts[i] = new HttpHost(
+                    "http",
+                    parts[0],
+                    Integer.parseInt(parts[1])
+            );
         }
         return httpHosts;
     }
@@ -44,14 +50,21 @@ public class OpenSearchConfig {
     @Bean
     @ConfigurationProperties(prefix = "app.opensearch")
     public OpenSearchProperties openSearchProperties() {
+
         return new OpenSearchProperties();
     }
 
     @Data
     public static class OpenSearchProperties {
-        private boolean enabled = false;
-        private String hosts = "localhost:9200";
-        private String indexPrefix = "app-logs";
-        private String index = "public";
+
+        private boolean enabled     = false;
+
+        private String  hosts       = "localhost:9200";
+
+        private String  indexPrefix = "app-logs";
+
+        private String  index       = "public";
+
     }
+
 }

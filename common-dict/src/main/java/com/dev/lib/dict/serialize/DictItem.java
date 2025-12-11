@@ -9,9 +9,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DictItem {
+
     @JsonProperty("code")
     private String itemCode;
+
     @JsonProperty("label")
     private String itemLabel;
+
     private String css;
+
 }

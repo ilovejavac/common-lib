@@ -13,6 +13,8 @@ public class CustomBigIntegerJavaType extends BigIntegerJavaType {
 
     @Override
     public int getDefaultSqlPrecision(Dialect dialect, JdbcType jdbcType) {
+
         return TypeDefaults.BIG_INTEGER_PRECISION;
     }
+
 }
