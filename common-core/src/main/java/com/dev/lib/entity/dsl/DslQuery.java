@@ -55,7 +55,7 @@ public abstract class DslQuery<E extends CoreEntity> {
     public Boolean deleted;
 
     @ConditionIgnore
-    public String sortStr = "id_asc";
+    public String sortStr;
 
     @ConditionIgnore
     public Integer start;

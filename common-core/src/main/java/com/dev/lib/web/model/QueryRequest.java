@@ -151,13 +151,13 @@ public class QueryRequest<T> {
     }
 
     /**
-     * 构建排序对象（无默认排序）
+     * 构建排序对象（默认 id 降序[创建时间降序]）
      */
     public Sort toSort(Set<String> allowFields) {
 
         return toSort(
                 allowFields,
-                Sort.unsorted()
+                Sort.by(Sort.Order.desc("id"))
         );
     }
 
