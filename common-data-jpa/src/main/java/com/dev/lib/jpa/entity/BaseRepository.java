@@ -42,7 +42,7 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
         return findAll(toPredicate(dslQuery, expressions), dslQuery.toSort(allowFields));
     }
 
-    default Slice<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    default Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
         Class<?> entityClass = FieldMetaCache.getMeta(dslQuery.getClass()).entityClass();
         Set<String> allowFields =
                 Arrays.stream(entityClass.getDeclaredFields()).map(Field::getName).collect(Collectors.toSet());

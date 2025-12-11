@@ -74,6 +74,15 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
             return this;
         }
 
+        public Builder<I, C, O> stages(List<? extends PipelineStage<I, C, O>> stages) {
+            this.stages.addAll(stages);
+            return this;
+        }
+        public Builder<I, C, O> refiners(List<? extends PipelineRefiner<C, O>> refiners) {
+            this.refiners.addAll(refiners);
+            return this;
+        }
+
         public Builder<I, C, O> orElse(O result) {
             Assert.notNull(result, "pipline default-result cannot be null");
             this.defaultResult = result;

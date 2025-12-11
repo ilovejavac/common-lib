@@ -21,6 +21,7 @@ import com.dev.lib.web.model.QueryRequest;
 import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,7 +72,7 @@ public class DictServiceAdapt implements DictAdapt {
     @Override
     @Transactional(readOnly = true)
     public ServerResponse<List<DictTypeVO>> pageType(QueryRequest<DictTypeDTO.Query> request) {
-        Slice<DictType> page = typeRepository.list(request);
+        Page<DictType> page = typeRepository.list(request);
 
         return ServerResponse.success(page, typeVOMapper::convert);
     }
@@ -100,7 +101,7 @@ public class DictServiceAdapt implements DictAdapt {
     @Override
     @Transactional(readOnly = true)
     public ServerResponse<List<DictItemVO>> pageItem(String id, QueryRequest<DictItemDTO.Query> request) {
-        Slice<DictItemEntity> page = itemRepository.list(id, request);
+        Page<DictItemEntity> page = itemRepository.list(id, request);
 
         return ServerResponse.success(page, itemVOMapper::convert);
     }

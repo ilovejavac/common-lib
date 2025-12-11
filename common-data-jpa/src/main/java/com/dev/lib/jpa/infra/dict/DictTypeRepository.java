@@ -22,7 +22,7 @@ public interface DictTypeRepository extends BaseRepository<DictType> {
 
     }
 
-    default Slice<DictType> list(QueryRequest<DictTypeDTO.Query> request) {
+    default Page<DictType> list(QueryRequest<DictTypeDTO.Query> request) {
         return page(new Query().external(request));
     }
 

@@ -28,7 +28,7 @@ public interface DictItemRepository extends BaseRepository<DictItemEntity> {
         private String type;
     }
 
-    default Slice<DictItemEntity> list(String type, QueryRequest<DictItemDTO.Query> request) {
+    default Page<DictItemEntity> list(String type, QueryRequest<DictItemDTO.Query> request) {
         return page(new Query().setType(type).external(request));
     }
 
