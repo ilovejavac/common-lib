@@ -26,7 +26,7 @@ public class PopulateFieldExtractor {
      */
     public static Map<String, Set<Object>> extract(Object obj) {
 
-        Map<String, Set<Object>> result = new HashMap<>();
+        Map<String, Set<Object>> result  = new HashMap<>();
         Set<Object>              visited = Collections.newSetFromMap(new IdentityHashMap<>());
         doExtract(
                 obj,
@@ -85,22 +85,11 @@ public class PopulateFieldExtractor {
 
         // 处理普通对象：扫描 @PopulateField 字段
         List<FieldMeta> populateFields = getPopulateFields(clazz);
-        log.info(
-                "Class [{}] has {} populate fields",
-                clazz.getSimpleName(),
-                populateFields.size()
-        );
 
         for (FieldMeta meta : populateFields) {
             Object value = getFieldValue(
                     meta.field(),
                     obj
-            );
-            log.info(
-                    "Field [{}] loader=[{}] value={}",
-                    meta.field().getName(),
-                    meta.loaderName(),
-                    value
             );
             if (value != null) {
                 result.computeIfAbsent(

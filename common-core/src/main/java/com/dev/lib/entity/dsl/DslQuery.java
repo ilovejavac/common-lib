@@ -51,9 +51,6 @@ public abstract class DslQuery<E extends CoreEntity> {
     @Condition(type = QueryType.EQ)
     private Long modifierId;
 
-    @Condition(type = QueryType.EQ)
-    public Boolean deleted;
-
     @ConditionIgnore
     public String sortStr;
 

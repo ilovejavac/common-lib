@@ -2,6 +2,7 @@ package com.dev.lib.jpa.entity.audit;
 
 import com.dev.lib.entity.audit.AuditAction;
 import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.util.Dispatcher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
@@ -56,28 +57,27 @@ public class AuditListener {
 
     private void save(JpaEntity entity, AuditAction action, String values) {
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                AuditLog log = new AuditLog();
-                log.setEntityType(entity.getClass().getSimpleName());
-                log.setEntityId(entity.getId());
-                log.setBizId(entity.getBizId());
-                log.setAction(action);
-                log.setRecordValue(values);
-                log.setCreatedAt(LocalDateTime.now());
-                log.setUpdatedAt(LocalDateTime.now());
-                log.setCreatorId(entity.getCreatorId());
-                log.setModifierId(entity.getModifierId());
+        CompletableFuture.runAsync(
+                () -> {
+                    try {
+                        AuditLog log = new AuditLog();
+                        log.setEntityType(entity.getClass().getSimpleName());
+                        log.setEntityId(entity.getId());
+                        log.setBizId(entity.getBizId());
+                        log.setAction(action);
+                        log.setRecordValue(values);
+                        log.setCreatedAt(LocalDateTime.now());
+                        log.setUpdatedAt(LocalDateTime.now());
+                        log.setCreatorId(entity.getCreatorId());
+                        log.setModifierId(entity.getModifierId());
 
-                auditRepo.save(log);
-            } catch (Exception e) {
-                // 审计失败不影响业务
-                log.warn(
-                        "audit log error",
-                        e
-                );
-            }
-        });
+                        auditRepo.save(log);
+                    } catch (Exception e) {
+                        // 审计失败不影响业务
+                        log.warn("audit log error", e);
+                    }
+                }, Dispatcher.IO
+        );
     }
 
     private String toJson(Object obj) {

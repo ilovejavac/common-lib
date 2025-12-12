@@ -32,7 +32,7 @@ public class BaseEntityListener {
         entity.setCreatorId(user.getId());
         entity.setModifierId(user.getId());
 
-        entity.setReversion(0);
+        entity.setReversion(0L);
         entity.setFeatures(Maps.mutable.empty());
     }
 

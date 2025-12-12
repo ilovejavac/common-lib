@@ -24,10 +24,9 @@ import java.util.Map;
 public class JpaEntity extends CoreEntity implements Persistable<Long> {
 
     @Id
-    @Column(length = 20)
     private Long id;
 
-    @Column(nullable = false, length = 12, unique = true)
+    @Column(nullable = false, length = 12, unique = true, updatable = false)
     private String bizId;
 
     @Column(nullable = false, updatable = false)
@@ -36,10 +35,9 @@ public class JpaEntity extends CoreEntity implements Persistable<Long> {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(updatable = false, length = 20)
+    @Column(updatable = false)
     private Long creatorId;
 
-    @Column(length = 20)
     private Long modifierId;
 
     @Column(nullable = false)
@@ -52,13 +50,12 @@ public class JpaEntity extends CoreEntity implements Persistable<Long> {
     @Version
     @ToString.Include
     @EqualsAndHashCode.Include
-    @Column(length = 11, nullable = false)
-    private Integer reversion;
+    @Column(nullable = false)
+    private Long reversion;
 
     @Override
     public boolean isNew() {
-
-        return id == null || createdAt == null;
+        return createdAt == null;
     }
 
 }
