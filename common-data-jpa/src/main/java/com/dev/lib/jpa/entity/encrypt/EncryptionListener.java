@@ -24,29 +24,20 @@ public class EncryptionListener {
     @PreUpdate
     public void encryptFields(Object entity) {
 
-        processFields(
-                entity,
-                true
-        );
+        processFields(entity, true);
     }
 
     @PostLoad
     public void decryptFields(Object entity) {
 
-        processFields(
-                entity,
-                false
-        );
+        processFields(entity, false);
     }
 
     @PostPersist
     @PostUpdate
     public void decryptAfterSave(Object entity) {
 
-        processFields(
-                entity,
-                false
-        );
+        processFields(entity, false);
     }
 
     private void processFields(Object entity, boolean isEncrypt) {
@@ -61,17 +52,10 @@ public class EncryptionListener {
                             String processed = isEncrypt
                                                ? encryptionService.encrypt(value)
                                                : encryptionService.decrypt(value);
-                            ReflectionUtils.setField(
-                                    field,
-                                    entity,
-                                    processed
-                            );
+                            ReflectionUtils.setField(field, entity, processed);
                         }
                     } catch (IllegalAccessException e) {
-                        log.warn(
-                                "Failed to process field: " + field.getName(),
-                                e
-                        );
+                        log.warn("Failed to process field: " + field.getName(), e);
                     }
                 });
     }

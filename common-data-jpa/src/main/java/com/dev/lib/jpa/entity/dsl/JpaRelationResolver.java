@@ -41,21 +41,13 @@ public class JpaRelationResolver implements RelationResolver {
             return null;
         }
         String cacheKey = entityClass.getName() + "#" + fieldName;
-        return CACHE.computeIfAbsent(
-                cacheKey,
-                k -> doResolve(
-                        entityClass,
-                        fieldName
-                )
+        return CACHE.computeIfAbsent(cacheKey, k -> doResolve(entityClass, fieldName)
         );
     }
 
     private RelationInfo doResolve(Class<?> entityClass, String fieldName) {
 
-        Field field = findField(
-                entityClass,
-                fieldName
-        );
+        Field field = findField(entityClass, fieldName);
         if (field == null) {
             return null;
         }
@@ -129,10 +121,7 @@ public class JpaRelationResolver implements RelationResolver {
         }
 
         if (relationType == RelationType.MANY_TO_ONE || relationType == RelationType.ONE_TO_ONE) {
-            return findReverseField(
-                    targetEntity,
-                    entityClass
-            );
+            return findReverseField(targetEntity, entityClass);
         }
 
         return null;

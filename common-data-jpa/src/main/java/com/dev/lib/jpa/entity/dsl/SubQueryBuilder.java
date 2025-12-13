@@ -104,21 +104,9 @@ public class SubQueryBuilder {
 
         // 根据查询类型构建不同的子查询
         return switch (queryType) {
-            case EXISTS -> buildSelfExistsQuery(
-                    subPath,
-                    filterCondition
-            );
-            case NOT_EXISTS -> buildSelfNotExistsQuery(
-                    subPath,
-                    filterCondition
-            );
-            case IN -> buildSelfInQuery(
-                    parentPath,
-                    subPath,
-                    filterCondition,
-                    select,
-                    parentField
-            );
+            case EXISTS -> buildSelfExistsQuery(subPath, filterCondition);
+            case NOT_EXISTS -> buildSelfNotExistsQuery(subPath, filterCondition);
+            case IN -> buildSelfInQuery(parentPath, subPath, filterCondition, select, parentField);
             case NOT_IN -> buildSelfNotInQuery(
                     parentPath,
                     subPath,
@@ -268,18 +256,10 @@ public class SubQueryBuilder {
                 innerAlias
         );
 
-        ComparablePath<Comparable> orderPath      = subPath.getComparable(
-                orderByField,
-                Comparable.class
-        );
-        ComparablePath<Comparable> innerOrderPath = innerPath.getComparable(
-                orderByField,
-                Comparable.class
-        );
+        ComparablePath<Comparable> orderPath      = subPath.getComparable(orderByField, Comparable.class);
+        ComparablePath<Comparable> innerOrderPath = innerPath.getComparable(orderByField, Comparable.class);
 
-        Expression<Comparable> aggregateExpr = desc
-                                               ? innerOrderPath.max()
-                                               : innerOrderPath.min();
+        Expression<Comparable> aggregateExpr = desc ? innerOrderPath.max() : innerOrderPath.min();
 
         // 构建内层子查询（取最大/最小值）
         JPQLQuery<Comparable> innerSubQuery = JPAExpressions
@@ -344,14 +324,8 @@ public class SubQueryBuilder {
 
         // 根据查询类型构建子查询
         return switch (queryType) {
-            case EXISTS -> buildExistsQuery(
-                    subPath,
-                    fullCondition
-            );
-            case NOT_EXISTS -> buildNotExistsQuery(
-                    subPath,
-                    fullCondition
-            );
+            case EXISTS -> buildExistsQuery(subPath, fullCondition);
+            case NOT_EXISTS -> buildNotExistsQuery(subPath, fullCondition);
             case IN -> buildInQuery(
                     parentPath,
                     subPath,

@@ -55,7 +55,7 @@ public abstract class DslQuery<E extends CoreEntity> {
     public String sortStr;
 
     @ConditionIgnore
-    public Integer start;
+    public Integer offset;
 
     @ConditionIgnore
     public Integer limit;
@@ -122,10 +122,7 @@ public abstract class DslQuery<E extends CoreEntity> {
                         Sort.Direction dir = parts.length > 1 && "desc".equalsIgnoreCase(parts[1])
                                              ? Sort.Direction.DESC
                                              : Sort.Direction.ASC;
-                        return new Sort.Order(
-                                dir,
-                                field
-                        );
+                        return new Sort.Order(dir, field);
                     })
                     .filter(Objects::nonNull)
                     .toList();
@@ -140,11 +137,8 @@ public abstract class DslQuery<E extends CoreEntity> {
 
         if (pageRequest == null) {
             return PageRequest.of(
-                    Optional.ofNullable(start).orElse(0),
-                    Math.min(
-                            500,
-                            Optional.ofNullable(limit).orElse(30)
-                    ),
+                    Math.max(1, Optional.ofNullable(offset).orElse(1)) - 1,
+                    Math.min(500, Optional.ofNullable(limit).orElse(50)),
                     toSort(allowFields)
             );
         }

@@ -161,7 +161,7 @@ public class TokenManageAdapt implements TokenManager {
     public List<String> searchTokenKeys(String prefix, String keyword, int start, int size) {
 
         return repo.page(new AccessTokenRepo.Q().setTokenKeyLike(keyword).setTokenKeyStartWith(prefix)
-                                 .setStart(start)
+                                 .setOffset(start)
                                  .setLimit(size)
         ).getContent().stream().map(AccessTokenPo::getTokenKey).toList();
     }

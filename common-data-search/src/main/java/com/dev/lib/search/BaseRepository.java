@@ -519,7 +519,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
     public List<T> loads(DslQuery<T> dslQuery, Query... extraQueries) {
 
         int         size        = Optional.ofNullable(dslQuery.getLimit()).orElse(100);
-        int         from        = Optional.ofNullable(dslQuery.getStart()).orElse(0);
+        int         from        = Optional.ofNullable(dslQuery.getOffset()).orElse(0);
         Set<String> allowFields = getAllowFields();
         try {
             SearchResponse<T> response = client.search(

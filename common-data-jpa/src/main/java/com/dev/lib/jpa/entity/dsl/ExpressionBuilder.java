@@ -35,61 +35,17 @@ public class ExpressionBuilder {
         String finalField = fieldParts[fieldParts.length - 1];
 
         return switch (type) {
-            case EQ -> eq(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case NE -> ne(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case GT -> gt(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case GE -> goe(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case LT -> lt(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case LE -> loe(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case LIKE -> like(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case START_WITH -> startWith(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case END_WITH -> endWith(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case IN -> in(
-                    currentPath,
-                    finalField,
-                    value
-            );
-            case NOT_IN -> notIn(
-                    currentPath,
-                    finalField,
-                    value
-            );
+            case EQ -> eq(currentPath, finalField, value);
+            case NE -> ne(currentPath, finalField, value);
+            case GT -> gt(currentPath, finalField, value);
+            case GE -> goe(currentPath, finalField, value);
+            case LT -> lt(currentPath, finalField, value);
+            case LE -> loe(currentPath, finalField, value);
+            case LIKE -> like(currentPath, finalField, value);
+            case START_WITH -> startWith(currentPath, finalField, value);
+            case END_WITH -> endWith(currentPath, finalField, value);
+            case IN -> in(currentPath, finalField, value);
+            case NOT_IN -> notIn(currentPath, finalField, value);
             case IS_NULL -> currentPath.get(finalField).isNull();
             case IS_NOT_NULL -> currentPath.get(finalField).isNotNull();
             default -> null;
@@ -112,10 +68,7 @@ public class ExpressionBuilder {
         if (!(value instanceof Comparable)) {
             throw new IllegalArgumentException("GT 操作要求值必须实现 Comparable 接口");
         }
-        return path.getComparable(
-                        field,
-                        (Class<Comparable>) value.getClass()
-                )
+        return path.getComparable(field, (Class<Comparable>) value.getClass())
                 .gt((Comparable<?>) value);
     }
 
@@ -125,10 +78,7 @@ public class ExpressionBuilder {
         if (!(value instanceof Comparable)) {
             throw new IllegalArgumentException("GE 操作要求值必须实现 Comparable 接口");
         }
-        return path.getComparable(
-                        field,
-                        (Class<Comparable>) value.getClass()
-                )
+        return path.getComparable(field, (Class<Comparable>) value.getClass())
                 .goe((Comparable<?>) value);
     }
 
@@ -138,10 +88,7 @@ public class ExpressionBuilder {
         if (!(value instanceof Comparable)) {
             throw new IllegalArgumentException("LT 操作要求值必须实现 Comparable 接口");
         }
-        return path.getComparable(
-                        field,
-                        (Class<Comparable>) value.getClass()
-                )
+        return path.getComparable(field, (Class<Comparable>) value.getClass())
                 .lt((Comparable<?>) value);
     }
 
@@ -151,10 +98,7 @@ public class ExpressionBuilder {
         if (!(value instanceof Comparable)) {
             throw new IllegalArgumentException("LE 操作要求值必须实现 Comparable 接口");
         }
-        return path.getComparable(
-                        field,
-                        (Class<Comparable>) value.getClass()
-                )
+        return path.getComparable(field, (Class<Comparable>) value.getClass())
                 .loe((Comparable<?>) value);
     }
 

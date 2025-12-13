@@ -16,49 +16,37 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
     // 查询修饰符
     default RepositoryQuery<T> lockForUpdate() {
 
-        return new RepositoryQuery<>(
-                this,
-                new QueryContext().lockForUpdate()
-        );
+        return new RepositoryQuery<>(this, new QueryContext().lockForUpdate());
     }
 
     default RepositoryQuery<T> lockForShare() {
 
-        return new RepositoryQuery<>(
-                this,
-                new QueryContext().lockForShare()
-        );
+        return new RepositoryQuery<>(this, new QueryContext().lockForShare());
     }
 
     default RepositoryQuery<T> withDeleted() {
 
-        return new RepositoryQuery<>(
-                this,
-                new QueryContext().withDeleted()
-        );
+        return new RepositoryQuery<>(this, new QueryContext().withDeleted());
     }
 
     default RepositoryQuery<T> onlyDeleted() {
 
-        return new RepositoryQuery<>(
-                this,
-                new QueryContext().onlyDeleted()
-        );
+        return new RepositoryQuery<>(this, new QueryContext().onlyDeleted());
     }
 
-    default PhysicalDeleteRepository<T> phyDel() {
+    default PhysicalDeleteRepository<T> physicalDelete() {
 
         return new PhysicalDeleteRepository<>(this);
+    }
+
+    default void delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        deleteAll(loads(dslQuery, expressions));
     }
 
     // 查询
     Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-    Optional<T> load(BooleanExpression... expressions);
-
     List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-    List<T> loads(BooleanExpression... expressions);
 
     Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions);
 

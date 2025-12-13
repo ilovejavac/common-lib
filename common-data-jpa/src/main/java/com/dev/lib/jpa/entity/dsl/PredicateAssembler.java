@@ -56,10 +56,7 @@ public class PredicateAssembler {
                     getEntityPath(query.getClass()).getMetadata()
             );
 
-            List<ExpressionItem> items     = collectExpressions(
-                    pathBuilder,
-                    fields
-            );
+            List<ExpressionItem> items     = collectExpressions(pathBuilder, fields);
             Predicate            predicate = buildWithPrecedence(items);
             Optional.ofNullable(predicate).ifPresent(builder::and);
         }
@@ -96,38 +93,21 @@ public class PredicateAssembler {
                             value
                     );
                     if (expr != null) {
-                        items.add(new ExpressionItem(
-                                expr,
-                                fm.operator()
-                        ));
+                        items.add(new ExpressionItem(expr, fm.operator()));
                     }
                 }
 
                 case GROUP -> {
-                    Predicate groupPredicate = buildGroupPredicate(
-                            pathBuilder,
-                            fm,
-                            value
-                    );
+                    Predicate groupPredicate = buildGroupPredicate(pathBuilder, fm, value);
                     if (groupPredicate != null) {
-                        items.add(new ExpressionItem(
-                                groupPredicate,
-                                fm.operator()
-                        ));
+                        items.add(new ExpressionItem(groupPredicate, fm.operator()));
                     }
                 }
 
                 case SUB_QUERY -> {
-                    BooleanExpression subExpr = SubQueryBuilder.build(
-                            pathBuilder,
-                            fm,
-                            value
-                    );
+                    BooleanExpression subExpr = SubQueryBuilder.build(pathBuilder, fm, value);
                     if (subExpr != null) {
-                        items.add(new ExpressionItem(
-                                subExpr,
-                                fm.operator()
-                        ));
+                        items.add(new ExpressionItem(subExpr, fm.operator()));
                     }
                 }
             }
@@ -154,10 +134,7 @@ public class PredicateAssembler {
         for (FieldMeta nested : nestedMetas) {
             Object nestedValue = nested.getValue(groupValue);
             if (nestedValue != null) {
-                nestedFields.add(new QueryFieldMerger.FieldMetaValue(
-                        nestedValue,
-                        nested
-                ));
+                nestedFields.add(new QueryFieldMerger.FieldMetaValue(nestedValue, nested));
             }
         }
 
@@ -165,10 +142,7 @@ public class PredicateAssembler {
             return null;
         }
 
-        List<ExpressionItem> nestedItems = collectExpressions(
-                pathBuilder,
-                nestedFields
-        );
+        List<ExpressionItem> nestedItems = collectExpressions(pathBuilder, nestedFields);
         if (nestedItems.isEmpty()) {
             return null;
         }

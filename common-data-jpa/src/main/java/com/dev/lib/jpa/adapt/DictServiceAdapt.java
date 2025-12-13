@@ -63,10 +63,7 @@ public class DictServiceAdapt implements DictAdapt {
     public void updateType(DictTypeDTO.UpdateType cmd) {
 
         Optional<DictType> loadedType = typeRepository.getType(cmd.getBizId());
-        loadedType.ifPresent(it -> updateTypeMapper.convert(
-                cmd,
-                it
-        ));
+        loadedType.ifPresent(it -> updateTypeMapper.convert(cmd, it));
     }
 
     @Override
@@ -75,10 +72,7 @@ public class DictServiceAdapt implements DictAdapt {
 
         Page<DictType> page = typeRepository.list(request);
 
-        return ServerResponse.success(
-                page,
-                typeVOMapper::convert
-        );
+        return ServerResponse.success(page.map(typeVOMapper::convert));
     }
 
     @Override
@@ -94,10 +88,7 @@ public class DictServiceAdapt implements DictAdapt {
     public void updateItem(DictItemDTO.UpdateItem cmd) {
 
         Optional<DictItemEntity> loadedItem = itemRepository.getByBizId(cmd.getBizId());
-        loadedItem.ifPresent(it -> updateItemMapper.convert(
-                cmd,
-                it
-        ));
+        loadedItem.ifPresent(it -> updateItemMapper.convert(cmd, it));
     }
 
     @Override
@@ -112,15 +103,9 @@ public class DictServiceAdapt implements DictAdapt {
     @Transactional(readOnly = true)
     public ServerResponse<List<DictItemVO>> pageItem(String id, QueryRequest<DictItemDTO.Query> request) {
 
-        Page<DictItemEntity> page = itemRepository.list(
-                id,
-                request
-        );
+        Page<DictItemEntity> page = itemRepository.list(id, request);
 
-        return ServerResponse.success(
-                page,
-                itemVOMapper::convert
-        );
+        return ServerResponse.success(page.map(itemVOMapper::convert));
     }
 
     @Override
