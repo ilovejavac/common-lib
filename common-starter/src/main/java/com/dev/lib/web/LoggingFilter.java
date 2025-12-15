@@ -33,6 +33,7 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 public class LoggingFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;
+    private static final String[] LOG_PATTERNS = {"/api/**"};
 
     @Override
     protected void doFilterInternal(
@@ -43,7 +44,13 @@ public class LoggingFilter extends OncePerRequestFilter {
 
         HttpServletRequest           httpRequest    = request;
         ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(httpRequest);
+        String requestPath = request.getRequestURI();
 
+        // ✅ 只处理 /api/** 路径
+        if (!shouldLog(requestPath)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         try {
             String traceId = request.getHeader("X-Trace-Id");
             if (traceId == null) {
@@ -65,28 +72,36 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * 判断是否需要记录日志
+     */
+    private boolean shouldLog(String path) {
+        for (String pattern : LOG_PATTERNS) {
+            if (matchesPattern(path, pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * 简单的路径匹配（支持 ** 通配符）
+     */
+    private boolean matchesPattern(String path, String pattern) {
+        if (pattern.endsWith("/**")) {
+            String prefix = pattern.substring(0, pattern.length() - 3);
+            return path.startsWith(prefix);
+        }
+        return path.equals(pattern);
+    }
+
     private void logRequest(ContentCachingRequestWrapper request) throws UnsupportedEncodingException {
 
         Map<String, Object> requestInfo = new HashMap<>();
-        requestInfo.put(
-                "method",
-                request.getMethod()
-        );
-        requestInfo.put(
-                "path",
-                request.getRequestURI()
-        );
-        requestInfo.put(
-                "source_ip",
-                ClientInfoExtractor.getClientIp(request)
-        );
+        requestInfo.put("method", request.getMethod());
+        requestInfo.put("path", request.getRequestURI());
+        requestInfo.put("source_ip", ClientInfoExtractor.getClientIp(request));
 
-        List<StructuredArgument> args = new ArrayList<>(List.of(
-                keyValue(
-                        "context",
-                        requestInfo
-                )
-        ));
+        List<StructuredArgument> args = new ArrayList<>(List.of(keyValue("context", requestInfo)));
 
         if (SecurityContextHolder.isLogin()) {
             UserDetails user = SecurityContextHolder.get();
@@ -96,10 +111,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                     "username",
                     Optional.ofNullable(user.getUsername()).orElse("Anonymous")
             );
-            args.add(keyValue(
-                    "user",
-                    userInfo
-            ));
+            args.add(keyValue("user", userInfo));
         }
 
         Map<String, Object> business    = new HashMap<>();
@@ -109,25 +121,16 @@ public class LoggingFilter extends OncePerRequestFilter {
             byte[] content = request.getContentAsByteArray();
             if (content.length > 0) {
                 try {
-                    String body = new String(
-                            content,
-                            request.getCharacterEncoding()
-                    );
+                    String body = new String(content, request.getCharacterEncoding());
                     business.put(
                             "request_body",
-                            objectMapper.readValue(
-                                    body,
-                                    Object.class
-                            )
+                            objectMapper.readValue(body, Object.class)
                     );
                     hasBusiness = true;
                 } catch (Exception e) {
                     business.put(
                             "request_body",
-                            new String(
-                                    content,
-                                    request.getCharacterEncoding()
-                            )
+                            new String(content, request.getCharacterEncoding())
                     );
                     hasBusiness = true;
                 }
@@ -138,29 +141,17 @@ public class LoggingFilter extends OncePerRequestFilter {
         if (queryString != null && !queryString.isEmpty()) {
             Map<String, Object> params = new HashMap<>();
             request.getParameterMap().forEach((key, values) -> {
-                params.put(
-                        key,
-                        values.length == 1 ? values[0] : Arrays.asList(values)
-                );
+                params.put(key, values.length == 1 ? values[0] : Arrays.asList(values));
             });
-            business.put(
-                    "query_params",
-                    params
-            );
+            business.put("query_params", params);
             hasBusiness = true;
         }
 
         if (hasBusiness) {
-            args.add(keyValue(
-                    "business",
-                    business
-            ));
+            args.add(keyValue("business", business));
         }
 
-        log.info(
-                "Request received",
-                args.toArray()
-        );
+        log.info("Request received", args.toArray());
     }
 
 }

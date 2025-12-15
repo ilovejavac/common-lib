@@ -24,11 +24,11 @@ public class TaskMessageEventJob implements InitializingBean {
 
     private final Map<String, String> groupLastIdMap = new ConcurrentHashMap<>();
 
-    private final ITaskNotifyService        notifyService;
+    private final ITaskNotifyService notifyService;
 
-    private final ILocalTaskDataService     service;
+    private final ILocalTaskDataService service;
 
-    private final ThreadPoolTaskScheduler   scheduler;
+    private final ThreadPoolTaskScheduler scheduler;
 
     private final LocalTaskConfigProperties properties;
 
@@ -52,30 +52,21 @@ public class TaskMessageEventJob implements InitializingBean {
         String        groupId      = group.getGroup();
         List<Integer> houseNumbers = group.getHouseNumbers();
         if (houseNumbers == null || houseNumbers.isEmpty()) {
-            log.warn(
-                    "任务组 [{}] 未配置 houseNumbers，跳过该组调度",
-                    groupId
-            );
+            log.warn("任务组 [{}] 未配置 houseNumbers，跳过该组调度", groupId);
             return;
         }
 
         // 初始化 lastId
-        groupLastIdMap.computeIfAbsent(
-                groupId,
-                k -> {
-                    return service.selectMinIdByHouseNumber(houseNumbers);
-                }
-        );
+        groupLastIdMap.computeIfAbsent(groupId, k -> service.selectMinIdByHouseNumber(houseNumbers));
 
         Runnable task = () -> {
             try {
-                String lastId = groupLastIdMap.get(groupId);
-                List<TaskMessageEntityCommand> cmdList =
-                        service.selectByHouseNumber(
-                                houseNumbers,
-                                lastId,
-                                group.getLimit()
-                        );
+                String                         lastId  = groupLastIdMap.get(groupId);
+                List<TaskMessageEntityCommand> cmdList = service.selectByHouseNumber(
+                        houseNumbers,
+                        lastId,
+                        group.getLimit()
+                );
                 if (cmdList == null || cmdList.isEmpty()) {
                     return;
                 }
@@ -88,10 +79,7 @@ public class TaskMessageEventJob implements InitializingBean {
                 // 更新 lastId
                 String maxId = cmdList.stream().map(TaskMessageEntityCommand::getTaskId).max(Comparator.naturalOrder())
                         .orElse(lastId);
-                groupLastIdMap.put(
-                        groupId,
-                        maxId
-                );
+                groupLastIdMap.put(groupId, maxId);
 
                 log.info(
                         "任务组 [{}] 处理完成：拉取{}条，lastId: {} -> {}",
@@ -101,36 +89,17 @@ public class TaskMessageEventJob implements InitializingBean {
                         maxId
                 );
             } catch (Exception e) {
-                log.error(
-                        "任务组 [{}] 执行异常: {}",
-                        groupId,
-                        e.getMessage(),
-                        e
-                );
+                log.error("任务组 [{}] 执行异常: {}", groupId, e.getMessage(), e);
             }
         };
 
         if (group.getCron() != null && !group.getCron().trim().isEmpty()) {
-            scheduler.schedule(
-                    task,
-                    new CronTrigger(group.getCron())
-            );
-            log.info(
-                    "任务组 [{}] 已按 cron [{}] 调度",
-                    groupId,
-                    group.getCron()
-            );
+            scheduler.schedule(task, new CronTrigger(group.getCron()));
+            log.info("任务组 [{}] 已按 cron [{}] 调度", groupId, group.getCron());
         } else {
             long delay = group.getFixedDelayMs() != null ? group.getFixedDelayMs() : 5000L;
-            scheduler.scheduleWithFixedDelay(
-                    task,
-                    Duration.ofMillis(delay)
-            );
-            log.info(
-                    "任务组 [{}] 已按 fixedDelayMs [{}] 调度",
-                    groupId,
-                    delay
-            );
+            scheduler.scheduleWithFixedDelay(task, Duration.ofMillis(delay));
+            log.info("任务组 [{}] 已按 fixedDelayMs [{}] 调度", groupId, delay);
         }
     }
 

@@ -1,5 +1,6 @@
 package com.dev.lib.jpa.adapt;
 
+import com.alibaba.fastjson2.JSON;
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessageAdapt;
 import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessagePort;
@@ -16,11 +17,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
 
-    private final IRabbitPublish         rabbitPublish;
+    private final IRabbitPublish rabbitPublish;
 
-    private final GenerichHttpGateway    httpGateway;
+    private final GenerichHttpGateway httpGateway;
 
-    private final ObjectMapper           mapper;
+    private final ObjectMapper mapper;
 
     private final ILocalTaskMessageAdapt adapt;
 
@@ -60,7 +61,8 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
             rabbitPublish.publish(
                     config.getExchange(),
                     config.getTopic(),
-                    mapper.writeValueAsString(config.getPayload())
+                    JSON.toJSONString(config.getPayload())
+//                    mapper.writeValueAsString(config.getPayload())
             );
             adapt.updateTaskStatusToSuccess(cmd.getTaskId());
         } catch (Exception e) {

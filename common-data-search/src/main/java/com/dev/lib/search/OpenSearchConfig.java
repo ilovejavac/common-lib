@@ -61,7 +61,7 @@ public class OpenSearchConfig {
 
         private String  hosts       = "localhost:9200";
 
-        private String  indexPrefix = "app-logs";
+        private String  indexPrefix = "app-";
 
         private String  index       = "public";
 

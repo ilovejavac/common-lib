@@ -30,10 +30,16 @@ import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository<T, Long> implements BaseRepository<T> {
+
+    /**
+     * 级联删除字段缓存：Class -> 需要级联删除的字段列表
+     */
+    private static final Map<Class<?>, List<Field>> CASCADE_FIELDS_CACHE = new ConcurrentHashMap<>();
 
     private final EntityManager entityManager;
 
@@ -45,14 +51,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private final BooleanPath deletedPath;
 
-//    private final NumberPath<Long> idPath;
-
     public BaseRepositoryImpl(JpaEntityInformation<T, Long> entityInformation, EntityManager em) {
 
-        super(
-                entityInformation,
-                em
-        );
+        super(entityInformation, em);
         this.entityManager = em;
         this.queryFactory = new JPAQueryFactory(em);
         this.path = SimpleEntityPathResolver.INSTANCE.createPath(entityInformation.getJavaType());
@@ -62,14 +63,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
                 SimpleEntityPathResolver.INSTANCE,
                 null
         );
-        this.deletedPath = resolvePath(
-                "deleted",
-                BooleanPath.class
-        );
-//        this.idPath = resolvePath(
-//                "id",
-//                NumberPath.class
-//        );
+        this.deletedPath = resolvePath("deleted", BooleanPath.class);
     }
 
     // ========== 查询（默认排除已删除）==========
@@ -110,7 +104,11 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
         if (ctx.hasLock()) {
-            List<T> result = queryFactory.selectFrom(path).where(predicate).setLockMode(ctx.getLockMode()).limit(1).fetch();
+            List<T> result = queryFactory.selectFrom(path)
+                    .where(predicate)
+                    .setLockMode(ctx.getLockMode())
+                    .limit(1)
+                    .fetch();
             return result.isEmpty() ? Optional.empty() : Optional.of(result.get(0));
         }
         return querydslExecutor.findOne(predicate);
@@ -120,7 +118,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
         if (ctx.hasLock()) {
-            JPAQuery<T> query = queryFactory.selectFrom(path).where(predicate).setLockMode(ctx.getLockMode());
+            JPAQuery<T> query = queryFactory.selectFrom(path)
+                    .where(predicate)
+                    .setLockMode(ctx.getLockMode());
             if (dslQuery != null) {
                 applySort(query, dslQuery);
                 applyLimit(query, dslQuery);
@@ -158,6 +158,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     @Override
     public void delete(T entity) {
+
         if (entity == null || entity.getId() == null) return;
 
         // 确保实体是托管状态
@@ -170,9 +171,8 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         // 级联软删除子实体
         cascadeSoftDelete(managed, new HashSet<>());
 
-        // 软删除当前实体（直接改属性，不调用 merge）
+        // 软删除当前实体（直接改属性，@DynamicUpdate 生效）
         managed.setDeleted(true);
-        // 事务提交时自动 flush，@DynamicUpdate 生效
     }
 
     @Override
@@ -210,17 +210,42 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         }
         visited.add(entity);
 
-        Class<?> clazz = entity.getClass();
-        while (clazz != null && clazz != Object.class) {
-            for (Field field : clazz.getDeclaredFields()) {
+        // 从缓存获取级联字段
+        List<Field> cascadeFields = getCascadeFields(entity.getClass());
+
+        for (Field field : cascadeFields) {
+            Object value = ReflectionUtils.getField(field, entity);
+            softDeleteRelated(value, visited);
+        }
+    }
+
+    /**
+     * 获取类的级联删除字段（带缓存）
+     */
+    private List<Field> getCascadeFields(Class<?> clazz) {
+
+        return CASCADE_FIELDS_CACHE.computeIfAbsent(clazz, this::resolveCascadeFields);
+    }
+
+    /**
+     * 解析类的级联删除字段
+     */
+    private List<Field> resolveCascadeFields(Class<?> clazz) {
+
+        List<Field> result = new ArrayList<>();
+
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            for (Field field : current.getDeclaredFields()) {
                 if (shouldCascadeRemove(field)) {
                     ReflectionUtils.makeAccessible(field);
-                    Object value = ReflectionUtils.getField(field, entity);
-                    softDeleteRelated(value, visited);
+                    result.add(field);
                 }
             }
-            clazz = clazz.getSuperclass();
+            current = current.getSuperclass();
         }
+
+        return result;
     }
 
     /**
@@ -268,6 +293,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     }
 
     private void softDeleteSingle(Object item, Set<Object> visited) {
+
         if (item instanceof JpaEntity child && !Boolean.TRUE.equals(child.getDeleted())) {
             // 先递归处理子实体的级联
             cascadeSoftDelete(child, visited);
@@ -282,13 +308,11 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         if (entity == null || entity.getId() == null) return;
 
-        // 参考 SimpleJpaRepository.delete() 的实现，但直接用 entityManager.remove()
         if (entityManager.contains(entity)) {
             entityManager.remove(entity);
             return;
         }
 
-        // 实体不在持久化上下文中，先查出来再删
         T existing = entityManager.find(path.getType(), entity.getId());
         if (existing != null) {
             entityManager.remove(existing);
@@ -299,7 +323,6 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         if (id == null) return;
 
-        // 直接查出来删除，不调用 this.findById() 避免额外的 deleted 过滤
         T existing = entityManager.find(path.getType(), id);
         if (existing != null) {
             entityManager.remove(existing);
@@ -324,16 +347,16 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     long hardDelete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        List<T> entities = loads(dslQuery, expressions);
+        List<T> entities = withDeleted().loads(dslQuery, expressions);
         if (entities.isEmpty()) return 0;
 
         for (T entity : entities) {
-            // 查出来的实体已经在持久化上下文中，直接 remove
             entityManager.remove(entity);
         }
 
         return entities.size();
     }
+
     // ========== Predicate ==========
 
     private Predicate buildPredicate(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
@@ -353,7 +376,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     private static <E extends JpaEntity> Predicate toPredicate(DslQuery<E> query, BooleanExpression... expressions) {
 
         if (query != null) {
-            List<QueryFieldMerger.FieldMetaValue>        self   = QueryFieldMerger.resolve(query);
+            List<QueryFieldMerger.FieldMetaValue> self = QueryFieldMerger.resolve(query);
             Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
             query.getExternalFields().forEach(it -> fields.put(
                     StringUtils.format("{}-{}", it.getFieldMeta().targetField(), it.getFieldMeta().queryType()),
@@ -466,5 +489,4 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         return querydslExecutor.findBy(predicate, queryFunction);
     }
-
 }

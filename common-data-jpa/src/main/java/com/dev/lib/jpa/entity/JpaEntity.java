@@ -47,9 +47,7 @@ public class JpaEntity extends CoreEntity implements Persistable<Long> {
     @Column(columnDefinition = "text")
     private Map<String, Object> features;
 
-    @Version
-    @ToString.Include
-    @EqualsAndHashCode.Include
+//    @Version
     @Column(nullable = false)
     private Long reversion;
 

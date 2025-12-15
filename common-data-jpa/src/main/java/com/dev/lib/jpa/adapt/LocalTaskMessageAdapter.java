@@ -83,11 +83,8 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
     @Transactional(readOnly = true)
     public String selectMinIdByHouseNumber(List<Integer> houseNumbers) {
 
-        return repository.loadsByHouseNumber(
-                        houseNumbers,
-                        null,
-                        2
-                ).stream()
+        return repository.loadsByHouseNumber(houseNumbers, null, 2)
+                .stream()
                 .findFirst()
                 .map(taskMessageEntityCommandMapper::convert)
                 .map(TaskMessageEntityCommand::getTaskId)

@@ -21,11 +21,11 @@ public class RedisCache implements InitializingBean {
 
     private final RedissonClient redissonClient;
 
-    private static final String   CACHE_PREFIX   = "cache:";
+    private static final String CACHE_PREFIX = "cache:";
 
-    private static final String   NULL_MARKER    = "__NULL__";
+    private static final String NULL_MARKER = "__NULL__";
 
-    private static final Duration DEFAULT_TTL    = Duration.ofHours(1);
+    private static final Duration DEFAULT_TTL = Duration.ofHours(1);
 
     private static final Duration NULL_CACHE_TTL = Duration.ofHours(5);
 
@@ -62,9 +62,10 @@ public class RedisCache implements InitializingBean {
 
     public static class CacheKey {
 
-        private final String   key;
+        @Getter
+        private final String key;
 
-        private       Duration ttl = DEFAULT_TTL;
+        private Duration ttl = DEFAULT_TTL;
 
         CacheKey(String key) {
 
@@ -251,11 +252,11 @@ public class RedisCache implements InitializingBean {
     @Getter
     public static class CacheValue<T> {
 
-        private final T        value;
+        private final T value;
 
-        private final boolean  cached;
+        private final boolean cached;
 
-        private final String   key;
+        private final String key;
 
         private final Duration ttl;
 

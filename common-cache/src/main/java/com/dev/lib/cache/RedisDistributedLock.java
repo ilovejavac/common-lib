@@ -24,13 +24,13 @@ public class RedisDistributedLock {
 
     private final RedissonClient redissonClient;
 
-    private static final String LOCK_PREFIX         = "lock:";
+    private static final String LOCK_PREFIX = "lock:";
 
-    private static final long   DEFAULT_WAIT_TIME   = 3L;
+    private static final long DEFAULT_WAIT_TIME = 3L;
 
-    private static final int    DEFAULT_RETRY_TIMES = 3;
+    private static final int DEFAULT_RETRY_TIMES = 3;
 
-    private static final long   RETRY_INTERVAL_MS   = 100L;
+    private static final long RETRY_INTERVAL_MS = 100L;
 
     private static RedisDistributedLock instance;
 
@@ -55,15 +55,15 @@ public class RedisDistributedLock {
 
     public static class LockBuilder {
 
-        private final String   key;
+        private final String key;
 
-        private       long     waitTime   = DEFAULT_WAIT_TIME;
+        private long waitTime = DEFAULT_WAIT_TIME;
 
-        private       int      retryTimes = DEFAULT_RETRY_TIMES;
+        private int retryTimes = DEFAULT_RETRY_TIMES;
 
-        private       long     leaseTime  = -1;
+        private long leaseTime = -1;
 
-        private       TimeUnit timeUnit   = TimeUnit.SECONDS;
+        private TimeUnit timeUnit = TimeUnit.SECONDS;
 
         LockBuilder(String key) {
 
@@ -94,52 +94,68 @@ public class RedisDistributedLock {
             return this;
         }
 
+        public <T> T tryExecute(Supplier<T> block) {
+
+            RLock  lock    = instance.redissonClient.getLock(key);
+
+            try {
+                boolean acquired = (leaseTime > 0)
+                                   ? lock.tryLock(waitTime, leaseTime, timeUnit)
+                                   : lock.tryLock(waitTime, timeUnit);
+                if (!acquired) {
+                    return null;
+                }
+                try {
+                    log.debug("Acquired lock: {}", key);
+                    return block.get();
+                } finally {
+                    if (lock.isHeldByCurrentThread()) {
+                        lock.unlock();
+                        log.debug("Released lock: {}", key);
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
+
+        public Boolean tryExecute(Runnable task) {
+
+            return tryExecute(() -> {
+                task.run();
+                return true;
+            }) != null;
+        }
+
         public <T> T execute(Supplier<T> block) {
 
-            String lockKey = LOCK_PREFIX + key;
-            RLock  lock    = instance.redissonClient.getLock(lockKey);
+            RLock  lock    = instance.redissonClient.getLock(key);
 
             // 构建重试器
             Retryer retryer = Retryer.builder()
                     .maxDelay(Duration.ofSeconds(1))
                     .retryOn(LockNotAcquiredException.class)
-                    .onRetry((attempt, e) -> log.debug(
-                            "Lock retry attempt {}: {}",
-                            attempt,
-                            lockKey
-                    ))
+                    .onRetry((attempt, e) -> log.debug("Lock retry attempt {}: {}", attempt, key))
                     .build();
 
             try {
                 return retryer.execute(() -> {
                     boolean acquired = (leaseTime > 0)
-                                       ? lock.tryLock(
-                            waitTime,
-                            leaseTime,
-                            timeUnit
-                    )
-                                       : lock.tryLock(
-                                               waitTime,
-                                               timeUnit
-                                       );
+                                       ? lock.tryLock(waitTime, leaseTime, timeUnit)
+                                       : lock.tryLock(waitTime, timeUnit);
 
                     if (!acquired) {
-                        throw new LockNotAcquiredException("Lock not acquired: " + lockKey);
+                        throw new LockNotAcquiredException("Lock not acquired: " + key);
                     }
 
                     try {
-                        log.debug(
-                                "Acquired lock: {}",
-                                lockKey
-                        );
+                        log.debug("Acquired lock: {}", key);
                         return block.get();
                     } finally {
                         if (lock.isHeldByCurrentThread()) {
                             lock.unlock();
-                            log.debug(
-                                    "Released lock: {}",
-                                    lockKey
-                            );
+                            log.debug("Released lock: {}", key);
                         }
                     }
                 });
@@ -149,10 +165,7 @@ public class RedisDistributedLock {
             } catch (RuntimeException e) {
                 if (e.getCause() instanceof InterruptedException) {
                     Thread.currentThread().interrupt();
-                    throw new RuntimeException(
-                            "Lock acquisition interrupted: " + key,
-                            e.getCause()
-                    );
+                    throw new RuntimeException("Lock acquisition interrupted: " + key, e.getCause());
                 }
                 throw e;
             }

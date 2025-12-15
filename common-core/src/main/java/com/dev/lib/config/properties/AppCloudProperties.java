@@ -13,4 +13,8 @@ public class AppCloudProperties {
 
     private String group;
 
+    private String username;
+
+    private String password;
+
 }
