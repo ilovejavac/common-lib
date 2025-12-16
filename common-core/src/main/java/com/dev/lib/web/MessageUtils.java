@@ -31,10 +31,7 @@ public class MessageUtils {
 
     public static String get(String code) {
 
-        return get(
-                code,
-                (Object[]) null
-        );  // 避免歧义
+        return get(code, (Object[]) null);
     }
 
 }

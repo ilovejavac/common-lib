@@ -111,10 +111,7 @@ public class QueryRequest<T> {
         return PageRequest.of(
                 normalizedPage - 1,  // Spring Data 页码从 0 开始
                 normalizedSize,
-                toSort(
-                        allowFields,
-                        defaultSort
-                )
+                toSort(allowFields, defaultSort)
         );
     }
 
@@ -155,10 +152,7 @@ public class QueryRequest<T> {
      */
     public Sort toSort(Set<String> allowFields) {
 
-        return toSort(
-                allowFields,
-                Sort.by(Sort.Order.desc("id"))
-        );
+        return toSort(allowFields, Sort.by(Sort.Order.desc("id")));
     }
 
     /**
@@ -177,8 +171,7 @@ public class QueryRequest<T> {
                 .map(o -> new Sort.Order(
                         o.getDirection(),
                         o.getProperty()
-                ))
-                .toList();
+                )).toList();
 
         return validOrders.isEmpty() ? defaultSort : Sort.by(validOrders);
     }
@@ -202,10 +195,7 @@ public class QueryRequest<T> {
         if (size == null || size < 1) {
             return DEFAULT_SIZE;
         }
-        return Math.min(
-                size,
-                MAX_SIZE
-        );
+        return Math.min(size, MAX_SIZE);
     }
 
     /**

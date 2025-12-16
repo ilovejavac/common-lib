@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public abstract class BaseVO {
 
     @JsonProperty("id")
-    private String        bizId;
+    private String bizId;
 
     private LocalDateTime createdAt;
 
