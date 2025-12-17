@@ -29,12 +29,10 @@ public class LocalTaskMessagePo extends JpaEntity {
     @Enumerated(EnumType.STRING)
     private LocalTaskStatus status = LocalTaskStatus.PENDING;
 
-    @Comment("通知类型")
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private NotifyType notifyType;
 
-    @Comment("通知配置")
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")
     private TaskMessageEntityCommand.NotifyConfig notifyConfig;
@@ -57,7 +55,6 @@ public class LocalTaskMessagePo extends JpaEntity {
 
     private LocalDateTime processedAt;    // 处理完成时间
 
-    @Comment("门牌号，用于 job 分组扫描")
     private Integer houseNumber;
 
 }

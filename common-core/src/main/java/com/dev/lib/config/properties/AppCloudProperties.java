@@ -5,7 +5,9 @@ import lombok.Data;
 @Data
 public class AppCloudProperties {
 
-    private String hostport;
+    private String host;
+
+    private String port;
 
     private String namespace;
 

@@ -1,0 +1,4 @@
+app:
+  excel:
+    load: download
+    excel-load-header: X-geo-excel

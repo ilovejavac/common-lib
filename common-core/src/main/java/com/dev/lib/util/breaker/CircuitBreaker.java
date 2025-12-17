@@ -19,27 +19,27 @@ import java.util.function.Supplier;
 @SuppressWarnings("all")
 public class CircuitBreaker {
 
-    private final String              name;
+    private final String name;
 
-    private final int                 failureThreshold;
+    private final int failureThreshold;
 
-    private final Duration            timeout;
+    private final Duration timeout;
 
-    private final int                 halfOpenRequests;
+    private final int halfOpenRequests;
 
     private final StateChangeListener listener;
 
-    private final AtomicReference<State> state            = new AtomicReference<>(State.CLOSED);
+    private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
 
-    private final AtomicInteger          failureCount     = new AtomicInteger(0);
+    private final AtomicInteger failureCount = new AtomicInteger(0);
 
-    private final AtomicInteger          successCount     = new AtomicInteger(0);
+    private final AtomicInteger successCount = new AtomicInteger(0);
 
-    private final AtomicInteger          halfOpenAttempts = new AtomicInteger(0);
+    private final AtomicInteger halfOpenAttempts = new AtomicInteger(0);
 
-    private final AtomicLong             lastFailureTime  = new AtomicLong(0);
+    private final AtomicLong lastFailureTime = new AtomicLong(0);
 
-    private final AtomicLong             openTime         = new AtomicLong(0);
+    private final AtomicLong openTime = new AtomicLong(0);
 
     private CircuitBreaker(String name, int failureThreshold, Duration timeout,
                            int halfOpenRequests, StateChangeListener listener) {
@@ -289,7 +289,7 @@ public class CircuitBreaker {
     @Getter
     public static class CircuitBreakerOpenException extends RuntimeException {
 
-        private final String   circuitBreakerName;
+        private final String circuitBreakerName;
 
         private final Duration remainingTimeout;
 
@@ -309,13 +309,13 @@ public class CircuitBreaker {
     // --- Builder ---
     public static class Builder {
 
-        private String              name             = "default";
+        private String name = "default";
 
-        private int                 failureThreshold = 5;
+        private int failureThreshold = 5;
 
-        private Duration            timeout          = Duration.ofSeconds(30);
+        private Duration timeout = Duration.ofSeconds(30);
 
-        private int                 halfOpenRequests = 3;
+        private int halfOpenRequests = 3;
 
         private StateChangeListener listener;
 

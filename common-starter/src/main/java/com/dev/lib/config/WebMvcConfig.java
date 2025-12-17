@@ -10,6 +10,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverters;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -57,8 +58,7 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
     }
 
     @Override
-    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-
+    public void configureMessageConverters(HttpMessageConverters.ServerBuilder builder) {
         FastJsonHttpMessageConverter converter = new FastJsonHttpMessageConverter();
         FastJsonConfig               config    = new FastJsonConfig();
 
@@ -87,10 +87,8 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
                 )
         ));
 
-        converters.add(
-                0,
-                converter
-        );
+        builder.withJsonConverter(converter);
     }
+
 
 }

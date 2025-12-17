@@ -1,12 +1,12 @@
 package com.dev.lib.security.domain;
 
 import cn.dev33.satoken.dao.auto.SaTokenDaoByStringFollowObject;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.security.model.TokenItem;
 import com.dev.lib.security.model.TokenType;
 import com.dev.lib.security.service.TokenManager;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,8 +22,6 @@ import java.util.Optional;
 public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
 
     private final TokenManager tokenManager;
-
-    private final ObjectMapper objectMapper;
 
     // ------------------------ Object 读写操作
     @Override
@@ -165,30 +163,19 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
     @SuppressWarnings("unchecked")
     private Map<String, Object> serializeToMetadata(Object object) {
 
+        if (object == null) {
+            return null;
+        }
+
+        if (object instanceof Map) {
+            return (Map<String, Object>) object;
+        }
+
         try {
-            if (object == null) {
-                return null;
-            }
-
-            // 如果已经是 Map，直接返回
-            if (object instanceof Map) {
-                return (Map<String, Object>) object;
-            }
-
-            // 序列化为 JSON，再转为 Map
-            String json = objectMapper.writeValueAsString(object);
-            return objectMapper.readValue(
-                    json,
-                    new TypeReference<Map<String, Object>>() {
-                    }
-            );
-
+            String json = JSON.toJSONString(object);
+            return JSON.parseObject(json, new TypeReference<>() {});
         } catch (Exception e) {
-            log.error(
-                    "Failed to serialize object to metadata: {}",
-                    object.getClass(),
-                    e
-            );
+            log.error("Failed to serialize object to metadata: {}", object.getClass(), e);
             return new HashMap<>();
         }
     }
@@ -198,28 +185,20 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
      */
     private Object deserializeFromMetadata(Map<String, Object> metadata) {
 
-        try {
-            if (metadata == null || metadata.isEmpty()) {
-                return null;
-            }
+        if (metadata == null || metadata.isEmpty()) {
+            return null;
+        }
 
-            // 判断是否为 SaSession
+        try {
             if (metadata.containsKey("loginId") || metadata.containsKey("type")) {
-                String json = objectMapper.writeValueAsString(metadata);
-                return objectMapper.readValue(
-                        json,
+                return JSON.parseObject(
+                        JSON.toJSONString(metadata),
                         cn.dev33.satoken.session.SaSession.class
                 );
             }
-
-            // 其他情况返回 Map
             return metadata;
-
         } catch (Exception e) {
-            log.warn(
-                    "Failed to deserialize metadata, returning raw map",
-                    e
-            );
+            log.warn("Failed to deserialize metadata, returning raw map", e);
             return metadata;
         }
     }

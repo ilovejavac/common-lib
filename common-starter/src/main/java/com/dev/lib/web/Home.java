@@ -18,7 +18,8 @@ public class Home {
     public ServerResponse<String> home() {
 
         return ServerResponse.success(
-                "welcome, here is %s server!".formatted(application)
+                "welcome, here is %s server! [virtual %s]"
+                        .formatted(application, Thread.currentThread().isVirtual())
         );
     }
 

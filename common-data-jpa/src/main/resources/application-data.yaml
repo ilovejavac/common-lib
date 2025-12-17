@@ -1,0 +1,41 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 33
+      minimum-idle: 11
+      connection-timeout: 10000
+      validation-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      keepalive-time: 300000
+      leak-detection-threshold: 60000
+      auto-commit: true
+      pool-name: HikariPool-${spring.application.name}
+      initialization-fail-timeout: 500
+  jpa:
+    open-in-view: false
+    show-sql: false
+    properties:
+      type:
+        preferred_java_type_jdbc_code_for_enum: 24
+      hibernate:
+        use_sql_comments: false
+        highlight_sql: false
+        naming:
+          physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+          implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
+        format_sql: false
+        jdbc:
+          batch_size: 200
+          fetch_size: 500
+          time_zone: Asia/Shanghai
+          use_enum_ordinal_type: false
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+        generate_statistics: false

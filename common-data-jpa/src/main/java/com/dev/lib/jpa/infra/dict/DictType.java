@@ -25,15 +25,12 @@ import java.util.List;
 })
 public class DictType extends JpaEntity {
 
-    @Comment("字典类型编码")
     @Column(nullable = false, unique = true, length = 50)
     private String typeCode;
 
-    @Comment("字典类型名称")
     @Column(nullable = false, length = 100)
     private String typeName;
 
-    @Comment("排序")
     @Column(nullable = false)
     private Integer sort = 0;
 

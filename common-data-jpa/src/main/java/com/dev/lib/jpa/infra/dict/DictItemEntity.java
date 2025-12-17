@@ -9,7 +9,6 @@ import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.Comment;
 
 @Data
 @Entity
@@ -25,19 +24,15 @@ import org.hibernate.annotations.Comment;
 })
 public class DictItemEntity extends JpaEntity {
 
-    @Comment("字典项编码")
     @Column(nullable = false, unique = true, length = 50)
     private String itemCode;
 
-    @Comment("字典项标签")
     @Column(nullable = false)
     private String itemLabel;
 
-    @Comment("样式类名")
     @Column(length = 50)
     private String css;
 
-    @Comment("排序")
     @Column(nullable = false)
     private Integer sort = 0;
 

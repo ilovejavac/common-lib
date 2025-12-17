@@ -7,7 +7,6 @@ import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessagePort;
 import com.dev.lib.local.task.message.domain.adapter.IRabbitPublish;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import com.dev.lib.util.http.GenerichHttpGateway;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,8 +19,6 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
     private final IRabbitPublish rabbitPublish;
 
     private final GenerichHttpGateway httpGateway;
-
-    private final ObjectMapper mapper;
 
     private final ILocalTaskMessageAdapt adapt;
 

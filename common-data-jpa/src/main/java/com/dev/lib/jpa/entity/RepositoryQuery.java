@@ -3,6 +3,7 @@ package com.dev.lib.jpa.entity;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;
+import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.data.domain.Page;
 
@@ -16,7 +17,14 @@ public class RepositoryQuery<T extends JpaEntity> {
     private final QueryContext context;
 
     private BaseRepositoryImpl<T> getImpl() {
-        return (BaseRepositoryImpl<T>) AopProxyUtils.getSingletonTarget(repository);
+        try {
+            if (repository instanceof Advised advised) {
+                return (BaseRepositoryImpl<T>) advised.getTargetSource().getTarget();
+            }
+            return (BaseRepositoryImpl<T>) repository;
+        } catch (Exception e) {
+            throw new IllegalStateException("无法获取 Repository 实现", e);
+        }
     }
 
     public RepositoryQuery<T> lockForUpdate() {

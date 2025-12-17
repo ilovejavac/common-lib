@@ -8,7 +8,8 @@ import lombok.Getter;
 public enum StorageType {
     LOCAL("本地"),
     OSS("oss"),
-    MINIO("minio");
+    MINIO("minio"),
+    RUSTFS("rustfs");
 
     private final String msg;
 }

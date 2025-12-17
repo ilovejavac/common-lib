@@ -1,9 +1,9 @@
 package com.dev.lib.jpa.entity.audit;
 
+import com.alibaba.fastjson2.JSON;
 import com.dev.lib.entity.audit.AuditAction;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.util.Dispatcher;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
 import jakarta.persistence.PostUpdate;
@@ -22,13 +22,10 @@ public class AuditListener {
 
     private static AuditRepo auditRepo;
 
-    private static ObjectMapper mapper;
-
     @Autowired
-    public void setDependencies(AuditRepo repo, ObjectMapper objectMapper) {
+    public void setDependencies(AuditRepo repo) {
 
         AuditListener.auditRepo = repo;
-        AuditListener.mapper = objectMapper;
     }
 
     @PostPersist
@@ -83,7 +80,7 @@ public class AuditListener {
     private String toJson(Object obj) {
 
         try {
-            return mapper.writeValueAsString(obj);
+            return JSON.toJSONString(obj);
         } catch (Exception e) {
             return "{}";
         }

@@ -1,188 +1,73 @@
 spring:
-  #  messages:
-  #    basename: i18n/messages
-  #    encoding: UTF-8
-  #    cache-duration: 3600
+  threads:
+    virtual:
+      enabled: true
   mvc:
     static-path-pattern: /static/**
   servlet:
     multipart:
       enabled: true
-      max-file-size: 100MB      # HTTP 上传限制改小
+      max-file-size: 100MB
       max-request-size: 100MB
-      file-size-threshold: 10MB  # 超过 10MB 才写磁盘
+      file-size-threshold: 10MB
       location: ${UPLOAD_TEMP_DIR:/tmp}
       resolve-lazily: false
-  config:
-    import: optional:nacos:${spring.application.name}.${app.cloud.file-extension}
-
-  cloud:
-    nacos:
-      discovery:
-        server-addr: ${app.cloud.hostport}
-        group: ${app.cloud.group}
-        namespace: ${app.cloud.namespace}
-        watch:
-          enabled: false
-      config:
-        server-addr: ${app.cloud.hostport}
-        group: ${app.cloud.group}
-        namespace: ${app.cloud.namespace}
-        file-extension: ${app.cloud.file-extension}
-        timeout: 5000
-        max-retry: 3
-        config-long-poll-timeout: 30000
-        refresh-enabled: true
-
-  web:
-    resources:
-      add-mappings: false
-
-  datasource:
-#    type: com.alibaba.druid.pool.DruidDataSource
-#    druid:
-#      # 连接池配置
-#      initial-size: 7
-#      min-idle: 7
-#      max-active: 31
-#      max-wait: 10000
-#
-#      # 连接检测
-#      test-while-idle: true
-#      test-on-borrow: false
-#      test-on-return: false
-#      validation-query: SELECT 1
-#      validation-query-timeout: 5000
-#
-#      # 连接生命周期（对应 hikari 的 idle-timeout 和 max-lifetime）
-#      time-between-eviction-runs-millis: 60000           # 检测间隔 60秒
-#      min-evictable-idle-time-millis: 600000             # 最小空闲时间 10分钟
-#      max-evictable-idle-time-millis: 1800000            # 最大生命周期 30分钟
-#
-#      # 连接保活（对应 hikari 的 keepalive-time）
-#      keep-alive: true
-#      keep-alive-between-time-millis: 300000             # 5分钟
-#
-#      # 其他
-#      pool-prepared-statements: false
-#      max-pool-prepared-statement-per-connection-size: -1
-#
-#      # 监控统计
-#      filters: stat,slf4j
-#
-#      # Web 监控页面
-#      stat-view-servlet:
-#        enabled: true
-#        url-pattern: /druid/*
-#        login-username: admin
-#        login-password: 1qazXDR%
-#        reset-enable: false
-#        #        allow: 127.0.0.1
-#        # deny: 192.168.1.100
-#
-#      # Web 应用统计
-#      web-stat-filter:
-#        enabled: true
-#        url-pattern: /*
-#        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*"
-#        session-stat-enable: true
-#        session-stat-max-count: 1000
-#
-#      # SQL 监控配置
-#      filter:
-#        stat:
-#          enabled: true
-#          log-slow-sql: true
-#          slow-sql-millis: 2000
-#        wall:
-#          enabled: false
-#          config:
-#            multi-statement-allow: true
-#            delete-allow: true
-#            update-allow: true
-#        slf4j:
-#          enabled: true
-#          statement-log-enabled: false
-#          statement-executable-sql-log-enable: true
-#
-#      # 连接泄漏检测（对应 hikari 的 leak-detection-threshold: 0 表示关闭）
-#      remove-abandoned: false
-#      # remove-abandoned-timeout: 300
-#      # log-abandoned: true
-#
-#      # 快速失败（对应 hikari 的 initialization-fail-timeout: 1）
-#      fail-fast: true
-#
-#      # 默认自动提交（对应 hikari 的 auto-commit: true）
-#      default-auto-commit: true
-    hikari:
-      maximum-pool-size: 31
-      minimum-idle: 7
-      connection-timeout: 10000
-      validation-timeout: 5000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      keepalive-time: 300000
-      leak-detection-threshold: 0
-      auto-commit: true
-      pool-name: HikariPool-${spring.application.name}
-
-      connection-test-query: SELECT 1                    # 连接测试查询
-      initialization-fail-timeout: 1                      # 快速失败
-
-  jpa:
-    open-in-view: false
-    show-sql: false
-    properties:
-      type:
-        preferred_java_type_jdbc_code_for_enum: 24
-      hibernate:
-        use_sql_comments: false
-        highlight_sql: true
-        naming:
-          # 驼峰转下划线
-          physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-          implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
-
-        format_sql: true
-        jdbc:
-          batch_size: 200
-          fetch_size: 500
-          time_zone: Asia/Shanghai
-          use_enum_ordinal_type: false
-          batch_versioned_data: true
-        order_inserts: true
-        order_updates: true
-        query:
-          in_clause_parameter_padding: true
-        cache:
-          use_second_level_cache: false
-          use_query_cache: false
-        generate_statistics: false
-
-server:
-  servlet:
     encoding:
       charset: utf-8
       enabled: true
-      force: true
       force-response: true
+      force: true
+  config:
+    import:
+      - optional:consul:${app.cloud.host}:${app.cloud.port}
+      - optional:classpath:application-data.yaml
+      - optional:classpath:application-cache.yaml
+      - optional:classpath:application-mongo.yaml
+      - optional:classpath:application-search.yaml
+      - optional:classpath:application-ai.yaml
+      - optional:classpath:application-schedule.yaml
+      - optional:classpath:application-security.yaml
+      - optional:classpath:application-excel.yaml
+      - optional:classpath:application-storage.yaml
+      - optional:classpath:application-local-task-message.yaml
+  cloud:
+    consul:
+      host: ${app.cloud.host}
+      port: ${app.cloud.port}
+      discovery:
+        service-name: ${spring.application.name}
+        health-check-interval: 15s
+        health-check-timeout: 5s
+        health-check-path: /actuator/health
+        prefer-ip-address: true
+        instance-id: ${spring.application.name}-${random.uuid}
+      config:
+        enabled: true
+        format: YAML
+        default-context: ${spring.application.name}
+        data-key: data
+        watch:
+          enabled: true
+          delay: 1000
+        prefixes:
+          - config
+  web:
+    resources:
+      add-mappings: false
+    error:
+      include-message: never
+      include-stacktrace: never
+      include-exception: false
+      whitelabel:
+        enabled: false
+server:
   tomcat:
-    threads:
-      max: 200
-      min-spare: 50
     max-connections: 8192
     accept-count: 200
     max-http-form-post-size: 20MB
-    max-swallow-size: -1
+    max-swallow-size: 20MB
   http2:
     enabled: true
-  error:
-    include-message: never
-    include-stacktrace: never
-    include-exception: false
-    whitelabel:
-      enabled: false
   compression:
     enabled: true
     mime-types:
@@ -206,20 +91,14 @@ dubbo:
   protocol:
     name: dubbo
     port: -1
-    threads: 200
-    threadpool: fixed
-    accepts: 1500
+    threadpool: virtual
+    accepts: 1000
     payload: 8388608
     buffer: 8192
     heartbeat: 60000
     queues: 200
-
   registry:
-    address: nacos://${app.cloud.hostport}
-    group: ${app.cloud.group}
-    parameters.namespace: ${app.cloud.namespace}
-    username: ${app.cloud.username}
-    password: ${app.cloud.password}
+    address: consul://${app.cloud.host}:${app.cloud.port}
   scan:
     base-packages: ${app.dubbo.scan-packages}
 
@@ -254,16 +133,8 @@ app:
   dubbo:
     scan-packages: /
   cloud:
-    hostport: localhost:8848
-    namespace: public
-    file-extension: yaml
-    group: dev
-  security:
-    # 密钥必须至少256位（32字节）
-    secret: your-256-bit-secret-key-change-this-in-production-environment-must-be-at-least-256-bits
-    # 过期时间（毫秒）：2400小时
-    expiration: 8640000000
-    encrypt-version: base64
+    host: localhost
+    port: 8500
   cors:
     allowed-methods:
       - GET
@@ -274,42 +145,3 @@ app:
       - OPTIONS
     max-age: 3600
     allow-credentials: true
-  opensearch:
-    enabled: false
-    hosts: localhost:9200
-    index-prefix: ${spring.application.name}
-  storage:
-    max-size: 999999
-    allowed-extensions:
-      - pdf
-      - png
-      - jpg
-      - jpeg
-      - gif
-      - doc
-      - docx
-      - ppt
-      - pptx
-      - xls
-      - xlsx
-      - txt
-    type: local
-    local:
-      path: storage
-  excel:
-    load: download
-    excel-load-header: X-geo-excel
-sa-token:
-  token-style: tik
-  token-prefix: Bearer
-  is-read-cookie: false
-  is-share: false
-  is-read-header: true
-  is-print: false
-  is-read-body: false
-  is-write-header: false
-  is-concurrent: true
-  active-timeout: -1
-  timeout: 864000 # 10天
-  token-name: Authorization
-  max-login-count: 4

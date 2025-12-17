@@ -1,0 +1,19 @@
+app:
+  storage:
+    max-size: 999999
+    allowed-extensions:
+      - pdf
+      - png
+      - jpg
+      - jpeg
+      - gif
+      - doc
+      - docx
+      - ppt
+      - pptx
+      - xls
+      - xlsx
+      - txt
+    type: local
+    local:
+      path: storage

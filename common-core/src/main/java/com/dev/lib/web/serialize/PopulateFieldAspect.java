@@ -51,10 +51,7 @@ public class PopulateFieldAspect {
                 }
             }
         } catch (Exception e) {
-            log.warn(
-                    "Failed to preload populate fields",
-                    e
-            );
+            log.warn("Failed to preload populate fields", e);
         }
 
         return result;

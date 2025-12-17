@@ -1,0 +1,19 @@
+app:
+  security:
+    secret: your-256-bit-secret-key-change-this-in-production-environment-must-be-at-least-256-bits
+    expiration: 8640000000
+    encrypt-version: base64
+sa-token:
+  token-style: tik
+  token-prefix: Bearer
+  is-read-cookie: false
+  is-share: false
+  is-read-header: true
+  is-print: false
+  is-read-body: false
+  is-write-header: false
+  is-concurrent: true
+  active-timeout: -1
+  timeout: 864000
+  token-name: Authorization
+  max-login-count: 4

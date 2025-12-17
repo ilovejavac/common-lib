@@ -1,0 +1,5 @@
+app:
+  opensearch:
+    enabled: false
+    hosts: localhost:9200
+    index-prefix: ${spring.application.name}
