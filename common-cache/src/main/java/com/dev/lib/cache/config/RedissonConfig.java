@@ -1,12 +1,13 @@
 package com.dev.lib.cache.config;
 
+import com.dev.lib.cache.FastJson2JsonRedissonSerializer;
 import lombok.RequiredArgsConstructor;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.redisson.config.SingleServerConfig;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,30 +16,27 @@ import org.springframework.context.annotation.Configuration;
 @RequiredArgsConstructor
 public class RedissonConfig {
 
-    @Value("${spring.data.redis.host:localhost}")
-    private String host;
+    @Bean
+    @ConfigurationProperties(prefix = "spring.data.redis")
+    public RedissonProperties redissonProperties() {
 
-    @Value("${spring.data.redis.port:6379}")
-    private int port;
-
-    @Value("${spring.data.redis.password:}")
-    private String password;
-
-    @Value("${spring.data.redis.database:0}")
-    private int database;
+        return new RedissonProperties();
+    }
 
     @Bean(destroyMethod = "shutdown")
-    public RedissonClient redissonClient() {
+    public RedissonClient redissonClient(RedissonProperties properties) {
 
-        Config config  = new Config();
-        String address = "redis://" + host + ":" + port;
+        Config config = new Config();
+        config.setCodec(new FastJson2JsonRedissonSerializer());
+
+        String address = "redis://" + properties.getHost() + ":" + properties.getPort();
 
         SingleServerConfig serverConfig = config.useSingleServer()
                 .setAddress(address)
-                .setDatabase(database);
+                .setDatabase(properties.getDatabase());
 
-        if (password != null && !password.isEmpty()) {
-            serverConfig.setPassword(password);
+        if (properties.getPassword() != null && !properties.getPassword().isEmpty()) {
+            serverConfig.setPassword(properties.getPassword());
         }
 
         return Redisson.create(config);

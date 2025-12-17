@@ -14,7 +14,7 @@
 
     <groupId>com.dev.lib</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.2.1</version>
+    <version>1.2.3</version>
     <packaging>pom</packaging>
     <modules>
         <module>common-starter</module>
@@ -50,7 +50,7 @@
         <eclipse-collections.version>13.0.0</eclipse-collections.version>
         <fastjosn2.version>2.0.56</fastjosn2.version>
 
-        <lib.version>1.2.1</lib.version>
+        <lib.version>1.2.3</lib.version>
     </properties>
 
     <profiles>
@@ -105,17 +105,6 @@
         </profile>
     </profiles>
 
-    <distributionManagement>
-        <repository>
-            <id>nexus-releases</id>
-            <url>http://180.76.113.46:8081/repository/maven-releases/</url>
-        </repository>
-        <snapshotRepository>
-            <id>nexus-snapshots</id>
-            <url>http://180.76.113.46:8081/repository/maven-snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -162,12 +151,6 @@
                 <groupId>org.opensearch.client</groupId>
                 <artifactId>opensearch-java</artifactId>
                 <version>${opensearch.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>2.0.17</version>
             </dependency>
 
             <dependency>
@@ -271,12 +254,6 @@
                 <groupId>com.dev.lib</groupId>
                 <artifactId>common-starter</artifactId>
                 <version>${lib.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp</artifactId>
-                <version>4.12.0</version>
             </dependency>
 
         </dependencies>

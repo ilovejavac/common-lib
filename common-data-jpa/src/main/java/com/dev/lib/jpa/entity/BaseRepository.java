@@ -9,6 +9,7 @@ import org.springframework.data.repository.NoRepositoryBean;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @NoRepositoryBean
 public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
@@ -44,6 +45,12 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
     }
 
     // 查询
+    Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions);
+
+    default Stream<T> stream() {
+        return stream(null);
+    }
+
     Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
     List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions);

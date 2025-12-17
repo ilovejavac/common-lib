@@ -1,6 +1,8 @@
 package com.dev.lib.util;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class Dispatcher {
 
@@ -12,7 +14,6 @@ public final class Dispatcher {
      * IO 密集型任务：数据库查询、RPC、文件读写
      */
     public static final ExecutorService IO = Executors.newVirtualThreadPerTaskExecutor();
-
 
     /**
      * CPU 密集型任务：计算、序列化

@@ -10,9 +10,9 @@ import java.util.concurrent.TimeUnit;
 
 public class CacheBlockingQueue<T> {
 
-    private final String            key;
+    private final String key;
 
-    private final Duration          ttl;
+    private final Duration ttl;
 
     private final RBlockingQueue<T> rBlockingQueue;
 

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 public class RepositoryQuery<T extends JpaEntity> {
@@ -51,16 +52,8 @@ public class RepositoryQuery<T extends JpaEntity> {
         return getImpl().load(context, dslQuery, expressions);
     }
 
-    public Optional<T> load(BooleanExpression... expressions) {
-        return getImpl().load(context, null, expressions);
-    }
-
     public List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions) {
         return getImpl().loads(context, dslQuery, expressions);
-    }
-
-    public List<T> loads(BooleanExpression... expressions) {
-        return getImpl().loads(context, null, expressions);
     }
 
     public Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
@@ -74,4 +67,9 @@ public class RepositoryQuery<T extends JpaEntity> {
     public boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions) {
         return getImpl().exists(context, dslQuery, expressions);
     }
+
+    public Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        return getImpl().stream(context, dslQuery, expressions);
+    }
+
 }

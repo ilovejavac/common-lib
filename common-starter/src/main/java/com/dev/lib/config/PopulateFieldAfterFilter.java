@@ -27,22 +27,12 @@ public class PopulateFieldAfterFilter extends AfterFilter {
         );
 
         for (FieldMeta meta : metas) {
-            Object idValue = getFieldValue(
-                    object,
-                    meta.field
-            );
+            Object idValue = getFieldValue(object, meta.field);
             Object populated = idValue != null
-                               ? PopulateContextHolder.get(
-                    meta.loaderName,
-                    idValue
-            )
+                               ? PopulateContextHolder.get(meta.loaderName, idValue)
                                : null;
 
-            // 写入额外字段：{fieldName}{suffix}
-            writeKeyValue(
-                    meta.outputName,
-                    populated
-            );
+            writeKeyValue(meta.outputName, populated);
         }
     }
 

@@ -26,6 +26,7 @@ import org.springframework.data.jpa.repository.support.QuerydslJpaPredicateExecu
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.data.querydsl.SimpleEntityPathResolver;
 import org.springframework.data.repository.query.FluentQuery;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
@@ -33,6 +34,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository<T, Long> implements BaseRepository<T> {
 
@@ -259,11 +261,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         }
 
         OneToOne oneToOne = field.getAnnotation(OneToOne.class);
-        if (oneToOne != null && hasCascadeRemove(oneToOne.cascade())) {
-            return true;
-        }
-
-        return false;
+        return oneToOne != null && hasCascadeRemove(oneToOne.cascade());
     }
 
     private boolean hasCascadeRemove(CascadeType[] cascadeTypes) {
@@ -376,7 +374,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     private static <E extends JpaEntity> Predicate toPredicate(DslQuery<E> query, BooleanExpression... expressions) {
 
         if (query != null) {
-            List<QueryFieldMerger.FieldMetaValue> self = QueryFieldMerger.resolve(query);
+            List<QueryFieldMerger.FieldMetaValue>        self   = QueryFieldMerger.resolve(query);
             Map<String, QueryFieldMerger.FieldMetaValue> fields = new HashMap<>();
             query.getExternalFields().forEach(it -> fields.put(
                     StringUtils.format("{}-{}", it.getFieldMeta().targetField(), it.getFieldMeta().queryType()),
@@ -489,4 +487,30 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         return querydslExecutor.findBy(predicate, queryFunction);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        return stream(new QueryContext(), dslQuery, expressions);
+    }
+
+    Stream<T> stream(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        if (ctx.hasLock()) {
+            throw new UnsupportedOperationException("流式查询不支持加锁");
+        }
+
+        Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
+
+        JPAQuery<T> query = queryFactory.selectFrom(path).where(predicate);
+
+        if (dslQuery != null) {
+            applySort(query, dslQuery);
+        }
+
+        // 关键：stream() 会使用 fetch_size
+        return query.stream();
+    }
+
 }

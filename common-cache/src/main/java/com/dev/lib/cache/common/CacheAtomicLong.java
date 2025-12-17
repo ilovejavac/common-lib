@@ -6,9 +6,9 @@ import java.time.Duration;
 
 public class CacheAtomicLong {
 
-    private final String      key;
+    private final String key;
 
-    private final Duration    ttl;
+    private final Duration ttl;
 
     private final RAtomicLong rAtomicLong;
 

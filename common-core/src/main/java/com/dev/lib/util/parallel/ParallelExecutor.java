@@ -1,13 +1,20 @@
-package com.dev.lib.util;
+package com.dev.lib.util.parallel;
 
+import com.dev.lib.util.Dispatcher;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 
-public abstract class ParallelExecutor {
+public final class ParallelExecutor {
+
+    public static <E> ParallelCollection<E> with(Collection<E> collection) {
+
+        return new ParallelCollection<>(collection);
+    }
 
     public static <T1, T2> Tuple2<T1, T2> with(Supplier<T1> task1, Supplier<T2> task2) {
 

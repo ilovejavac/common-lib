@@ -9,15 +9,17 @@ public class AppStorageProperties {
 
     private StorageType type;
 
-    private String      allowedExtensions;
+    private String allowedExtensions;
 
-    private Long        maxSize;
+    private Long maxSize;
 
     private Local local;
 
-    private Oss   oss;
+    private Oss oss;
 
     private Minio minio;
+
+    private Rustfs rustfs;
 
     @Data
     public static class Local {
@@ -42,7 +44,21 @@ public class AppStorageProperties {
     }
 
     @Data
+    @Deprecated
     public static class Minio {
+
+        private String endpoint;
+
+        private String accessKey;
+
+        private String secretKey;
+
+        private String bucket;
+
+    }
+
+    @Data
+    public static class Rustfs {
 
         private String endpoint;
 
