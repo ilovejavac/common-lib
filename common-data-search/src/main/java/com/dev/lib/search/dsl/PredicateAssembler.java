@@ -33,13 +33,9 @@ public final class PredicateAssembler {
             items.addAll(collectQueries(fields));
         }
 
-        // 额外查询条件
         for (Query extra : extraQueries) {
             if (extra != null) {
-                items.add(new QueryItem(
-                        extra,
-                        LogicalOperator.AND
-                ));
+                items.add(new QueryItem(extra, LogicalOperator.AND));
             }
         }
 
@@ -47,7 +43,10 @@ public final class PredicateAssembler {
             return Query.of(q -> q.matchAll(m -> m));
         }
 
-        return buildWithPrecedence(items);
+        String minMatch = (query != null && query.getMinimumShouldMatch() != null)
+                          ? query.getMinimumShouldMatch()
+                          : "1";
+        return buildWithPrecedence(items, minMatch);
     }
 
     private static List<QueryItem> collectQueries(Collection<QueryFieldMerger.FieldMetaValue> fields) {
@@ -67,36 +66,21 @@ public final class PredicateAssembler {
                             value
                     );
                     if (q != null) {
-                        items.add(new QueryItem(
-                                q,
-                                fm.operator()
-                        ));
+                        items.add(new QueryItem(q, fm.operator()));
                     }
                 }
 
                 case GROUP -> {
-                    Query groupQuery = buildGroupQuery(
-                            fm,
-                            value
-                    );
+                    Query groupQuery = buildGroupQuery(fm, value);
                     if (groupQuery != null) {
-                        items.add(new QueryItem(
-                                groupQuery,
-                                fm.operator()
-                        ));
+                        items.add(new QueryItem(groupQuery, fm.operator()));
                     }
                 }
 
                 case SUB_QUERY -> {
-                    Query nestedQuery = buildNestedQuery(
-                            fm,
-                            value
-                    );
+                    Query nestedQuery = buildNestedQuery(fm, value);
                     if (nestedQuery != null) {
-                        items.add(new QueryItem(
-                                nestedQuery,
-                                fm.operator()
-                        ));
+                        items.add(new QueryItem(nestedQuery, fm.operator()));
                     }
                 }
             }
@@ -114,34 +98,21 @@ public final class PredicateAssembler {
         for (FieldMeta nested : nestedMetas) {
             Object nestedValue = nested.getValue(groupValue);
             if (nestedValue != null) {
-                nestedFields.add(new QueryFieldMerger.FieldMetaValue(
-                        nestedValue,
-                        nested
-                ));
+                nestedFields.add(new QueryFieldMerger.FieldMetaValue(nestedValue, nested));
             }
         }
 
         if (nestedFields.isEmpty()) return null;
 
         List<QueryItem> nestedItems = collectQueries(nestedFields);
-        return buildWithPrecedence(nestedItems);
+        return buildWithPrecedence(nestedItems, "1");
     }
 
-    /**
-     * 嵌套文档查询
-     * <p>
-     * 支持两种模式：
-     * 1. nested 类型字段 - 使用 nested query
-     * 2. object 类型字段 - 直接路径拼接
-     */
     private static Query buildNestedQuery(FieldMeta fm, Object filterValue) {
 
         String path = resolveNestedPath(fm);
         if (path == null) {
-            log.warn(
-                    "OpenSearch 嵌套查询无法推断路径，已忽略: {}",
-                    fm.field().getName()
-            );
+            log.warn("OpenSearch 嵌套查询无法推断路径，已忽略: {}", fm.field().getName());
             return null;
         }
 
@@ -170,7 +141,6 @@ public final class PredicateAssembler {
 
         Query innerQuery = Query.of(q -> q.bool(b -> b.must(conditions)));
 
-        // 判断查询类型
         QueryType queryType = fm.queryType();
         if (queryType == QueryType.NOT_EXISTS) {
             return Query.of(q -> q.bool(b -> b.mustNot(
@@ -178,59 +148,39 @@ public final class PredicateAssembler {
             )));
         }
 
-        // EXISTS 或其他类型，使用 nested query
         return Query.of(q -> q.nested(n -> n.path(path).query(innerQuery)));
     }
 
     private static String resolveNestedPath(FieldMeta fm) {
-        // 1. 关联子查询不支持
+
         if (fm.relationInfo() != null) {
-            log.warn(
-                    "OpenSearch 不支持关联子查询，已忽略: {}",
-                    fm.field().getName()
-            );
+            log.warn("OpenSearch 不支持关联子查询，已忽略: {}", fm.field().getName());
             return null;
         }
 
-        // 2. parentField
         if (fm.parentField() != null && !fm.parentField().isEmpty()) {
             return fm.parentField();
         }
 
-        // 3. 从字段名推断
         String fieldName = fm.field().getName();
         if (fieldName.endsWith("ExistsSub")) {
-            return fieldName.substring(
-                    0,
-                    fieldName.length() - 9
-            );
+            return fieldName.substring(0, fieldName.length() - 9);
         }
         if (fieldName.endsWith("NotExistsSub")) {
-            return fieldName.substring(
-                    0,
-                    fieldName.length() - 12
-            );
+            return fieldName.substring(0, fieldName.length() - 12);
         }
         if (fieldName.endsWith("Sub")) {
-            return fieldName.substring(
-                    0,
-                    fieldName.length() - 3
-            );
+            return fieldName.substring(0, fieldName.length() - 3);
         }
 
         return null;
     }
 
-    /**
-     * 处理 AND/OR 优先级
-     * AND 优先级高于 OR
-     */
-    private static Query buildWithPrecedence(List<QueryItem> items) {
+    private static Query buildWithPrecedence(List<QueryItem> items, String minimumShouldMatch) {
 
         if (items.isEmpty()) return null;
         if (items.size() == 1) return items.get(0).query;
 
-        // 按 OR 分组
         List<List<QueryItem>> andGroups    = new ArrayList<>();
         List<QueryItem>       currentGroup = new ArrayList<>();
 
@@ -245,7 +195,6 @@ public final class PredicateAssembler {
             andGroups.add(currentGroup);
         }
 
-        // 组内 AND，组间 OR
         List<Query> groupQueries = new ArrayList<>();
         for (List<QueryItem> group : andGroups) {
             if (group.isEmpty()) continue;
@@ -260,7 +209,7 @@ public final class PredicateAssembler {
         if (groupQueries.isEmpty()) return null;
         if (groupQueries.size() == 1) return groupQueries.get(0);
 
-        return Query.of(q -> q.bool(b -> b.should(groupQueries).minimumShouldMatch("1")));
+        return Query.of(q -> q.bool(b -> b.should(groupQueries).minimumShouldMatch(minimumShouldMatch)));
     }
 
     private record QueryItem(Query query, LogicalOperator operator) {

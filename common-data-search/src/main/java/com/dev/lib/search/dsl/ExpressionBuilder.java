@@ -12,7 +12,6 @@ import java.util.List;
 public final class ExpressionBuilder {
 
     private ExpressionBuilder() {
-
     }
 
     public static Query build(String field, QueryType type, Object value) {
@@ -22,63 +21,22 @@ public final class ExpressionBuilder {
         }
 
         return switch (type) {
-            case EQ -> term(
-                    field,
-                    value
-            );
-            case NE -> mustNot(term(
-                    field,
-                    value
-            ));
-            case GT -> range(
-                    field,
-                    "gt",
-                    value
-            );
-            case GE -> range(
-                    field,
-                    "gte",
-                    value
-            );
-            case LT -> range(
-                    field,
-                    "lt",
-                    value
-            );
-            case LE -> range(
-                    field,
-                    "lte",
-                    value
-            );
-            case LIKE -> wildcard(
-                    field,
-                    "*" + value + "*"
-            );
-            case START_WITH -> prefix(
-                    field,
-                    value.toString()
-            );
-            case END_WITH -> wildcard(
-                    field,
-                    "*" + value
-            );
-            case IN -> terms(
-                    field,
-                    (Collection<?>) value
-            );
-            case NOT_IN -> mustNot(terms(
-                    field,
-                    (Collection<?>) value
-            ));
+            case EQ -> term(field, value);
+            case NE -> mustNot(term(field, value));
+            case GT -> range(field, "gt", value);
+            case GE -> range(field, "gte", value);
+            case LT -> range(field, "lt", value);
+            case LE -> range(field, "lte", value);
+            case LIKE -> match(field, value.toString());
+            case START_WITH -> prefix(keywordField(field), value.toString());
+            case END_WITH -> wildcard(keywordField(field), "*" + value);
+            case IN -> terms(field, (Collection<?>) value);
+            case NOT_IN -> mustNot(terms(field, (Collection<?>) value));
             case IS_NULL -> mustNot(exists(field));
             case IS_NOT_NULL -> exists(field);
             case BETWEEN -> {
                 if (value instanceof Object[] arr && arr.length == 2) {
-                    yield rangeBetween(
-                            field,
-                            arr[0],
-                            arr[1]
-                    );
+                    yield rangeBetween(field, arr[0], arr[1]);
                 }
                 yield null;
             }
@@ -86,22 +44,43 @@ public final class ExpressionBuilder {
         };
     }
 
+    /**
+     * 精确匹配
+     * 字符串类型自动加 .keyword 后缀
+     */
     private static Query term(String field, Object value) {
-
-        return Query.of(q -> q.term(t -> t.field(field).value(toFieldValue(value))));
+        String targetField = (value instanceof String) ? keywordField(field) : field;
+        return Query.of(q -> q.term(t -> t.field(targetField).value(toFieldValue(value))));
     }
 
+    /**
+     * 批量精确匹配
+     */
     private static Query terms(String field, Collection<?> values) {
-
         if (CollectionUtils.isEmpty(values)) return null;
+
+        // 判断集合元素类型
+        boolean isStringCollection = values.stream()
+                .filter(v -> v != null)
+                .findFirst()
+                .map(v -> v instanceof String)
+                .orElse(false);
+
+        String targetField = isStringCollection ? keywordField(field) : field;
         List<FieldValue> fieldValues = values.stream()
                 .map(ExpressionBuilder::toFieldValue)
                 .toList();
-        return Query.of(q -> q.terms(t -> t.field(field).terms(tv -> tv.value(fieldValues))));
+        return Query.of(q -> q.terms(t -> t.field(targetField).terms(tv -> tv.value(fieldValues))));
+    }
+
+    /**
+     * 全文检索（分词匹配）
+     */
+    private static Query match(String field, String value) {
+        return Query.of(q -> q.match(m -> m.field(field).query(FieldValue.of(value))));
     }
 
     private static Query range(String field, String op, Object value) {
-
         return Query.of(q -> q.range(r -> {
             r.field(field);
             JsonData jsonValue = JsonData.of(value);
@@ -116,7 +95,6 @@ public final class ExpressionBuilder {
     }
 
     private static Query rangeBetween(String field, Object from, Object to) {
-
         return Query.of(q -> q.range(r -> r
                 .field(field)
                 .gte(JsonData.of(from))
@@ -125,7 +103,6 @@ public final class ExpressionBuilder {
     }
 
     private static Query wildcard(String field, String pattern) {
-
         return Query.of(q -> q.wildcard(w -> w
                 .field(field)
                 .value(pattern)
@@ -134,23 +111,27 @@ public final class ExpressionBuilder {
     }
 
     private static Query prefix(String field, String value) {
-
         return Query.of(q -> q.prefix(p -> p.field(field).value(value)));
     }
 
     private static Query exists(String field) {
-
         return Query.of(q -> q.exists(e -> e.field(field)));
     }
 
     private static Query mustNot(Query query) {
-
         if (query == null) return null;
         return Query.of(q -> q.bool(b -> b.mustNot(query)));
     }
 
-    private static FieldValue toFieldValue(Object value) {
+    /**
+     * 字符串字段加 .keyword 后缀用于精确匹配/排序
+     */
+    private static String keywordField(String field) {
+        if (field.endsWith(".keyword")) return field;
+        return field + ".keyword";
+    }
 
+    private static FieldValue toFieldValue(Object value) {
         if (value == null) return FieldValue.NULL;
         if (value instanceof Number n) {
             if (n instanceof Double || n instanceof Float) {
@@ -162,5 +143,4 @@ public final class ExpressionBuilder {
         if (value instanceof Enum<?> e) return FieldValue.of(e.name());
         return FieldValue.of(value.toString());
     }
-
 }

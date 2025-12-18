@@ -26,28 +26,35 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @Slf4j
+@SuppressWarnings("all")
 public abstract class BaseRepository<T extends SearchEntity> {
 
     @Resource
-    protected OpenSearchClient                      client;
+    protected OpenSearchClient client;
 
     @Resource
-    private   OpenSearchConfig.OpenSearchProperties properties;
+    private OpenSearchConfig.OpenSearchProperties properties;
 
     protected String indexName() {
 
         return properties.getIndex();
     }
 
+    private volatile Class<T> entityClassCache;
+
     @SuppressWarnings("unchecked")
     protected Class<T> entityClass() {
 
-        return (Class<T>) ((ParameterizedType) getClass().getGenericSuperclass())
-                .getActualTypeArguments()[0];
+        if (entityClassCache == null) {
+            entityClassCache = (Class<T>) ((ParameterizedType) getClass().getGenericSuperclass())
+                    .getActualTypeArguments()[0];
+        }
+        return entityClassCache;
     }
 
     protected Refresh refresh() {
@@ -56,7 +63,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 保存（对应 JpaRepository.save / saveAll）
+    // 保存
     // ═══════════════════════════════════════════════════════════════
     public <S extends T> S save(S entity) {
 
@@ -74,10 +81,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
             );
             return entity;
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "保存失败: " + entity.getBizId(),
-                    e
-            );
+            throw new RuntimeException("保存失败: " + entity.getBizId(), e);
         }
     }
 
@@ -111,69 +115,49 @@ public abstract class BaseRepository<T extends SearchEntity> {
             }
             return list;
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "批量保存失败",
-                    e
-            );
+            throw new RuntimeException("批量保存失败", e);
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 查询（对应 JpaRepository.findById / findAll / findAllById）
+    // 查询
     // ═══════════════════════════════════════════════════════════════
     public Optional<T> findById(String id) {
 
         try {
             GetResponse<T> response = client.get(
-                    g -> g
-                            .index(indexName())
-                            .id(id),
+                    g -> g.index(indexName()).id(id),
                     entityClass()
             );
             return response.found() ? Optional.ofNullable(response.source()) : Optional.empty();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "查询失败: " + id,
-                    e
-            );
+            throw new RuntimeException("查询失败: " + id, e);
         }
     }
 
     public boolean existsById(String id) {
 
         try {
-            return client.exists(e -> e
-                    .index(indexName())
-                    .id(id)
-            ).value();
+            return client.exists(e -> e.index(indexName()).id(id)).value();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "判断存在失败: " + id,
-                    e
-            );
+            throw new RuntimeException("判断存在失败: " + id, e);
         }
     }
 
     public List<T> findAll() {
 
-        return findAll(Sort.by(
-                Sort.Direction.DESC,
-                "id"
-        ));
+        return findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
     public List<T> findAll(Sort sort) {
 
         try {
-            Set<String> allowFields = getAllowFields();
+            Map<String, Class<?>> fieldTypes = getFieldTypes();
             SearchResponse<T> response = client.search(
                     s -> s
                             .index(indexName())
                             .query(q -> q.matchAll(m -> m))
-                            .sort(SortBuilder.build(
-                                    sort,
-                                    allowFields
-                            )),
+                            .sort(SortBuilder.build(sort, fieldTypes)),
                     entityClass()
             );
             return response.hits().hits().stream()
@@ -181,27 +165,21 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .filter(Objects::nonNull)
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "查询全部失败",
-                    e
-            );
+            throw new RuntimeException("查询全部失败", e);
         }
     }
 
     public Page<T> findAll(Pageable pageable) {
 
         try {
-            Set<String> allowFields = getAllowFields();
+            Map<String, Class<?>> fieldTypes = getFieldTypes();
             SearchResponse<T> response = client.search(
                     s -> s
                             .index(indexName())
                             .query(q -> q.matchAll(m -> m))
                             .from((int) pageable.getOffset())
                             .size(pageable.getPageSize())
-                            .sort(SortBuilder.build(
-                                    pageable.getSort(),
-                                    allowFields
-                            ))
+                            .sort(SortBuilder.build(pageable.getSort(), fieldTypes))
                             .trackTotalHits(t -> t.enabled(true)),
                     entityClass()
             );
@@ -210,16 +188,9 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .filter(Objects::nonNull)
                     .toList();
             long total = response.hits().total() != null ? response.hits().total().value() : 0;
-            return new PageImpl<>(
-                    content,
-                    pageable,
-                    total
-            );
+            return new PageImpl<>(content, pageable, total);
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "分页查询失败",
-                    e
-            );
+            throw new RuntimeException("分页查询失败", e);
         }
     }
 
@@ -231,9 +202,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
         if (idList.isEmpty()) return Collections.emptyList();
         try {
             MgetResponse<T> response = client.mget(
-                    m -> m
-                            .index(indexName())
-                            .ids(idList),
+                    m -> m.index(indexName()).ids(idList),
                     entityClass()
             );
             return response.docs().stream()
@@ -242,10 +211,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .filter(Objects::nonNull)
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "批量查询失败",
-                    e
-            );
+            throw new RuntimeException("批量查询失败", e);
         }
     }
 
@@ -258,15 +224,12 @@ public abstract class BaseRepository<T extends SearchEntity> {
             );
             return response.count();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "计数失败",
-                    e
-            );
+            throw new RuntimeException("计数失败", e);
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 删除（对应 JpaRepository.delete / deleteById / deleteAll）
+    // 删除
     // ═══════════════════════════════════════════════════════════════
     public void deleteById(String id) {
 
@@ -277,10 +240,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .refresh(refresh())
             );
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "删除失败: " + id,
-                    e
-            );
+            throw new RuntimeException("删除失败: " + id, e);
         }
     }
 
@@ -303,10 +263,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
         try {
             client.bulk(b -> b.operations(operations).refresh(refresh()));
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "批量删除失败",
-                    e
-            );
+            throw new RuntimeException("批量删除失败", e);
         }
     }
 
@@ -330,28 +287,19 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .refresh(Refresh.True)
             );
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "删除全部失败",
-                    e
-            );
+            throw new RuntimeException("删除全部失败", e);
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 扩展：部分更新（JPA 没有，ES 特有）
+    // 部分更新
     // ═══════════════════════════════════════════════════════════════
     public void updatePartial(String id, Map<String, Object> fields) {
 
         if (fields == null || fields.isEmpty()) return;
         Map<String, Object> doc = new HashMap<>(fields);
-        doc.put(
-                "updatedAt",
-                LocalDateTime.now()
-        );
-        doc.put(
-                "modifierId",
-                SecurityContextHolder.current().getId()
-        );
+        doc.put("updatedAt", LocalDateTime.now());
+        doc.put("modifierId", SecurityContextHolder.current().getId());
         try {
             client.update(
                     u -> u
@@ -362,24 +310,18 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     entityClass()
             );
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "部分更新失败: " + id,
-                    e
-            );
+            throw new RuntimeException("部分更新失败: " + id, e);
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 扩展：DSL 查询（类似 QuerydslPredicateExecutor）
+    // DSL 查询
     // ═══════════════════════════════════════════════════════════════
     public Optional<T> findOne(Query query) {
 
         try {
             SearchResponse<T> response = client.search(
-                    s -> s
-                            .index(indexName())
-                            .query(query)
-                            .size(1),
+                    s -> s.index(indexName()).query(query).size(1),
                     entityClass()
             );
             return response.hits().hits().stream()
@@ -387,36 +329,24 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .filter(Objects::nonNull)
                     .findFirst();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "查询失败",
-                    e
-            );
+            throw new RuntimeException("查询失败", e);
         }
     }
 
     public List<T> findAll(Query query) {
 
-        return findAll(
-                query,
-                Sort.by(
-                        Sort.Direction.DESC,
-                        "id"
-                )
-        );
+        return findAll(query, Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
     public List<T> findAll(Query query, Sort sort) {
 
         try {
-            Set<String> allowFields = getAllowFields();
+            Map<String, Class<?>> fieldTypes = getFieldTypes();
             SearchResponse<T> response = client.search(
                     s -> s
                             .index(indexName())
                             .query(query)
-                            .sort(SortBuilder.build(
-                                    sort,
-                                    allowFields
-                            ))
+                            .sort(SortBuilder.build(sort, fieldTypes))
                             .size(10000),
                     entityClass()
             );
@@ -425,27 +355,21 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .filter(Objects::nonNull)
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "查询失败",
-                    e
-            );
+            throw new RuntimeException("查询失败", e);
         }
     }
 
     public Page<T> findAll(Query query, Pageable pageable) {
 
         try {
-            Set<String> allowFields = getAllowFields();
+            Map<String, Class<?>> fieldTypes = getFieldTypes();
             SearchResponse<T> response = client.search(
                     s -> s
                             .index(indexName())
                             .query(query)
                             .from((int) pageable.getOffset())
                             .size(pageable.getPageSize())
-                            .sort(SortBuilder.build(
-                                    pageable.getSort(),
-                                    allowFields
-                            ))
+                            .sort(SortBuilder.build(pageable.getSort(), fieldTypes))
                             .trackTotalHits(t -> t.enabled(true)),
                     entityClass()
             );
@@ -454,32 +378,19 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .filter(Objects::nonNull)
                     .toList();
             long total = response.hits().total() != null ? response.hits().total().value() : 0;
-            return new PageImpl<>(
-                    content,
-                    pageable,
-                    total
-            );
+            return new PageImpl<>(content, pageable, total);
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "分页查询失败",
-                    e
-            );
+            throw new RuntimeException("分页查询失败", e);
         }
     }
 
     public long count(Query query) {
 
         try {
-            CountResponse response = client.count(c -> c
-                    .index(indexName())
-                    .query(query)
-            );
+            CountResponse response = client.count(c -> c.index(indexName()).query(query));
             return response.count();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "计数失败",
-                    e
-            );
+            throw new RuntimeException("计数失败", e);
         }
     }
 
@@ -488,7 +399,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
         return count(query) > 0;
     }
 
-    public long deleteBy(Query query) {
+    public long delete(Query query) {
 
         try {
             DeleteByQueryResponse response = client.deleteByQuery(d -> d
@@ -498,91 +409,61 @@ public abstract class BaseRepository<T extends SearchEntity> {
             );
             return response.deleted() != null ? response.deleted() : 0;
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "按条件删除失败",
-                    e
-            );
+            throw new RuntimeException("按条件删除失败", e);
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 扩展：DslQuery 查询（你的 DSL 框架）
+    // DslQuery 查询
     // ═══════════════════════════════════════════════════════════════
     public Optional<T> load(DslQuery<T> dslQuery, Query... extraQueries) {
 
-        return findOne(toQuery(
-                dslQuery,
-                extraQueries
-        ));
+        return findOne(toQuery(dslQuery, extraQueries));
     }
 
     public List<T> loads(DslQuery<T> dslQuery, Query... extraQueries) {
 
-        int         size        = Optional.ofNullable(dslQuery.getLimit()).orElse(100);
-        int         from        = Optional.ofNullable(dslQuery.getOffset()).orElse(0);
-        Set<String> allowFields = getAllowFields();
+        int                   size       = Optional.ofNullable(dslQuery.getLimit()).orElse(100);
+        int                   from       = Optional.ofNullable(dslQuery.getOffset()).orElse(0);
+        Map<String, Class<?>> fieldTypes = getFieldTypes();
         try {
             SearchResponse<T> response = client.search(
                     s -> s
                             .index(indexName())
-                            .query(toQuery(
-                                    dslQuery,
-                                    extraQueries
-                            ))
+                            .query(toQuery(dslQuery, extraQueries))
                             .from(from)
                             .size(size)
-                            .sort(SortBuilder.build(
-                                    dslQuery.toSort(allowFields),
-                                    allowFields
-                            )),
+                            .sort(SortBuilder.build(dslQuery.toSort(fieldTypes.keySet()), fieldTypes)),
                     entityClass()
             );
             return response.hits().hits().stream()
                     .map(Hit::source)
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "查询失败",
-                    e
-            );
+            throw new RuntimeException("查询失败", e);
         }
     }
 
     public Page<T> page(DslQuery<T> dslQuery, Query... extraQueries) {
 
-        Set<String> allowFields = getAllowFields();
-        Pageable    pageable    = dslQuery.toPageable(allowFields);
-        return findAll(
-                toQuery(
-                        dslQuery,
-                        extraQueries
-                ),
-                pageable
-        );
+        Map<String, Class<?>> fieldTypes = getFieldTypes();
+        Pageable              pageable   = dslQuery.toPageable(fieldTypes.keySet());
+        return findAll(toQuery(dslQuery, extraQueries), pageable);
     }
 
     public boolean exists(DslQuery<T> dslQuery, Query... extraQueries) {
 
-        return exists(toQuery(
-                dslQuery,
-                extraQueries
-        ));
+        return exists(toQuery(dslQuery, extraQueries));
     }
 
     public long count(DslQuery<T> dslQuery, Query... extraQueries) {
 
-        return count(toQuery(
-                dslQuery,
-                extraQueries
-        ));
+        return count(toQuery(dslQuery, extraQueries));
     }
 
-    public long deleteBy(DslQuery<T> dslQuery, Query... extraQueries) {
+    public long delete(DslQuery<T> dslQuery, Query... extraQueries) {
 
-        return deleteBy(toQuery(
-                dslQuery,
-                extraQueries
-        ));
+        return delete(toQuery(dslQuery, extraQueries));
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -592,6 +473,10 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
         LocalDateTime now  = LocalDateTime.now();
         UserDetails   user = SecurityContextHolder.current();
+
+        if (entity.getId() == null) {
+            entity.setId(IDWorker.nextID());  // 加这个
+        }
         if (entity.getBizId() == null) {
             entity.setBizId(IDWorker.newId());
         }
@@ -603,9 +488,6 @@ public abstract class BaseRepository<T extends SearchEntity> {
             entity.setCreatorId(user.getId());
         }
         entity.setModifierId(user.getId());
-        if (entity.getDeleted() == null) {
-            entity.setDeleted(false);
-        }
     }
 
     protected void preUpdate(T entity) {
@@ -628,11 +510,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
             Map<String, QueryFieldMerger.FieldMetaValue> fieldMap = new HashMap<>();
             for (QueryFieldMerger.FieldMetaValue fv : self) {
                 fieldMap.put(
-                        StringUtils.format(
-                                "{}-{}",
-                                fv.getFieldMeta().targetField(),
-                                fv.getFieldMeta().queryType()
-                        ),
+                        StringUtils.format("{}-{}", fv.getFieldMeta().targetField(), fv.getFieldMeta().queryType()),
                         fv
                 );
             }
@@ -647,18 +525,18 @@ public abstract class BaseRepository<T extends SearchEntity> {
                                                          ));
             fields = fieldMap.values();
         }
-        return PredicateAssembler.assemble(
-                dslQuery,
-                fields,
-                extraQueries
-        );
+        return PredicateAssembler.assemble(dslQuery, fields, extraQueries);
     }
 
-    private Set<String> getAllowFields() {
+    private static final Map<Class<?>, Map<String, Class<?>>> FIELD_TYPE_CACHE = new ConcurrentHashMap<>();
 
-        return Arrays.stream(entityClass().getDeclaredFields())
-                .map(Field::getName)
-                .collect(Collectors.toSet());
+    private Map<String, Class<?>> getFieldTypes() {
+
+        return FIELD_TYPE_CACHE.computeIfAbsent(
+                entityClass(), clazz ->
+                        Arrays.stream(clazz.getDeclaredFields())
+                                .collect(Collectors.toMap(Field::getName, Field::getType))
+        );
     }
 
     private <E> List<E> toList(Iterable<E> iterable) {
@@ -666,11 +544,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
         if (iterable instanceof List) {
             return (List<E>) iterable;
         }
-        return StreamSupport.stream(
-                        iterable.spliterator(),
-                        false
-                )
-                .collect(Collectors.toList());
+        return StreamSupport.stream(iterable.spliterator(), false).toList();
     }
 
 }

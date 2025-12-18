@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Data
 public abstract class SearchEntity extends CoreEntity {
 
-//    private Long id;
+    private Long id;
 
     private String bizId;
 
@@ -20,11 +20,9 @@ public abstract class SearchEntity extends CoreEntity {
 
     private Long modifierId;
 
-    private Boolean deleted;
-
     public boolean isNew() {
 
-        return bizId == null || createdAt == null;
+        return createdAt == null;
     }
 
 }

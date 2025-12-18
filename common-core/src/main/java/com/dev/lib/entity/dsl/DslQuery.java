@@ -60,6 +60,8 @@ public abstract class DslQuery<E extends CoreEntity> {
     @ConditionIgnore
     public Integer limit;
 
+    private String minimumShouldMatch = "1";
+
     // 游标查询
     public DslQuery<E> setCursor(String id, Sort.Direction direction) {
 

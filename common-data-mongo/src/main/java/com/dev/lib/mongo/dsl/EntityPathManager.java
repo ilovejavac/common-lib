@@ -2,6 +2,7 @@ package com.dev.lib.mongo.dsl;
 
 import com.querydsl.core.types.dsl.EntityPathBase;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -30,7 +31,7 @@ public final class EntityPathManager {
                                 + clazz.getSimpleName().substring(1);
 
                         Field field = qClass.getDeclaredField(fieldName);
-                        field.setAccessible(true);
+                        ReflectionUtils.makeAccessible(field);
                         return (EntityPathBase<?>) field.get(null);
                     } catch (Exception e) {
                         throw new IllegalStateException(
