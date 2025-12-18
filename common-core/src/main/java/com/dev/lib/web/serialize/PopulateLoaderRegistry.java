@@ -27,14 +27,8 @@ public class PopulateLoaderRegistry implements ApplicationContextAware {
         // 自动注册所有 PopulateLoader Bean
         Map<String, PopulateLoader> beans = ctx.getBeansOfType(PopulateLoader.class);
         beans.forEach((name, loader) -> {
-            LOADERS.put(
-                    name,
-                    loader
-            );
-            log.info(
-                    "Registered PopulateLoader: {}",
-                    name
-            );
+            LOADERS.put(name, loader);
+            log.info("Registered PopulateLoader: {}", name);
         });
     }
 
@@ -48,19 +42,10 @@ public class PopulateLoaderRegistry implements ApplicationContextAware {
         if (loader == null) {
             // 尝试从容器获取（支持懒加载的 Bean）
             try {
-                loader = applicationContext.getBean(
-                        name,
-                        PopulateLoader.class
-                );
-                LOADERS.put(
-                        name,
-                        loader
-                );
+                loader = applicationContext.getBean(name, PopulateLoader.class);
+                LOADERS.put(name, loader);
             } catch (BeansException e) {
-                log.warn(
-                        "PopulateLoader not found: {}",
-                        name
-                );
+                log.warn("PopulateLoader not found: {}", name);
                 return null;
             }
         }

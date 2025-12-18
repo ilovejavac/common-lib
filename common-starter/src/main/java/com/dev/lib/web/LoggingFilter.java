@@ -39,8 +39,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        HttpServletRequest           httpRequest    = request;
-        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(httpRequest, CACHE_LIMIT);
+        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request, CACHE_LIMIT);
         String                       requestPath    = request.getRequestURI();
 
         // ✅ 只处理 /api/** 路径

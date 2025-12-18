@@ -13,7 +13,7 @@ class PageResult {
 
     private Integer size;
 
-    private Long    total;
+    private Long total;
 
     private Boolean hasNext;
 

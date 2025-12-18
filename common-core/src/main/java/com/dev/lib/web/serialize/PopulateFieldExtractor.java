@@ -28,11 +28,7 @@ public class PopulateFieldExtractor {
 
         Map<String, Set<Object>> result  = new HashMap<>();
         Set<Object>              visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        doExtract(
-                obj,
-                result,
-                visited
-        );
+        doExtract(obj, result, visited);
         return result;
     }
 
@@ -49,11 +45,7 @@ public class PopulateFieldExtractor {
         // 处理集合
         if (obj instanceof Collection<?> collection) {
             for (Object item : collection) {
-                doExtract(
-                        item,
-                        result,
-                        visited
-                );
+                doExtract(item, result, visited);
             }
             return;
         }
@@ -61,11 +53,7 @@ public class PopulateFieldExtractor {
         // 处理 Map
         if (obj instanceof Map<?, ?> map) {
             for (Object value : map.values()) {
-                doExtract(
-                        value,
-                        result,
-                        visited
-                );
+                doExtract(value, result, visited);
             }
             return;
         }
@@ -74,11 +62,7 @@ public class PopulateFieldExtractor {
         if (clazz.isArray() && !clazz.getComponentType().isPrimitive()) {
             Object[] arr = (Object[]) obj;
             for (Object item : arr) {
-                doExtract(
-                        item,
-                        result,
-                        visited
-                );
+                doExtract(item, result, visited);
             }
             return;
         }
@@ -87,15 +71,9 @@ public class PopulateFieldExtractor {
         List<FieldMeta> populateFields = getPopulateFields(clazz);
 
         for (FieldMeta meta : populateFields) {
-            Object value = getFieldValue(
-                    meta.field(),
-                    obj
-            );
+            Object value = getFieldValue(meta.field(), obj);
             if (value != null) {
-                result.computeIfAbsent(
-                        meta.loaderName(),
-                        k -> new HashSet<>()
-                ).add(value);
+                result.computeIfAbsent(meta.loaderName(), k -> new HashSet<>()).add(value);
             }
         }
 
@@ -106,15 +84,8 @@ public class PopulateFieldExtractor {
                     if (isSkippedType(field.getType())) return;
                     if (field.isAnnotationPresent(PopulateField.class)) return;
 
-                    Object value = getFieldValue(
-                            field,
-                            obj
-                    );
-                    doExtract(
-                            value,
-                            result,
-                            visited
-                    );
+                    Object value = getFieldValue(field, obj);
+                    doExtract(value, result, visited);
                 },
                 field -> !java.lang.reflect.Modifier.isStatic(field.getModifiers())
         );
@@ -135,10 +106,7 @@ public class PopulateFieldExtractor {
                                 PopulateField annotation = field.getAnnotation(PopulateField.class);
                                 if (annotation != null) {
                                     ReflectionUtils.makeAccessible(field);
-                                    fields.add(new FieldMeta(
-                                            field,
-                                            annotation.loader()
-                                    ));
+                                    fields.add(new FieldMeta(field, annotation.loader()));
                                 }
                             }
                     );
@@ -151,10 +119,7 @@ public class PopulateFieldExtractor {
 
         try {
             ReflectionUtils.makeAccessible(field);
-            return ReflectionUtils.getField(
-                    field,
-                    obj
-            );
+            return ReflectionUtils.getField(field, obj);
         } catch (Exception e) {
             return null;
         }

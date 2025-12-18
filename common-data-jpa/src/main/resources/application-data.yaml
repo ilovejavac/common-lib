@@ -1,7 +1,7 @@
 spring:
   datasource:
     hikari:
-      maximum-pool-size: 25
+      maximum-pool-size: 15
       connection-timeout: 10000
       validation-timeout: 3000
       idle-timeout: 600000
@@ -15,20 +15,17 @@ spring:
     open-in-view: false
     show-sql: false
     properties:
-      type:
-        preferred_java_type_jdbc_code_for_enum: 24
       hibernate:
+        type:
+          preferred_java_type_jdbc_code_for_enum: 24
+        default_batch_fetch_size: 128
         format_sql: false
         highlight_sql: false
         use_sql_comments: false
-        naming:
-          physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-          implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
         jdbc:
-          batch_size: 200
-          fetch_size: 500
+          batch_size: 128
+          fetch_size: 128
           time_zone: Asia/Shanghai
-          use_enum_ordinal_type: false
           batch_versioned_data: true
         order_inserts: true
         order_updates: true

@@ -19,6 +19,8 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import org.hibernate.jpa.HibernateHints;
+import org.hibernate.jpa.QueryHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.support.JpaEntityInformation;
@@ -504,12 +506,12 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
 
         JPAQuery<T> query = queryFactory.selectFrom(path).where(predicate);
+        query.setHint(HibernateHints.HINT_FETCH_SIZE, 1000);
 
         if (dslQuery != null) {
             applySort(query, dslQuery);
         }
 
-        // 关键：stream() 会使用 fetch_size
         return query.stream();
     }
 

@@ -14,21 +14,21 @@ import java.util.List;
 @AllArgsConstructor
 public class ServerResponse<T> {
 
-    private Integer    code;
+    private Integer code;
 
-    private String     message;
+    private String message;
 
-    private String     error;
+    private String error;
 
-    private T          data;
+    private T data;
 
     private PageResult pager;
 
-    private              Long   timestamp = System.currentTimeMillis();
+    private Long timestamp = System.currentTimeMillis();
 
-    private              String traceId   = MDC.get("trace_id");
+    private String traceId = MDC.get("trace_id");
 
-    private static final String SUCCESS   = "success";
+    private static final String SUCCESS = "success";
 
     public static <T> ServerResponse<T> ok() {
 
@@ -81,47 +81,14 @@ public class ServerResponse<T> {
         result.setPager(pager);
     }
 
-    @SuppressWarnings("unchecked")
-    public <S, R> ServerResponse<List<R>> convert(Convert<S, R> convert) {
-
-        ServerResponse<List<R>> result = new ServerResponse<>();
-        result.setCode(this.code);
-        result.setMessage(this.message);
-        result.setError(this.error);
-        result.setPager(this.pager);
-        result.setTimestamp(this.timestamp);
-        result.setTraceId(this.traceId);
-
-        if (this.data == null) {
-            result.setData(null);
-        } else {
-            if (convert == null) {
-                return result;
-            }
-
-            List<S> list = (List<S>) this.data;
-            result.setData(list.stream().map(convert::convert).toList());
-        }
-
-        return result;
-    }
-
     public static ServerResponse<Void> fail(Integer code, String message) {
 
-        return fail(
-                code,
-                message,
-                null
-        );
+        return fail(code, message, null);
     }
 
     public static ServerResponse<Void> fail(BizException e) {
 
-        return fail(
-                e.getCoder(),
-                e.getMsger(),
-                null
-        );
+        return fail(e.getCoder(), e.getMsger(), null);
     }
 
     public static <T> ServerResponse<T> fail(Integer code, String message, T data) {

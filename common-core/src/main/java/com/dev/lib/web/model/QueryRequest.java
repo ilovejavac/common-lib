@@ -27,9 +27,9 @@ public class QueryRequest<T> {
 
     private static final int DEFAULT_PAGE = 1;
 
-    private static final int DEFAULT_SIZE = 20;
+    private static final int DEFAULT_SIZE = 15;
 
-    private static final int MAX_SIZE     = 50;
+    private static final int MAX_SIZE = 128;
 
     /**
      * 最大可查询的总记录数（防止深度翻页）

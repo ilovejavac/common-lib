@@ -20,7 +20,7 @@ public class WebSecurityConfig implements WebMvcConfigurer {
         registry.addInterceptor(authInterceptor)
                 .order(20)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/**");
+                .excludePathPatterns("/api/auth/**", "/api/public/**");
     }
 
 }

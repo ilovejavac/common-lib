@@ -138,7 +138,7 @@ public abstract class DslQuery<E extends CoreEntity> {
         if (pageRequest == null) {
             return PageRequest.of(
                     Math.max(1, Optional.ofNullable(offset).orElse(1)) - 1,
-                    Math.min(500, Optional.ofNullable(limit).orElse(50)),
+                    Math.min(128, Optional.ofNullable(limit).orElse(50)),
                     toSort(allowFields)
             );
         }
