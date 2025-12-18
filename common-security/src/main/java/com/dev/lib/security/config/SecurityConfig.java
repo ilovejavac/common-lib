@@ -1,11 +1,9 @@
 package com.dev.lib.security.config;
 
-import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.security.service.PermissionService;
 import com.dev.lib.security.util.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

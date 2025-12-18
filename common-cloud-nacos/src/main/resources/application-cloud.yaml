@@ -3,8 +3,9 @@ app:
     host: localhost
     port: 8848
     group: dev
-    username: admin
-    password: 1qazXDR%
+    username: nacos
+    password: nacos
+    namespace: /
 dubbo:
   consumer:
     lazy: false
@@ -25,28 +26,16 @@ dubbo:
     heartbeat: 60000
     queues: 200
   registry:
-    address: consul://${app.cloud.host}:${app.cloud.port}
+    address: nacos://${app.cloud.host}:${app.cloud.port}
   scan:
     base-packages: ${app.dubbo.scan-packages}
 spring:
   cloud:
-    consul:
-      host: ${app.cloud.host}
-      port: ${app.cloud.port}
-      discovery:
-        service-name: ${spring.application.name}
-        health-check-interval: 15s
-        health-check-timeout: 5s
-        health-check-path: /actuator/health
-        prefer-ip-address: true
-        instance-id: ${spring.application.name}-${random.uuid}
+    nacos:
       config:
-        enabled: true
-        format: YAML
-        default-context: ${spring.application.name}
-        data-key: data
-        watch:
-          enabled: true
-          delay: 1000
-        prefixes:
-          - config
+        server-addr: ${app.cloud.host}:${app.cloud.port}
+        namespace: ${app.cloud.namespace}
+        group: ${app.cloud.group}
+        file-extension: yaml
+        username: ${app.cloud.username}
+        password: ${app.cloud.password}

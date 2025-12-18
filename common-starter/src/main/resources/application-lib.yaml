@@ -20,6 +20,7 @@ spring:
   config:
     import:
       - optional:consul:${app.cloud.host}:${app.cloud.port}
+      - optional:nacos:${spring.application.name}.yaml
       - optional:classpath:application-cloud.yaml
       - optional:classpath:application-data.yaml
       - optional:classpath:application-cache.yaml
