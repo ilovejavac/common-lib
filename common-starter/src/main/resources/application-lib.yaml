@@ -20,6 +20,7 @@ spring:
   config:
     import:
       - optional:consul:${app.cloud.host}:${app.cloud.port}
+      - optional:classpath:application-cloud.yaml
       - optional:classpath:application-data.yaml
       - optional:classpath:application-cache.yaml
       - optional:classpath:application-mongo.yaml
@@ -30,27 +31,6 @@ spring:
       - optional:classpath:application-excel.yaml
       - optional:classpath:application-storage.yaml
       - optional:classpath:application-local-task-message.yaml
-  cloud:
-    consul:
-      host: ${app.cloud.host}
-      port: ${app.cloud.port}
-      discovery:
-        service-name: ${spring.application.name}
-        health-check-interval: 15s
-        health-check-timeout: 5s
-        health-check-path: /actuator/health
-        prefer-ip-address: true
-        instance-id: ${spring.application.name}-${random.uuid}
-      config:
-        enabled: true
-        format: YAML
-        default-context: ${spring.application.name}
-        data-key: data
-        watch:
-          enabled: true
-          delay: 1000
-        prefixes:
-          - config
   web:
     resources:
       add-mappings: false
@@ -77,30 +57,6 @@ server:
       - application/javascript
       - image/svg+xml
     min-response-size: 1KB
-
-dubbo:
-  consumer:
-    lazy: false
-    timeout: 5000
-    check: false
-    retries: 0
-  application:
-    name: dubbo-${spring.application.name}
-    qos-enable: false
-    qos-accept-foreign-ip: false
-  protocol:
-    name: dubbo
-    port: -1
-    threadpool: virtual
-    accepts: 1000
-    payload: 8388608
-    buffer: 8192
-    heartbeat: 60000
-    queues: 200
-  registry:
-    address: consul://${app.cloud.host}:${app.cloud.port}
-  scan:
-    base-packages: ${app.dubbo.scan-packages}
 
 logging:
   config: classpath:logback-spring.xml
@@ -130,11 +86,6 @@ management:
 app:
   snow-flake:
     data-center-id: 0
-  dubbo:
-    scan-packages: /
-  cloud:
-    host: localhost
-    port: 8500
   cors:
     allowed-methods:
       - GET

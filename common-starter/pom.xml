@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.dev.lib</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.2.3</version>
+        <version>1.3.0</version>
     </parent>
 
     <artifactId>common-starter</artifactId>
@@ -14,7 +14,7 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -37,23 +37,6 @@
             <artifactId>fastjson2-extension-spring6</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.dubbo</groupId>
-            <artifactId>dubbo-spring-boot-starter</artifactId>
-            <version>${dubbo.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-config</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-security-sa</artifactId>
-        </dependency>
         <dependency>
             <groupId>com.dev.lib</groupId>
             <artifactId>common-excel</artifactId>

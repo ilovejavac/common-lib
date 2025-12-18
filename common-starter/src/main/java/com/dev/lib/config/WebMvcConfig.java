@@ -4,14 +4,11 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.filter.PropertyFilter;
 import com.alibaba.fastjson2.support.config.FastJsonConfig;
 import com.alibaba.fastjson2.support.spring6.http.converter.FastJsonHttpMessageConverter;
-import com.dev.lib.web.interceptor.AuthInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverters;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.charset.StandardCharsets;
@@ -24,8 +21,6 @@ import java.util.Set;
 public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
 
     private final NullToEmptyFilter nullToEmptyFilter;
-
-    private final AuthInterceptor authInterceptor;
 
     private final PopulateFieldAfterFilter populateFieldAfterFilter;
 
@@ -49,16 +44,8 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
     }
 
     @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-
-        registry.addInterceptor(authInterceptor)
-                .order(20)
-                .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/**");
-    }
-
-    @Override
     public void configureMessageConverters(HttpMessageConverters.ServerBuilder builder) {
+
         FastJsonHttpMessageConverter converter = new FastJsonHttpMessageConverter();
         FastJsonConfig               config    = new FastJsonConfig();
 
@@ -89,6 +76,5 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
 
         builder.withJsonConverter(converter);
     }
-
 
 }

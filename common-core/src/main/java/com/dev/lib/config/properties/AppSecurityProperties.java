@@ -10,11 +10,11 @@ public class AppSecurityProperties {
 
     private EncryptVersion encryptVersion;
 
-    private String         secret;
+    private String secret;
 
-    private Long           expiration;
+    private Long expiration;
 
-    private Set<String>    whiteListRequest;
+    private Set<String> whiteListRequest;
 
     private String rsaPublicKey;
 

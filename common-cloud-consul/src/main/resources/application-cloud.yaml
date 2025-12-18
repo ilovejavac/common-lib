@@ -1,0 +1,49 @@
+app:
+  cloud:
+    host: localhost
+    port: 8500
+dubbo:
+  consumer:
+    lazy: false
+    timeout: 5000
+    check: false
+    retries: 0
+  application:
+    name: dubbo-${spring.application.name}
+    qos-enable: false
+    qos-accept-foreign-ip: false
+  protocol:
+    name: dubbo
+    port: -1
+    threadpool: virtual
+    accepts: 1000
+    payload: 8388608
+    buffer: 8192
+    heartbeat: 60000
+    queues: 200
+  registry:
+    address: consul://${app.cloud.host}:${app.cloud.port}
+  scan:
+    base-packages: ${app.dubbo.scan-packages}
+spring:
+  cloud:
+    consul:
+      host: ${app.cloud.host}
+      port: ${app.cloud.port}
+      discovery:
+        service-name: ${spring.application.name}
+        health-check-interval: 15s
+        health-check-timeout: 5s
+        health-check-path: /actuator/health
+        prefer-ip-address: true
+        instance-id: ${spring.application.name}-${random.uuid}
+      config:
+        enabled: true
+        format: YAML
+        default-context: ${spring.application.name}
+        data-key: data
+        watch:
+          enabled: true
+          delay: 1000
+        prefixes:
+          - config

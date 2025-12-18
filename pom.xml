@@ -14,7 +14,7 @@
 
     <groupId>com.dev.lib</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.2.3</version>
+    <version>1.3.0</version>
     <packaging>pom</packaging>
     <modules>
         <module>common-starter</module>
@@ -31,6 +31,11 @@
         <module>common-mq-rabbit</module>
         <module>common-data-mongo</module>
         <module>common-data-search</module>
+        <module>common-cloud-consul</module>
+        <module>common-cloud-nacos</module>
+        <module>common-security</module>
+        <module>common-security-jwt</module>
+        <module>common-cloud</module>
     </modules>
 
     <properties>
@@ -49,8 +54,9 @@
         <oss.version>3.17.4</oss.version>
         <eclipse-collections.version>13.0.0</eclipse-collections.version>
         <fastjosn2.version>2.0.56</fastjosn2.version>
+        <jwt.version>0.12.6</jwt.version>
 
-        <lib.version>1.2.3</lib.version>
+        <lib.version>1.3.0</lib.version>
     </properties>
 
     <profiles>
@@ -242,6 +248,16 @@
             </dependency>
             <dependency>
                 <groupId>com.dev.lib</groupId>
+                <artifactId>common-security</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-security-jwt</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
                 <artifactId>common-security-sa</artifactId>
                 <version>${lib.version}</version>
             </dependency>
@@ -253,6 +269,21 @@
             <dependency>
                 <groupId>com.dev.lib</groupId>
                 <artifactId>common-starter</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-cloud</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-cloud-consul</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-cloud-nacos</artifactId>
                 <version>${lib.version}</version>
             </dependency>
 

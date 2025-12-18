@@ -68,10 +68,7 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ServerResponse<Map<String, String>> handleValidationException(MethodArgumentNotValidException e) {
 
-        log.warn(
-                "参数校验失败: {}",
-                e.getMessage()
-        );
+        log.warn("参数校验失败: {}", e.getMessage());
 
         Map<String, String> errors = new HashMap<>();
         for (FieldError fieldError : e.getBindingResult().getFieldErrors()) {
@@ -96,10 +93,7 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ServerResponse<Map<String, String>> handleBindException(BindException e) {
 
-        log.warn(
-                "参数绑定失败: {}",
-                e.getMessage()
-        );
+        log.warn("参数绑定失败: {}", e.getMessage());
 
         Map<String, String> errors = new HashMap<>();
         for (FieldError fieldError : e.getFieldErrors()) {
@@ -124,10 +118,7 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ServerResponse<List<String>> handleConstraintViolationException(ConstraintViolationException e) {
 
-        log.warn(
-                "约束校验失败: {}",
-                e.getMessage()
-        );
+        log.warn("约束校验失败: {}", e.getMessage());
 
         List<String> errors = e.getConstraintViolations().stream().map(ConstraintViolation::getMessage).toList();
 
@@ -145,10 +136,7 @@ public class ExceptionHandle {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ServerResponse<Void> handleMissingParameter(MissingServletRequestParameterException e) {
 
-        log.warn(
-                "缺少请求参数: {}",
-                e.getParameterName()
-        );
+        log.warn("缺少请求参数: {}", e.getParameterName());
         return ServerResponse.fail(
                 400,
                 MessageUtils.get(

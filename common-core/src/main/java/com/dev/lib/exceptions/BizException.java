@@ -7,13 +7,13 @@ import lombok.Setter;
 @Getter
 public class BizException extends RuntimeException {
 
-    private final Integer  coder;
+    private final Integer coder;
 
-    private final String   msger;
+    private final String msger;
 
-    private       Object[] args;
+    private Object[] args;
 
-    private       boolean  i18n = false;
+    private boolean i18n = false;
 
     public BizException(Integer code, String message) {
 

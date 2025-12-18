@@ -3,6 +3,8 @@ package com.dev.lib.jpa.entity.log;
 import com.alibaba.fastjson2.JSON;
 import com.dev.lib.entity.log.OperateLog;
 import com.dev.lib.security.util.SecurityContextHolder;
+import com.dev.lib.security.util.UserDetails;
+import com.dev.lib.util.Dispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +14,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 // AOP 切面
@@ -36,10 +39,10 @@ public class OperateLogAspect {
         log.setDescription(operateLog.description());
         log.setMethod(point.getSignature().toString());
         log.setOperator(SecurityContextHolder.getUsername());
-        log.setIp(SecurityContextHolder.get().getClientIp());
+        log.setIp(Optional.ofNullable(SecurityContextHolder.get()).map(UserDetails::getClientIp).orElse(""));
         log.setUserAgent(request.getHeader("User-Agent"));
         log.setOperateTime(LocalDateTime.now());
-        log.setDeptId(SecurityContextHolder.get().getDeptId());
+        log.setDeptId(Optional.ofNullable(SecurityContextHolder.get()).map(UserDetails::getDeptId).orElse(null));
         log.setCreatorId(SecurityContextHolder.getUserId());
         log.setModifierId(SecurityContextHolder.getUserId());
 
@@ -65,7 +68,7 @@ public class OperateLogAspect {
             throw e;
         } finally {
             // 异步保存
-            CompletableFuture.runAsync(() -> operateLogRepository.save(log));
+            CompletableFuture.runAsync(() -> operateLogRepository.save(log), Dispatcher.IO);
         }
     }
 

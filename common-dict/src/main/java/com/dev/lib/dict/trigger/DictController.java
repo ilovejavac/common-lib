@@ -6,7 +6,6 @@ import com.dev.lib.dict.domain.model.dto.DictTypeDTO;
 import com.dev.lib.dict.domain.model.valobj.DictItemVO;
 import com.dev.lib.dict.domain.model.valobj.DictTypeVO;
 import com.dev.lib.exceptions.BizException;
-import com.dev.lib.security.service.annotation.Anonymous;
 import com.dev.lib.web.model.QueryRequest;
 import com.dev.lib.web.model.ServerResponse;
 import jakarta.annotation.Resource;
@@ -19,7 +18,6 @@ import java.util.List;
 /**
  * 字典接口
  */
-@Anonymous
 @RestController
 @RequiredArgsConstructor
 public class DictController {

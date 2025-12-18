@@ -13,19 +13,19 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SnowflakeConfig implements InitializingBean {
 
-    private final        AppSnowFlakeProperties snowFlakeProperties;
+    private final AppSnowFlakeProperties snowFlakeProperties;
 
-    private static final String                 LOCK_KEY_PREFIX = "snowflake:worker:";
+    private static final String LOCK_KEY_PREFIX = "snowflake:worker:";
 
-    private static final int                    MAX_RETRY_TIMES = 3;
+    private static final int MAX_RETRY_TIMES = 3;
 
-    private static final long                   RETRY_DELAY_MS  = 1000L;
+    private static final long RETRY_DELAY_MS = 1000L;
 
     //    private final RedissonClient redissonClient;
     @Getter
     private static SnowflakeDistributeId worker;
 
-    private long acquiredWorkerId     = -1;
+    private long acquiredWorkerId = -1;
 
     private long acquiredDatacenterId = -1;
 

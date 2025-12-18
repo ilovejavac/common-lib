@@ -1,7 +1,7 @@
 package com.dev.lib.config;
 
+import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.config.properties.AppSnowFlakeProperties;
-import com.dev.lib.config.properties.PaginationProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,17 +11,17 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 public class CommonAutoConfig {
 
     @Bean
+    @ConfigurationProperties(prefix = "app.security")
+    public AppSecurityProperties appSecurityProperties() {
+
+        return new AppSecurityProperties();
+    }
+
+    @Bean
     @ConfigurationProperties(prefix = "app.snow-flake")
     public AppSnowFlakeProperties appSnowFlakeProperties() {
 
         return new AppSnowFlakeProperties();
-    }
-
-    @Bean
-    @ConfigurationProperties(prefix = "app.pagination")
-    public PaginationProperties properties() {
-
-        return new PaginationProperties();
     }
 
     @Bean

@@ -1,7 +1,9 @@
 package com.dev.lib.jpa.config;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import com.dev.lib.config.FastJson2Support;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.format.FormatMapper;
@@ -9,8 +11,21 @@ import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCusto
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.List;
+
+@Slf4j
 @Configuration
 public class HibernateJsonConfig {
+
+    public static void main(String[] args) {
+        String json = "[\"a\",\"b\",\"c\"]";
+        long t1 = System.currentTimeMillis();
+        for (int i = 0; i < 1000; i++) {
+            JSON.parseObject(json, new TypeReference<List<String>>(){}, FastJson2Support.READER_FEATURES);
+        }
+        long t2 = System.currentTimeMillis();
+        log.info("fastjson2 1000次: {}ms", t2-t1);
+    }
 
     @Bean
     public HibernatePropertiesCustomizer hibernatePropertiesCustomizer(
