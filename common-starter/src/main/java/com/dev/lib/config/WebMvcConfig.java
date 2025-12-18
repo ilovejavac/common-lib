@@ -25,7 +25,6 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
     private final PopulateFieldAfterFilter populateFieldAfterFilter;
 
     private static final Set<String> EXCLUDE_FIELDS = Set.of(
-            "id",
             "reversion",
             "deleted"
     );

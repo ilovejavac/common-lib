@@ -14,7 +14,7 @@
 
     <groupId>com.dev.lib</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.3.2</version>
+    <version>1.3.3</version>
     <packaging>pom</packaging>
     <modules>
         <module>common-starter</module>
@@ -59,7 +59,7 @@
         <fastjosn2.version>2.0.56</fastjosn2.version>
         <jwt.version>0.12.6</jwt.version>
 
-        <lib.version>1.3.2</lib.version>
+        <lib.version>1.3.3</lib.version>
     </properties>
 
     <profiles>

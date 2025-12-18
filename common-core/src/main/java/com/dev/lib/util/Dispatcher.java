@@ -1,25 +1,35 @@
 package com.dev.lib.util;
 
-import java.util.concurrent.Executor;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.stereotype.Component;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class Dispatcher {
+@Component
+public class Dispatcher implements DisposableBean {
 
     private Dispatcher() {
 
     }
 
     /**
-     * IO 密集型任务：数据库查询、RPC、文件读写
+     * IO密集：数据库、RPC、文件
      */
-    public static final ExecutorService IO = Executors.newVirtualThreadPerTaskExecutor();
+    public static final ExecutorService IO =
+            Executors.newVirtualThreadPerTaskExecutor();
 
     /**
-     * CPU 密集型任务：计算、序列化
+     * CPU密集：计算、序列化
      */
-    public static final Executor DEFAULT = Executors.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors()
-    );
+    public static final ExecutorService DEFAULT =
+            Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+    @Override
+    public void destroy() {
+
+        IO.shutdown();
+        DEFAULT.close();
+    }
 
 }
