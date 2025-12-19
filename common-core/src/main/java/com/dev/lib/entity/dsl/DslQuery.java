@@ -60,6 +60,7 @@ public abstract class DslQuery<E extends CoreEntity> {
     @ConditionIgnore
     public Integer limit;
 
+    @ConditionIgnore
     private String minimumShouldMatch = "1";
 
     // 游标查询

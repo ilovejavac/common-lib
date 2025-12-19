@@ -18,15 +18,6 @@ import java.util.List;
 @Configuration
 public class HibernateJsonConfig {
 
-    public static void main(String[] args) {
-        String json = "[\"a\",\"b\",\"c\"]";
-        long t1 = System.currentTimeMillis();
-        for (int i = 0; i < 1000; i++) {
-            JSON.parseObject(json, new TypeReference<List<String>>(){}, FastJson2Support.READER_FEATURES);
-        }
-        long t2 = System.currentTimeMillis();
-        log.info("fastjson2 1000次: {}ms", t2-t1);
-    }
 
     @Bean
     public HibernatePropertiesCustomizer hibernatePropertiesCustomizer(
