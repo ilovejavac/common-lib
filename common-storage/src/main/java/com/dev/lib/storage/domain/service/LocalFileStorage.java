@@ -1,4 +1,4 @@
-package com.dev.lib.storage.domain.service.impl;
+package com.dev.lib.storage.domain.service;
 
 import com.dev.lib.storage.config.AppStorageProperties;
 import lombok.RequiredArgsConstructor;
@@ -42,10 +42,7 @@ public class LocalFileStorage implements StorageService {
     public void delete(String path) {
 
         String basePath = fileProperties.getLocal().getPath();
-        File   file     = new File(
-                basePath,
-                path
-        );
+        File file = new File(basePath, path);
         file.delete();
     }
 
@@ -59,7 +56,7 @@ public class LocalFileStorage implements StorageService {
 
         String basePath = fileProperties.getLocal().getPath();
         File   base     = new File(basePath).getCanonicalFile();
-        File   target   = new File(
+        File target = new File(
                 base,
                 path
         ).getCanonicalFile();

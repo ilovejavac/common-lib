@@ -20,8 +20,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
 
-    private final NullToEmptyFilter nullToEmptyFilter;
-
     private final PopulateFieldAfterFilter populateFieldAfterFilter;
 
     private static final Set<String> EXCLUDE_FIELDS = Set.of(
@@ -55,7 +53,6 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
 
         // 过滤器
         config.setWriterFilters(
-                nullToEmptyFilter,
                 // 排除字段
                 (PropertyFilter) (obj, name, value) -> !EXCLUDE_FIELDS.contains(name),
                 // BigDecimal 6位小数 + Instant 时区转换 + Long 精度保护
@@ -67,10 +64,7 @@ public class WebMvcConfig implements WebMvcConfigurer, InitializingBean {
         converter.setFastJsonConfig(config);
         converter.setSupportedMediaTypes(List.of(
                 MediaType.APPLICATION_JSON,
-                new MediaType(
-                        "application",
-                        "*+json"
-                )
+                new MediaType("application", "*+json")
         ));
 
         converters.addFirst(converter);

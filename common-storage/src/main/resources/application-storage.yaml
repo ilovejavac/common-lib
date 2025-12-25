@@ -14,6 +14,7 @@ app:
       - xls
       - xlsx
       - txt
+      - json
     type: local
     local:
       path: storage

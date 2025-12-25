@@ -1,41 +1,53 @@
-app:
-  cloud:
-    host: localhost
-    port: 8848
-    group: dev
-    username: nacos
-    password: nacos
-    namespace: /
 dubbo:
+  config-center:
+    address: N/A
+  metadata-report:
+    address: N/A
+  provider:
+    timeout: 30000
+    retries: 0
+    serialization: hessian2
+    prefer-serialization: hessian2
   consumer:
     lazy: false
-    timeout: 5000
+    timeout: 30000
     check: false
     retries: 0
   application:
     name: dubbo-${spring.application.name}
     qos-enable: false
     qos-accept-foreign-ip: false
+    register-mode: instance
+    enable-file-cache: false
   protocol:
-    name: dubbo
+    name: tri
     port: -1
     threadpool: virtual
-    accepts: 1000
-    payload: 8388608
-    buffer: 8192
-    heartbeat: 60000
-    queues: 200
+    payload: 104857600
+    triple:
+      http3:
+        enabled: false
+        negotiation: false # 是否启用HTTP3协商如果设置为false，HTTP2的alt-svc协商将被跳过，从而启用HTTP3但使消费者端禁用HTTP2
+      verbose: false # 是否启用冗长模式。当为真时，应用程序会生成详细的日志输出，以帮助调试和监控
   registry:
-    address: nacos://${app.cloud.host}:${app.cloud.port}
+    address: nacos://${app.cloud.username}:${app.cloud.password}@${app.cloud.host}:${app.cloud.port}
+    parameters:
+      namespace: ${app.cloud.namespace}
+      group: ${app.cloud.group}
+      use-as-config-center: false
+      use-as-metadata-center: false
   scan:
     base-packages: ${app.dubbo.scan-packages}
 spring:
   cloud:
     nacos:
-      config:
-        server-addr: ${app.cloud.host}:${app.cloud.port}
-        namespace: ${app.cloud.namespace}
+      discovery:
         group: ${app.cloud.group}
+        namespace: ${app.cloud.namespace}
+      config:
+        group: ${app.cloud.group}
+        namespace: ${app.cloud.namespace}
         file-extension: yaml
-        username: ${app.cloud.username}
-        password: ${app.cloud.password}
+      server-addr: ${app.cloud.host}:${app.cloud.port}
+      username: ${app.cloud.username}
+      password: ${app.cloud.password}

@@ -4,6 +4,7 @@ import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
+import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.util.StringUtils;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.EntityPath;
@@ -19,8 +20,8 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import org.hibernate.Hibernate;
 import org.hibernate.jpa.HibernateHints;
-import org.hibernate.jpa.QueryHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.support.JpaEntityInformation;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -51,9 +53,16 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private final EntityPath<T> path;
 
+    private final PathBuilder<T> pathBuilder;
+
     private final QuerydslJpaPredicateExecutor<T> querydslExecutor;
 
     private final BooleanPath deletedPath;
+
+    /**
+     * 当前实体是否有级联删除字段（缓存结果，避免重复计算）
+     */
+    private final boolean hasCascadeFields;
 
     public BaseRepositoryImpl(JpaEntityInformation<T, Long> entityInformation, EntityManager em) {
 
@@ -61,6 +70,8 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         this.entityManager = em;
         this.queryFactory = new JPAQueryFactory(em);
         this.path = SimpleEntityPathResolver.INSTANCE.createPath(entityInformation.getJavaType());
+        this.pathBuilder = new PathBuilder<>(path.getType(), path.getMetadata());
+
         this.querydslExecutor = new QuerydslJpaPredicateExecutor<>(
                 entityInformation,
                 em,
@@ -68,6 +79,8 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
                 null
         );
         this.deletedPath = resolvePath("deleted", BooleanPath.class);
+        // 初始化时计算一次，避免每次删除都重复计算
+        this.hasCascadeFields = !getCascadeFields(path.getType()).isEmpty();
     }
 
     // ========== 查询（默认排除已删除）==========
@@ -113,8 +126,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
                     .setLockMode(ctx.getLockMode())
                     .limit(1)
                     .fetch();
-            return result.isEmpty() ? Optional.empty() : Optional.of(result.get(0));
+            return result.stream().findFirst();
         }
+
         return querydslExecutor.findOne(predicate);
     }
 
@@ -159,67 +173,287 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     }
 
     // ========== 逻辑删除（支持级联）==========
+    private boolean isEmptyPredicate(Predicate predicate) {
+
+        if (predicate == null) return true;
+        if (predicate instanceof BooleanBuilder bb) {
+            return !bb.hasValue();
+        }
+        return false;
+    }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        // 1. 先校验业务条件
+        Predicate businessPredicate = toPredicate(dslQuery, expressions);
+        if (isEmptyPredicate(businessPredicate)) {
+            throw new IllegalArgumentException("批量删除必须指定业务条件，防止误删全表");
+        }
+
+        if (hasCascadeFields) {
+            // 2. 级联删除需要完整条件来查询实体
+            Predicate   fullPredicate = buildPredicate(new QueryContext(), dslQuery, expressions);
+            JPAQuery<T> query         = queryFactory.selectFrom(path).where(fullPredicate);
+            if (dslQuery != null) {
+                applySort(query, dslQuery);
+            }
+            List<T> entities = query.fetch();
+            if (!entities.isEmpty()) {
+                cascadeSoftDeleteBatch(entities);
+            }
+        } else {
+            // 3. 非级联删除：只传业务条件，batchSoftDelete 会加 deleted=false
+            batchSoftDelete(businessPredicate);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(T entity) {
 
         if (entity == null || entity.getId() == null) return;
 
-        // 确保实体是托管状态
-        T managed = entityManager.contains(entity)
-                    ? entity
-                    : entityManager.find(path.getType(), entity.getId());
+        if (hasCascadeFields) {
+            // 优先使用已托管的实体，避免重复查询
+            T managed = entityManager.contains(entity)
+                        ? entity
+                        : entityManager.find(path.getType(), entity.getId());
+            if (managed != null) {
+                cascadeSoftDeleteBatch(List.of(managed));
+                return;
+            }
+        }
 
-        if (managed == null) return;
-
-        // 级联软删除子实体
-        cascadeSoftDelete(managed, new HashSet<>());
-
-        // 软删除当前实体（直接改属性，@DynamicUpdate 生效）
-        managed.setDeleted(true);
+        // 无级联或实体不存在：直接批量更新
+        BooleanExpression idCondition = pathBuilder.getNumber("id", Long.class).eq(entity.getId());
+        batchSoftDelete(idCondition);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteById(Long id) {
 
         if (id == null) return;
-        findById(id).ifPresent(this::delete);
+
+        if (hasCascadeFields) {
+            T managed = entityManager.find(path.getType(), id);
+            if (managed != null) {
+                cascadeSoftDeleteBatch(List.of(managed));
+                return;
+            }
+        }
+
+        BooleanExpression idCondition = pathBuilder.getNumber("id", Long.class).eq(id);
+        batchSoftDelete(idCondition);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteAll(Iterable<? extends T> entities) {
 
         if (entities == null) return;
+
+        List<Long> ids = new ArrayList<>();
         for (T entity : entities) {
-            delete(entity);
+            if (entity != null && entity.getId() != null) {
+                ids.add(entity.getId());
+            }
+        }
+
+        if (ids.isEmpty()) return;
+
+        if (!hasCascadeFields) {
+            for (int i = 0; i < ids.size(); i += BATCH_SIZE) {
+                List<Long> batch = ids.subList(i, Math.min(i + BATCH_SIZE, ids.size()));
+                batchSoftDelete(pathBuilder.getNumber("id", Long.class).in(batch));  // ✅ 正确
+            }
+            return;
+        }
+
+        List<T> toDelete = queryFactory.selectFrom(path)
+                .where(pathBuilder.getNumber("id", Long.class).in(ids))
+                .where(deletedPath.eq(false))
+                .fetch();
+
+        if (!toDelete.isEmpty()) {
+            cascadeSoftDeleteBatch(toDelete);
         }
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteAll() {
 
-        List<T> all = queryFactory.selectFrom(path).where(deletedPath.eq(false)).fetch();
-        for (T entity : all) {
-            delete(entity);
+        if (hasCascadeFields) {
+            List<T> all = queryFactory.selectFrom(path)
+                    .where(deletedPath.eq(false))
+                    .fetch();
+            if (!all.isEmpty()) {
+                cascadeSoftDeleteBatch(all);
+            }
+        } else {
+            batchSoftDelete(null);  // ✅ 正确，batchSoftDelete 会加 deleted=false
         }
     }
 
     /**
-     * 级联软删除：扫描带有 CascadeType.REMOVE 或 CascadeType.ALL 的关联字段
+     * 批量软删除
+     *
+     * @param businessPredicate 业务条件（不含 deleted 条件），可为 null
      */
-    private void cascadeSoftDelete(Object entity, Set<Object> visited) {
+    private void batchSoftDelete(Predicate businessPredicate) {
 
-        if (entity == null || visited.contains(entity)) {
-            return;
+        BooleanBuilder where = new BooleanBuilder();
+        where.and(deletedPath.eq(false));
+        if (businessPredicate != null) {
+            where.and(businessPredicate);
         }
-        visited.add(entity);
 
-        // 从缓存获取级联字段
-        List<Field> cascadeFields = getCascadeFields(entity.getClass());
+        long affected = queryFactory.update(path)
+                .set(pathBuilder.getBoolean("deleted"), true)
+                .set(pathBuilder.getDateTime("updatedAt", LocalDateTime.class), LocalDateTime.now())
+                .set(pathBuilder.getNumber("modifierId", Long.class), SecurityContextHolder.getUserId())
+                .where(where)
+                .execute();
 
+        if (affected > 0) {
+            entityManager.flush();
+            entityManager.clear();
+        }
+    }
+
+    /**
+     * 级联软删除（批量优化版）
+     * 收集所有需要软删除的实体，按类型分组后批量 UPDATE
+     */
+    private static final int BATCH_SIZE = 512;
+
+    private void cascadeSoftDeleteBatch(List<T> rootEntities) {
+
+        // 如果实体已经加载了级联关系，直接用；否则用 fetch join 重新加载
+        List<T> fullyLoadedEntities = ensureCascadeFieldsLoaded(rootEntities);
+
+        Map<Class<?>, Set<Long>> toDeleteByType = new LinkedHashMap<>();
+        Set<Object>              visited        = Collections.newSetFromMap(new IdentityHashMap<>());
+
+        for (T entity : fullyLoadedEntities) {
+            collectCascadeEntities(entity, visited, toDeleteByType);
+        }
+
+        // 按类型批量更新
+        LocalDateTime now        = LocalDateTime.now();
+        Long          modifierId = SecurityContextHolder.getUserId();
+
+        for (Map.Entry<Class<?>, Set<Long>> entry : toDeleteByType.entrySet()) {
+            Class<?>   entityClass = entry.getKey();
+            List<Long> ids         = new ArrayList<>(entry.getValue());
+
+            if (ids.isEmpty()) continue;
+
+            PathBuilder<?> builder = createPathBuilder(entityClass);
+
+            // 分批更新
+            for (int i = 0; i < ids.size(); i += BATCH_SIZE) {
+                List<Long> batch = ids.subList(i, Math.min(i + BATCH_SIZE, ids.size()));
+
+                queryFactory.update(builder)
+                        .set(builder.getBoolean("deleted"), true)
+                        .set(builder.getDateTime("updatedAt", LocalDateTime.class), now)
+                        .set(builder.getNumber("modifierId", Long.class), modifierId)
+                        .where(builder.getNumber("id", Long.class).in(batch))
+                        .execute();
+            }
+        }
+
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    /**
+     * 确保级联字段已加载，避免 N+1
+     */
+    private List<T> ensureCascadeFieldsLoaded(List<T> entities) {
+
+        if (entities.isEmpty()) return entities;
+
+        // 检查是否需要重新加载
+        boolean needsReload = entities.stream().anyMatch(this::hasUninitializedCascadeFields);
+        if (!needsReload) {
+            return entities;
+        }
+
+        // 用 fetch join 重新加载（需要根据实际级联字段动态构建）
+        List<Long> ids = entities.stream().map(JpaEntity::getId).toList();
+
+        JPAQuery<T> query = queryFactory.selectFrom(path)
+                .where(pathBuilder.getNumber("id", Long.class).in(ids));
+
+        // 动态添加 fetch join
+        List<Field> cascadeFields = getCascadeFields(path.getType());
+        for (Field field : cascadeFields) {
+            // 注意：这里简化处理，实际可能需要处理嵌套级联
+            query.leftJoin(pathBuilder.getCollection(field.getName(), field.getType())).fetchJoin();
+        }
+
+        return query.fetch();
+    }
+
+    private boolean hasUninitializedCascadeFields(T entity) {
+
+        List<Field> cascadeFields = getCascadeFields(Hibernate.getClass(entity));
         for (Field field : cascadeFields) {
             Object value = ReflectionUtils.getField(field, entity);
-            softDeleteRelated(value, visited);
+            if (!Hibernate.isInitialized(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private PathBuilder<?> createPathBuilder(Class<?> entityClass) {
+
+        String entityName   = entityClass.getSimpleName();
+        String variableName = Character.toLowerCase(entityName.charAt(0)) + entityName.substring(1);
+        return new PathBuilder<>(entityClass, variableName);
+    }
+
+    /**
+     * 递归收集所有需要级联删除的实体 ID
+     */
+    private void collectCascadeEntities(Object entity, Set<Object> visited,
+                                        Map<Class<?>, Set<Long>> toDeleteByType) {
+
+        if (entity == null || visited.contains(entity)) return;
+        visited.add(entity);
+
+        // 获取真实类型，而非代理类
+        Class<?> realClass = Hibernate.getClass(entity);
+
+        if (entity instanceof JpaEntity jpaEntity) {
+            if (Boolean.TRUE.equals(jpaEntity.getDeleted())) return;
+
+            toDeleteByType
+                    .computeIfAbsent(realClass, k -> new LinkedHashSet<>())
+                    .add(jpaEntity.getId());
+        }
+
+        List<Field> cascadeFields = getCascadeFields(realClass);
+        for (Field field : cascadeFields) {
+            Object value = ReflectionUtils.getField(field, entity);
+
+            // 检查是否已初始化
+            if (!Hibernate.isInitialized(value)) {
+                Hibernate.initialize(value);  // 显式初始化
+            }
+
+            if (value instanceof Collection<?> collection) {
+                for (Object item : collection) {
+                    collectCascadeEntities(item, visited, toDeleteByType);
+                }
+            } else if (value != null) {
+                collectCascadeEntities(value, visited, toDeleteByType);
+            }
         }
     }
 
@@ -258,12 +492,20 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     private boolean shouldCascadeRemove(Field field) {
 
         OneToMany oneToMany = field.getAnnotation(OneToMany.class);
-        if (oneToMany != null && hasCascadeRemove(oneToMany.cascade())) {
-            return true;
+        if (oneToMany != null) {
+            if (hasCascadeRemove(oneToMany.cascade()) || oneToMany.orphanRemoval()) {
+                return true;
+            }
         }
 
         OneToOne oneToOne = field.getAnnotation(OneToOne.class);
-        return oneToOne != null && hasCascadeRemove(oneToOne.cascade());
+        if (oneToOne != null) {
+            if (hasCascadeRemove(oneToOne.cascade()) || oneToOne.orphanRemoval()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean hasCascadeRemove(CascadeType[] cascadeTypes) {
@@ -274,32 +516,6 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             }
         }
         return false;
-    }
-
-    /**
-     * 软删除关联实体
-     */
-    private void softDeleteRelated(Object value, Set<Object> visited) {
-
-        if (value == null) return;
-
-        if (value instanceof Collection<?> collection) {
-            for (Object item : collection) {
-                softDeleteSingle(item, visited);
-            }
-        } else {
-            softDeleteSingle(value, visited);
-        }
-    }
-
-    private void softDeleteSingle(Object item, Set<Object> visited) {
-
-        if (item instanceof JpaEntity child && !Boolean.TRUE.equals(child.getDeleted())) {
-            // 先递归处理子实体的级联
-            cascadeSoftDelete(child, visited);
-            // 直接改属性，不调用 merge
-            child.setDeleted(true);
-        }
     }
 
     // ========== 物理删除 ==========
@@ -347,7 +563,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     long hardDelete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        List<T> entities = withDeleted().loads(dslQuery, expressions);
+        List<T> entities = loads(new QueryContext().withDeleted(), dslQuery, expressions);
         if (entities.isEmpty()) return 0;
 
         for (T entity : entities) {
@@ -506,7 +722,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
 
         JPAQuery<T> query = queryFactory.selectFrom(path).where(predicate);
-        query.setHint(HibernateHints.HINT_FETCH_SIZE, 1000);
+        query.setHint(HibernateHints.HINT_FETCH_SIZE, BATCH_SIZE + BATCH_SIZE);
 
         if (dslQuery != null) {
             applySort(query, dslQuery);

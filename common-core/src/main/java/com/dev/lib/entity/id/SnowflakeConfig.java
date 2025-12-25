@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -43,41 +45,20 @@ public class SnowflakeConfig implements InitializingBean {
             acquiredWorkerId = workerId;
             acquiredDatacenterId = datacenterId;
 
-            worker = SnowflakeDistributeId.getInstance(
-                    workerId,
-                    datacenterId
-            );
+            worker = SnowflakeDistributeId.getInstance(workerId, datacenterId);
 
             log.info("✓ Snowflake initialized!");
-            log.info(
-                    "  WorkerId: {}",
-                    workerId
-            );
-            log.info(
-                    "  DatacenterId: {}",
-                    datacenterId
-            );
+            log.info("  WorkerId: {}", workerId);
+            log.info("  DatacenterId: {}", datacenterId);
         } catch (Exception e) {
-            log.error(
-                    "✗ Failed to initialize Snowflake!",
-                    e
-            );
-            throw new RuntimeException(
-                    "Snowflake initialization failed",
-                    e
-            );
+            log.error("✗ Failed to initialize Snowflake!", e);
+            throw new RuntimeException("Snowflake initialization failed", e);
         }
     }
 
     private long getDatacenterId() {
 
-        return Math.max(
-                0,
-                Math.min(
-                        snowFlakeProperties.getDataCenterId(),
-                        15
-                )
-        );
+        return Math.clamp(Optional.ofNullable(snowFlakeProperties.getDataCenterId()).orElse(0), 0, 15);
     }
 
     private long acquireWorkerId(long datacenterId) {

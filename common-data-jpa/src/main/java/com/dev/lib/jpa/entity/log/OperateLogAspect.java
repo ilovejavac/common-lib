@@ -33,42 +33,48 @@ public class OperateLogAspect {
 
         long startTime = System.currentTimeMillis();
 
-        OperateLogEntity log = new OperateLogEntity();
-        log.setModule(operateLog.module());
-        log.setType(operateLog.type());
-        log.setDescription(operateLog.description());
-        log.setMethod(point.getSignature().toString());
-        log.setOperator(SecurityContextHolder.getUsername());
-        log.setIp(Optional.ofNullable(SecurityContextHolder.get()).map(UserDetails::getClientIp).orElse(""));
-        log.setUserAgent(request.getHeader("User-Agent"));
-        log.setOperateTime(LocalDateTime.now());
-        log.setDeptId(Optional.ofNullable(SecurityContextHolder.get()).map(UserDetails::getDeptId).orElse(null));
-        log.setCreatorId(SecurityContextHolder.getUserId());
-        log.setModifierId(SecurityContextHolder.getUserId());
+        OperateLogEntity logger = new OperateLogEntity();
+        logger.setModule(operateLog.module());
+        logger.setType(operateLog.type());
+        logger.setDescription(operateLog.description());
+        logger.setMethod(point.getSignature().toString());
+        logger.setOperator(SecurityContextHolder.getUsername());
+        logger.setIp(Optional.ofNullable(SecurityContextHolder.get()).map(UserDetails::getClientIp).orElse(""));
+        logger.setUserAgent(request.getHeader("User-Agent"));
+        logger.setOperateTime(LocalDateTime.now());
+        logger.setDeptId(Optional.ofNullable(SecurityContextHolder.get()).map(UserDetails::getDeptId).orElse(null));
+        logger.setCreatorId(SecurityContextHolder.getUserId());
+        logger.setModifierId(SecurityContextHolder.getUserId());
 
         if (operateLog.recordParams()) {
-            log.setRequestParams(JSON.toJSONString(point.getArgs()));
+            logger.setRequestParams(JSON.toJSONString(point.getArgs()));
         }
 
         try {
             Object result = point.proceed();
 
             if (operateLog.recordResult()) {
-                log.setResult(JSON.toJSONString(result));
+                logger.setResult(JSON.toJSONString(result));
             }
 
-            log.setSuccess(true);
-            log.setCostTime((int) (System.currentTimeMillis() - startTime));
+            logger.setSuccess(true);
 
             return result;
         } catch (Throwable e) {
-            log.setSuccess(false);
-            log.setErrorMsg(e.getMessage());
-            log.setCostTime((int) (System.currentTimeMillis() - startTime));
+            logger.setSuccess(false);
+            logger.setErrorMsg(e.getMessage());
             throw e;
         } finally {
-            // 异步保存
-            CompletableFuture.runAsync(() -> operateLogRepository.save(log), Dispatcher.IO);
+            logger.setCostTime((int) (System.currentTimeMillis() - startTime));
+            CompletableFuture.runAsync(
+                    () -> {
+                        try {
+                            operateLogRepository.save(logger);
+                        } catch (Exception e) {
+                            log.warn("操作日志保存失败: {}", e.getMessage());
+                        }
+                    }, Dispatcher.IO
+            );
         }
     }
 

@@ -32,7 +32,7 @@ public class SecurityContextHolder {
     // ===== 便捷方法 =====
     public static boolean isLogin() {
 
-        return holder.get() != null;
+        return holder.get() != null && !UserDetails.Anonymous.equals(holder.get());
     }
 
     public static boolean validated() {

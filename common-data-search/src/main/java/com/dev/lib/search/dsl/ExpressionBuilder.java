@@ -44,22 +44,14 @@ public final class ExpressionBuilder {
         };
     }
 
-    /**
-     * 精确匹配
-     * 字符串类型自动加 .keyword 后缀
-     */
     private static Query term(String field, Object value) {
         String targetField = (value instanceof String) ? keywordField(field) : field;
         return Query.of(q -> q.term(t -> t.field(targetField).value(toFieldValue(value))));
     }
 
-    /**
-     * 批量精确匹配
-     */
     private static Query terms(String field, Collection<?> values) {
         if (CollectionUtils.isEmpty(values)) return null;
 
-        // 判断集合元素类型
         boolean isStringCollection = values.stream()
                 .filter(v -> v != null)
                 .findFirst()
@@ -73,9 +65,6 @@ public final class ExpressionBuilder {
         return Query.of(q -> q.terms(t -> t.field(targetField).terms(tv -> tv.value(fieldValues))));
     }
 
-    /**
-     * 全文检索（分词匹配）
-     */
     private static Query match(String field, String value) {
         return Query.of(q -> q.match(m -> m.field(field).query(FieldValue.of(value))));
     }
@@ -123,9 +112,6 @@ public final class ExpressionBuilder {
         return Query.of(q -> q.bool(b -> b.mustNot(query)));
     }
 
-    /**
-     * 字符串字段加 .keyword 后缀用于精确匹配/排序
-     */
     private static String keywordField(String field) {
         if (field.endsWith(".keyword")) return field;
         return field + ".keyword";

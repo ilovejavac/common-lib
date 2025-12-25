@@ -3,11 +3,11 @@ package com.dev.lib.jpa.entity;
 import com.dev.lib.entity.CoreEntity;
 import com.dev.lib.jpa.entity.audit.AuditListener;
 import com.dev.lib.jpa.entity.encrypt.EncryptionListener;
-import jakarta.persistence.*;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import jakarta.persistence.Column;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
+import lombok.Data;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -16,8 +16,7 @@ import org.springframework.data.domain.Persistable;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-@Getter
-@Setter
+@Data
 @MappedSuperclass
 @DynamicUpdate
 @EntityListeners({BaseEntityListener.class, EncryptionListener.class, AuditListener.class})
@@ -47,13 +46,10 @@ public class JpaEntity extends CoreEntity implements Persistable<Long> {
     @Column(columnDefinition = "text")
     private Map<String, Object> features;
 
-//    @Version
-    @Column(nullable = false)
-    private Long reversion;
-
     @Override
     public boolean isNew() {
-        return createdAt == null;
+
+        return id == null || createdAt == null;
     }
 
 }

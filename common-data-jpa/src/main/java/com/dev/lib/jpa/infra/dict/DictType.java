@@ -5,10 +5,8 @@ import com.dev.lib.dict.domain.model.valobj.DictTypeVO;
 import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.jpa.entity.JpaEntity;
 import io.github.linpeilie.annotations.AutoMapper;
-import io.github.linpeilie.annotations.AutoMappers;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.Comment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,11 +16,9 @@ import java.util.List;
 @Table(name = "sys_dict_type", indexes = {
         @Index(name = "idx_type_code", columnList = "type_code", unique = true)
 })
-@AutoMappers({
-        @AutoMapper(target = DictTypeDTO.CreateType.class),
-        @AutoMapper(target = DictTypeDTO.UpdateType.class),
-        @AutoMapper(target = DictTypeVO.class),
-})
+@AutoMapper(target = DictTypeDTO.CreateType.class, convertGenerate = false)
+@AutoMapper(target = DictTypeDTO.UpdateType.class, convertGenerate = false)
+@AutoMapper(target = DictTypeVO.class, reverseConvertGenerate = false)
 public class DictType extends JpaEntity {
 
     @Column(nullable = false, unique = true, length = 50)

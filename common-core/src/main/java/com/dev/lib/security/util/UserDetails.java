@@ -1,8 +1,6 @@
 package com.dev.lib.security.util;
 
 import com.dev.lib.entity.EntityStatus;
-import com.dev.lib.web.serialize.userinfo.UserLoader;
-import io.github.linpeilie.annotations.AutoMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,20 +18,19 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-@AutoMapper(target = UserLoader.UserItem.class)
 public class UserDetails implements Serializable {
 
-    private static final String INTERNAL          = "INTERNAL";
+    private static final String INTERNAL = "INTERNAL";
 
-    private static final String ANONYMOUS         = "ANONYMOUS";
+    private static final String ANONYMOUS = "ANONYMOUS";
 
-    private static final String SYSTEM            = "SYSTEM";
+    private static final String SYSTEM = "SYSTEM";
 
-    private static final Long   ANONYMOUS_USER_ID = -1L;
+    private static final Long ANONYMOUS_USER_ID = -1L;
 
-    private static final Long   INTERNAL_USER_ID  = -2L;
+    private static final Long INTERNAL_USER_ID = -2L;
 
-    private static final Long   SYSTEM_USER_ID    = -3L;
+    private static final Long SYSTEM_USER_ID = -3L;
 
     public static final UserDetails Anonymous;
 
@@ -52,6 +49,7 @@ public class UserDetails implements Serializable {
                 .tenant(ANONYMOUS_USER_ID)
                 .deptId(ANONYMOUS_USER_ID)
                 .deptName("Anonymous")
+                .validated(false)
                 .deptIds(Collections.emptySet())
                 .build();
 
@@ -65,6 +63,7 @@ public class UserDetails implements Serializable {
                 .tenant(INTERNAL_USER_ID)
                 .deptId(INTERNAL_USER_ID)
                 .deptName("Internal")
+                .validated(true)
                 .deptIds(Collections.emptySet())
                 .build();
 
@@ -78,6 +77,7 @@ public class UserDetails implements Serializable {
                 .tenant(SYSTEM_USER_ID)
                 .deptId(SYSTEM_USER_ID)
                 .deptName("System")
+                .validated(true)
                 .deptIds(Collections.emptySet())
                 .build();
     }
@@ -85,15 +85,15 @@ public class UserDetails implements Serializable {
     private Boolean validated;
 
     // ===== 基础信息 =====
-    private Long    id;
+    private Long id;
 
-    private String  username;
+    private String username;
 
-    private Long    tenant;  // 租户 ID
+    private Long tenant;  // 租户 ID
 
-    private String  email;
+    private String email;
 
-    private String  phone;
+    private String phone;
 
     // ===== 权限信息 =====
     private List<String> permissions;
@@ -101,25 +101,25 @@ public class UserDetails implements Serializable {
     private List<String> roles;
 
     // ===== 部门/组织信息 (数据权限) =====
-    private Long      deptId;              // 部门 ID
+    private Long deptId;              // 部门 ID
 
-    private String    deptName;          // 部门名称(可选,方便日志)
+    private String deptName;          // 部门名称(可选,方便日志)
 
     private Set<Long> deptIds;        // 数据权限范围内的所有部门 ID
 
     // ===== 用户状态  =====
-    private String       realName;          // 真实姓名(用于日志/审计)
+    private String realName;          // 真实姓名(用于日志/审计)
 
-    private String       userType;          // 用户类型: EMPLOYEE, ADMIN, SYSTEM 等
+    private String userType;          // 用户类型: EMPLOYEE, ADMIN, SYSTEM 等
 
     private EntityStatus status;           // 用户状态
 
     // ===== Token  =====
     private String tokenId;           // Token 唯一标识(用于踢人/单点登录)
 
-    private Long   loginTime;           // 登录时间戳
+    private Long loginTime;           // 登录时间戳
 
-    private Long   expireTime;          // 过期时间戳
+    private Long expireTime;          // 过期时间戳
 
     // ===== 客户端信息 (审计/安全) =====
     private String clientIp;          // 客户端 IP

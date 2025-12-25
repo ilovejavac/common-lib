@@ -17,9 +17,8 @@ public class Home {
     @RequestMapping("/")
     public ServerResponse<String> home() {
 
-        return ServerResponse.success(
-                "[%s] welcome, here is %s server! [virtual %s]"
-                        .formatted(Thread.currentThread(), application, Thread.currentThread().isVirtual())
+        return ServerResponse.success("welcome, here is %s server!"
+                        .formatted(application)
         );
     }
 

@@ -29,10 +29,7 @@ public interface DictTypeRepository extends BaseRepository<DictType> {
 
     default Optional<DictType> getType(String id) {
 
-        Query query = new Query();
-        query.bizId = id;
-
-        return load(query);
+        return load(new Query().setBizId(id));
     }
 
 }

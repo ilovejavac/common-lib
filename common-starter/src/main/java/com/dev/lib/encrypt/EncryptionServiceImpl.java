@@ -54,10 +54,7 @@ public class EncryptionServiceImpl implements EncryptionService {
 
     private String extractVersion(String value) {
 
-        return value.substring(
-                0,
-                value.indexOf(':')
-        );
+        return value.substring(0, value.indexOf(':'));
     }
 
     private String encryptWithVersion(String plainText, EncryptVersion version) {

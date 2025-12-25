@@ -1,0 +1,2 @@
+traceConsumer=com.dev.lib.dubbo.filter.DubboTraceConsumerFilter
+traceProvider=com.dev.lib.dubbo.filter.DubboTraceProviderFilter

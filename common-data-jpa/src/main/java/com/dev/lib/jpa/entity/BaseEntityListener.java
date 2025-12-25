@@ -32,7 +32,7 @@ public class BaseEntityListener {
         entity.setCreatorId(user.getId());
         entity.setModifierId(user.getId());
 
-        entity.setReversion(0L);
+//        entity.setReversion(0L);
         entity.setFeatures(Maps.mutable.empty());
     }
 
@@ -46,17 +46,4 @@ public class BaseEntityListener {
         entity.setModifierId(user.getId());
     }
 
-//    @PreRemove
-//    public void preRemove(BaseEntity entity) {
-//        // 软删除
-//        entity.setDeleted(true);
-//        entity.setUpdatedAt(LocalDateTime.now());
-//
-//        // 记录删除人
-//        UserDetails user = SecurityContextHolder.current();
-//        if (user.isRealUser()) {
-//            entity.setUpdatedBy(user.getUsername());
-//            entity.setUpdatedById(user.getId());
-//        }
-//    }
 }

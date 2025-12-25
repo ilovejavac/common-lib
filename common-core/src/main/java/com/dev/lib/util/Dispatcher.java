@@ -23,7 +23,7 @@ public class Dispatcher implements DisposableBean {
      * CPU密集：计算、序列化
      */
     public static final ExecutorService DEFAULT =
-            Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 1);
 
     @Override
     public void destroy() {

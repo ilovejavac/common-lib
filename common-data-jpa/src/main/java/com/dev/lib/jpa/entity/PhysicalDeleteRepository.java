@@ -3,7 +3,6 @@ package com.dev.lib.jpa.entity;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;
-import org.springframework.aop.framework.Advised;
 
 @RequiredArgsConstructor
 public class PhysicalDeleteRepository<T extends JpaEntity> {
@@ -12,14 +11,7 @@ public class PhysicalDeleteRepository<T extends JpaEntity> {
 
     private BaseRepositoryImpl<T> getImpl() {
 
-        try {
-            if (repository instanceof Advised advised) {
-                return (BaseRepositoryImpl<T>) advised.getTargetSource().getTarget();
-            }
-            return (BaseRepositoryImpl<T>) repository;
-        } catch (Exception e) {
-            throw new IllegalStateException("无法获取 Repository 实现", e);
-        }
+        return RepositoryUtils.unwrap(repository);
     }
 
     public void delete(T entity) {

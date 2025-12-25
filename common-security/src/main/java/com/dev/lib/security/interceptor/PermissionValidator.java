@@ -117,31 +117,9 @@ public class PermissionValidator implements InitializingBean {
         }
     }
 
-//    // 4. 方法级别 @Internal 优先检查
-//    Internal methodInternal = handlerMethod.getMethodAnnotation(Internal.class);
-//        if (methodInternal != null) {
-//        internal(request);
-//        return;
-//    }
-//
-//    // 5. 类级别 @Internal
-//    Internal classInternal = controllerClass.getAnnotation(Internal.class);
-//        if (classInternal != null) {
-//        internal(request);
-//        return;
-//    }
-//    private void internal(HttpServletRequest request) {
-//        String token = request.getHeader("X-Internal-Id");
-//        if (Boolean.FALSE.equals(authenticateService.validToken(token))) {
-//            throw new BizException(403, "服务认证失败");
-//        }
-//        if (!SecurityContextHolder.isLogin()) {
-//            SecurityContextHolder.set(UserDetails.Internal.setTokenId(token));
-//        }
-//    }
-
     public boolean shouldSkip(HttpServletRequest request) {
 
+        // 可能被 internal 认证过了
         if (SecurityContextHolder.validated()) {
             return true;
         }
@@ -153,16 +131,10 @@ public class PermissionValidator implements InitializingBean {
     // 以下接口放行
     private final Set<String> whitelistPatterns = new HashSet<>(
             Arrays.asList(
-                    "/",
-                    "/error",
                     "/healthz",
                     "/api/login",
-                    "/actuator/**",
-                    "/favicon.ico",
                     "/api/register",
-                    "/api/public/**",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**"
+                    "/api/public/**"
             )
     );
 

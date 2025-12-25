@@ -9,16 +9,19 @@ import com.alibaba.fastjson2.writer.ObjectWriter;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 public final class FastJson2Support {
 
-    public static final  ZoneId            ZONE_ID = ZoneId.of("Asia/Shanghai");
+    public static final ZoneId ZONE_ID = ZoneId.of("Asia/Shanghai");
 
-    public static final  String            DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
+    private static final DateTimeFormatter DATE_ONLY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    private static final DateTimeFormatter TIME_ONLY = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT);
 
@@ -28,51 +31,46 @@ public final class FastJson2Support {
 
     // ============ Writer Features ============
     public static final JSONWriter.Feature[] WRITER_FEATURES = {
-            JSONWriter.Feature.WriteBigDecimalAsPlain,      // 防止科学计数法
-            JSONWriter.Feature.WriteEnumUsingToString,      // 枚举可读性
-            JSONWriter.Feature.WriteNullListAsEmpty,        // 前端友好（null -> []）
-            JSONWriter.Feature.SortMapEntriesByKeys                 // 字段顺序稳定，便于调试
-    };
+            JSONWriter.Feature.WriteBigDecimalAsPlain,
+            JSONWriter.Feature.WriteEnumUsingToString,
+            JSONWriter.Feature.WriteNullListAsEmpty,
+            JSONWriter.Feature.SortMapEntriesByKeys,
 
+            JSONWriter.Feature.NotWriteDefaultValue      // null 字段不输出（类似 NON_NULL）
+    };
     // ============ Reader Features ============
     public static final JSONReader.Feature[] READER_FEATURES = {
-            // ✅ 必要功能
-            JSONReader.Feature.SupportSmartMatch,              // 驼峰/下划线兼容
-            JSONReader.Feature.UseBigDecimalForDoubles,        // 浮点数精度
-            JSONReader.Feature.SupportArrayToBean,             // 单值转数组
-            JSONReader.Feature.TrimString,                     // 去除空格
+            JSONReader.Feature.SupportSmartMatch,
+            JSONReader.Feature.UseBigDecimalForDoubles,
+            JSONReader.Feature.SupportArrayToBean,
+            JSONReader.Feature.TrimString,
+            JSONReader.Feature.ErrorOnNotSupportAutoType,
+            JSONReader.Feature.ErrorOnEnumNotMatch,
 
-            // 🔒 安全配置
-            JSONReader.Feature.ErrorOnNotSupportAutoType,      // 禁止 AutoType（最重要！）
-            JSONReader.Feature.ErrorOnEnumNotMatch             // 枚举严格校验
+            JSONReader.Feature.AllowUnQuotedFieldNames,   // 宽松解析
+            JSONReader.Feature.IgnoreAutoTypeNotMatch     // 忽略未知字段
     };
-
-    // ============ 🔒 安全限制常量 ============
-
-    /**
-     * 最大嵌套深度（对标 Jackson 的 maxNestingDepth）
-     * 防止深度嵌套 JSON 导致栈溢出
-     */
-    public static final int MAX_NESTING_DEPTH = 1000;
-
-    /**
-     * 最大字符串长度（对标 Jackson 的 maxStringLength）
-     * 防止超大字符串导致内存溢出
-     */
-    public static final int MAX_STRING_LENGTH = 20_000_000;
 
     // ============ ValueFilter：序列化时处理 BigDecimal、Instant 和 Long ============
     public static final ValueFilter VALUE_FILTER = (obj, name, value) -> {
         if (value instanceof BigDecimal bd) {
-            return bd.setScale(
-                    6,
-                    RoundingMode.HALF_UP
-            );
+            return bd.setScale(6, RoundingMode.HALF_UP);
         }
         if (value instanceof Instant instant) {
             return FORMATTER.format(instant.atZone(ZONE_ID));
         }
-        // 🔒 Long 精度保护
+        if (value instanceof LocalDateTime ldt) {
+            return FORMATTER.format(ldt);
+        }
+        if (value instanceof LocalDate ld) {
+            return DATE_ONLY.format(ld);
+        }
+        if (value instanceof LocalTime lt) {
+            return TIME_ONLY.format(lt);
+        }
+        if (value instanceof Date date) {
+            return FORMATTER.format(date.toInstant().atZone(ZONE_ID));
+        }
         if (value instanceof Long l && (l > 9007199254740991L || l < -9007199254740991L)) {
             return l.toString();
         }

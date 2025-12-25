@@ -1,4 +1,4 @@
-package com.dev.lib.storage.domain.service.impl;
+package com.dev.lib.storage.domain.service;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
@@ -23,7 +23,7 @@ public class OssFileStorage implements StorageService, InitializingBean {
 
     private final AppStorageProperties fileProperties;
 
-    private       OSS                  ossClient;
+    private OSS ossClient;
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -51,7 +51,7 @@ public class OssFileStorage implements StorageService, InitializingBean {
     @Override
     public InputStream download(String path) throws IOException {
 
-        String    bucket    = fileProperties.getOss().getBucket();
+        String bucket = fileProperties.getOss().getBucket();
         OSSObject ossObject = ossClient.getObject(
                 bucket,
                 path

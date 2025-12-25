@@ -40,16 +40,18 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
         return new PhysicalDeleteRepository<>(this);
     }
 
-    default void delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-        deleteAll(loads(dslQuery, expressions));
-    }
+    void delete(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-    // 查询
+    /**
+     * 流式查询，适合大数据量场景
+     * <p><b>重要：必须使用 try-with-resources 或手动 close</b></p>
+     * <pre>
+     * try (Stream<User> stream = repo.stream(query)) {
+     *     stream.forEach(...);
+     * }
+     * </pre>
+     */
     Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-    default Stream<T> stream() {
-        return stream(null);
-    }
 
     Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);
 

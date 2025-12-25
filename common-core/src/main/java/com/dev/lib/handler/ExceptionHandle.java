@@ -13,12 +13,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -58,6 +60,29 @@ public class ExceptionHandle {
         return ServerResponse.fail(
                 e.getCoder(),
                 message
+        );
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ServerResponse<Map<String, String>> handleMethodValidationException(HandlerMethodValidationException e) {
+        log.warn("参数校验失败: {}", e.getMessage());
+        Map<String, String> errors = new HashMap<>();
+
+        for (ParameterValidationResult result : e.getParameterValidationResults()) {
+            String paramName = result.getMethodParameter().getParameterName();
+            result.getResolvableErrors().forEach(error -> {
+                String field = paramName != null ? paramName : "unknown";
+                String message = error.getDefaultMessage() != null
+                                 ? error.getDefaultMessage()
+                                 : MessageUtils.get("error.validation.failed");
+                errors.put(field, message);
+            });
+        }
+        return ServerResponse.fail(
+                400,
+                MessageUtils.get("error.validation.failed"),
+                errors
         );
     }
 

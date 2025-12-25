@@ -3,10 +3,12 @@ package com.dev.lib.entity.dsl;
 import com.dev.lib.entity.CoreEntity;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
-import com.dev.lib.util.StringUtils;
 import com.dev.lib.web.model.QueryRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.*;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -19,65 +21,32 @@ import java.util.*;
 @Setter
 public abstract class DslQuery<E extends CoreEntity> {
 
-    @ConditionIgnore
-    private QueryRequest<?> pageRequest;
-
-    @Data
-    public static class CURSOR {
-
-        private String bizId;
-
-    }
-
-    // id > (select id from t where biz_id = ?)
-    @Condition(select = "id")
-    public CURSOR idGtSub;
-
-    @Condition(select = "id")
-    public CURSOR idLtSub;
+    @Condition(field = "id")
+    private Long id;
 
     @Condition(type = QueryType.EQ, field = "bizId")
-    public String bizId;
+    private String bizId;
 
-    @Condition(type = QueryType.GE, field = "createAt")
-    public LocalDateTime createGe;
+    @Condition(type = QueryType.EQ, field = "creatorId")
+    private Long creator;
 
-    @Condition(type = QueryType.LE, field = "createAt")
-    public LocalDateTime createLe;
-
-    @Condition(type = QueryType.EQ)
-    private Long creatorId;
-
-    @Condition(type = QueryType.EQ)
-    private Long modifierId;
+    @Condition(type = QueryType.EQ, field = "modifierId")
+    private Long modifier;
 
     @ConditionIgnore
-    public String sortStr;
+    private String sortStr;
 
     @ConditionIgnore
-    public Integer offset;
+    private Integer offset;
 
     @ConditionIgnore
-    public Integer limit;
+    private Integer limit;
 
     @ConditionIgnore
     private String minimumShouldMatch = "1";
 
-    // 游标查询
-    public DslQuery<E> setCursor(String id, Sort.Direction direction) {
-
-        if (StringUtils.isBlank(id)) {
-            return this;
-        }
-
-        if (Sort.Direction.ASC.equals(direction)) {
-            setIdGtSub(new CURSOR().setBizId(id));
-        } else if (Sort.Direction.DESC.equals(direction)) {
-            setIdLtSub(new CURSOR().setBizId(id));
-        }
-
-        return this;
-    }
+    @ConditionIgnore
+    private QueryRequest<?> pageRequest;
 
     @JsonIgnore
     @ConditionIgnore

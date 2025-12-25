@@ -6,7 +6,6 @@ import com.dev.lib.dict.serialize.DictItem;
 import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.jpa.entity.JpaEntity;
 import io.github.linpeilie.annotations.AutoMapper;
-import io.github.linpeilie.annotations.AutoMappers;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -16,12 +15,10 @@ import lombok.Data;
         @Index(name = "idx_item_code", columnList = "item_code", unique = true),
         @Index(name = "idx_type_id", columnList = "type_id")
 })
-@AutoMappers({
-        @AutoMapper(target = DictItemDTO.CreateItem.class),
-        @AutoMapper(target = DictItemDTO.UpdateItem.class),
-        @AutoMapper(target = DictItemVO.class),
-        @AutoMapper(target = DictItem.class),
-})
+@AutoMapper(target = DictItemDTO.CreateItem.class)
+@AutoMapper(target = DictItemDTO.UpdateItem.class)
+@AutoMapper(target = DictItemVO.class)
+@AutoMapper(target = DictItem.class)
 public class DictItemEntity extends JpaEntity {
 
     @Column(nullable = false, unique = true, length = 50)

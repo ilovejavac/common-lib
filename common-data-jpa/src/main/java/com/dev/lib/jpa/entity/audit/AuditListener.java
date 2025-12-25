@@ -63,7 +63,7 @@ public class AuditListener {
                         log.setBizId(entity.getBizId());
                         log.setAction(action);
                         log.setRecordValue(values);
-                        log.setCreatedAt(LocalDateTime.now());
+//                        log.setCreatedAt(LocalDateTime.now());
                         log.setUpdatedAt(LocalDateTime.now());
                         log.setCreatorId(entity.getCreatorId());
                         log.setModifierId(entity.getModifierId());

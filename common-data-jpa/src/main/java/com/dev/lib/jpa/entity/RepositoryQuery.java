@@ -18,14 +18,8 @@ public class RepositoryQuery<T extends JpaEntity> {
     private final QueryContext context;
 
     private BaseRepositoryImpl<T> getImpl() {
-        try {
-            if (repository instanceof Advised advised) {
-                return (BaseRepositoryImpl<T>) advised.getTargetSource().getTarget();
-            }
-            return (BaseRepositoryImpl<T>) repository;
-        } catch (Exception e) {
-            throw new IllegalStateException("无法获取 Repository 实现", e);
-        }
+
+        return RepositoryUtils.unwrap(repository);
     }
 
     public RepositoryQuery<T> lockForUpdate() {

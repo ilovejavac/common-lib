@@ -1,4 +1,4 @@
-package com.dev.lib.storage.domain.service.impl;
+package com.dev.lib.storage.domain.service;
 
 import com.dev.lib.storage.config.AppStorageProperties;
 import io.minio.*;
@@ -20,7 +20,7 @@ public class MinioFileStorage implements StorageService, InitializingBean {
 
     private final AppStorageProperties fileProperties;
 
-    private       MinioClient          minioClient;
+    private MinioClient minioClient;
 
     @Override
     public void afterPropertiesSet() throws Exception {

@@ -1,11 +1,11 @@
-package com.dev.lib.storage.domain.service.impl;
+package com.dev.lib.storage.domain.service;
 
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
 
-public interface StorageService {
+interface StorageService {
 
     /**
      * 上传文件

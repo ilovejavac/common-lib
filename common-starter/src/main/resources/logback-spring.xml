@@ -5,15 +5,16 @@
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="/"/>
     <springProperty scope="context" name="SPRING_PROFILE" source="spring.profiles.active" defaultValue="dev"/>
     <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="./log"/>
+    <springProperty scope="context" name="LOGSTASH_HOST" source="app.logstash.host" defaultValue="localhost:5044"/>
 
     <property name="LOG_FILE" value="${APP_NAME}"/>
 
     <!-- 日志输出格式 -->
     <property name="CONSOLE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n%ex{3}"/>
 
     <property name="FILE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n%ex{3}"/>
 
     <!-- ========== 控制台输出 ========== -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -101,8 +102,8 @@
 
             <!-- 异常堆栈优化 -->
             <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
-                <maxDepthPerThrowable>15</maxDepthPerThrowable>
-                <maxLength>8192</maxLength>
+                <maxDepthPerThrowable>3</maxDepthPerThrowable>
+                <maxLength>2048</maxLength>
                 <shortenedClassNameLength>40</shortenedClassNameLength>
                 <exclude>sun\.reflect\..*</exclude>
                 <exclude>java\.lang\.reflect\..*</exclude>
@@ -153,12 +154,23 @@
     <logger name="org.apache.tomcat" level="WARN" additivity="false"/>
     <logger name="io.netty" level="WARN" additivity="false"/>
 
-    <!-- Nacos 客户端噪声 -->
+    <!-- Nacos 客户端噪声（全面精简，只保留ERROR日志） -->
+    <!-- 核心：屏蔽Nacos远程连接/grpc客户端的大量INFO日志 -->
+    <logger name="com.alibaba.nacos.common.remote.client" level="ERROR" additivity="false"/>
+    <!-- 屏蔽Nacos认证插件日志 -->
+    <logger name="com.alibaba.nacos.plugin.auth" level="ERROR" additivity="false"/>
+    <!-- 屏蔽Nacos命名服务（注册/发现）日志 -->
+    <logger name="com.alibaba.nacos.client.naming" level="ERROR" additivity="false"/>
+    <!-- 屏蔽Nacos配置客户端日志 -->
+    <logger name="com.alibaba.nacos.client.config" level="ERROR" additivity="false"/>
+    <logger name="com.alibaba.nacos.client.config.impl" level="ERROR" additivity="false"/>
+    <logger name="com.alibaba.nacos.client.config.filter" level="ERROR" additivity="false"/>
+    <!-- 屏蔽Nacos通知中心（解决关闭时的NPE日志） -->
     <logger name="com.alibaba.nacos.common.notify.NotifyCenter" level="OFF" additivity="false"/>
-    <logger name="com.alibaba.nacos.client.naming" level="WARN" additivity="false"/>
-    <logger name="com.alibaba.nacos.client.config.impl" level="WARN" additivity="false"/>
-    <logger name="com.alibaba.nacos.client.config.filter" level="WARN" additivity="false"/>
-
+    <!-- 屏蔽Nacos地址管理/服务列表日志 -->
+    <logger name="com.alibaba.nacos.client.address" level="ERROR" additivity="false"/>
+    <!-- 屏蔽Nacos标签收集日志 -->
+    <logger name="com.alibaba.nacos.common.labels" level="ERROR" additivity="false"/>
     <!-- Dubbo 框架噪声 -->
     <logger name="org.apache.dubbo.remoting" level="WARN" additivity="false"/>
     <logger name="org.apache.dubbo.registry" level="WARN" additivity="false"/>
@@ -230,7 +242,7 @@
 
     <!-- ========== 根日志配置（根据环境区分） ========== -->
 
-    <!-- 开发环境：控制台 + 同步文件 -->
+    <!-- 开发环境 -->
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
@@ -238,25 +250,90 @@
             <appender-ref ref="ERROR_FILE"/>
             <appender-ref ref="JSON_FILE"/>
         </root>
-        <logger name="org.springframework.jdbc" level="DEBUG" additivity="true"/>
     </springProfile>
 
-    <!-- 测试环境：控制台 + 异步文件 -->
+    <!-- 测试/生产环境（包含 Logstash） -->
+    <springProfile name="test | prod">
+        <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+            <destination>${LOGSTASH_HOST}</destination>
+            <keepAliveDuration>5 minutes</keepAliveDuration>
+
+            <reconnectionDelay>10 seconds</reconnectionDelay>
+            <writeBufferSize>16384</writeBufferSize>
+
+            <!-- 连接超时 -->
+            <connectionTimeout>5 seconds</connectionTimeout>
+
+            <!-- 连接失败时不阻塞应用启动 -->
+            <connectionStrategy>
+                <roundRobin>
+                    <connectionTTL>5 minutes</connectionTTL>
+                </roundRobin>
+            </connectionStrategy>
+
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</timestampPattern>
+                <timeZone>UTC</timeZone>
+
+                <includeMdc>true</includeMdc>
+                <includeContext>false</includeContext>
+                <includeTags>false</includeTags>
+                <includeCallerData>false</includeCallerData>
+
+                <fieldNames>
+                    <timestamp>timestamp</timestamp>
+                    <version>[ignore]</version>
+                    <message>message</message>
+                    <logger>[ignore]</logger>
+                    <thread>[ignore]</thread>
+                    <level>level</level>
+                    <levelValue>[ignore]</levelValue>
+                </fieldNames>
+
+                <customFields>{"service_name":"${APP_NAME}","hostname":"${HOSTNAME}","environment":"${SPRING_PROFILE}"}</customFields>
+
+                <includeMdcKeyName>trace_id</includeMdcKeyName>
+                <includeMdcKeyName>span_id</includeMdcKeyName>
+
+                <includeStructuredArguments>true</includeStructuredArguments>
+
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>3</maxDepthPerThrowable>
+                    <maxLength>2048</maxLength>
+                    <shortenedClassNameLength>40</shortenedClassNameLength>
+                    <exclude>sun\.reflect\..*</exclude>
+                    <exclude>java\.lang\.reflect\..*</exclude>
+                    <exclude>org\.springframework\..*</exclude>
+                    <exclude>org\.apache\.catalina\..*</exclude>
+                    <exclude>org\.apache\.tomcat\..*</exclude>
+                </throwableConverter>
+            </encoder>
+        </appender>
+
+        <appender name="ASYNC_LOGSTASH" class="ch.qos.logback.classic.AsyncAppender">
+            <discardingThreshold>0</discardingThreshold>
+            <queueSize>512</queueSize>
+            <includeCallerData>false</includeCallerData>
+            <appender-ref ref="LOGSTASH"/>
+        </appender>
+    </springProfile>
+
     <springProfile name="test">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE"/>
             <appender-ref ref="ASYNC_ERROR_FILE"/>
             <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_LOGSTASH"/>
         </root>
     </springProfile>
 
-    <!-- 生产环境：只输出异步文件，不输出控制台 -->
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="ASYNC_FILE"/>
             <appender-ref ref="ASYNC_ERROR_FILE"/>
             <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_LOGSTASH"/>
         </root>
     </springProfile>
 

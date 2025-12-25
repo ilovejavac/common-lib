@@ -7,6 +7,7 @@ import com.dev.lib.entity.dsl.core.FieldMetaCache.FieldMeta;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -20,11 +21,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * 谓词组装器
- * <p>
- * 统一处理普通条件、条件分组、子查询
- */
 public class PredicateAssembler {
 
     private PredicateAssembler() {
@@ -50,15 +46,26 @@ public class PredicateAssembler {
 
         BooleanBuilder builder = new BooleanBuilder();
 
-        if (query != null && !CollectionUtils.isEmpty(fields)) {
-            PathBuilder<E> pathBuilder = new PathBuilder(
-                    getEntityPath(query.getClass()).getType(),
-                    getEntityPath(query.getClass()).getMetadata()
+        if (query != null) {
+            EntityPathBase<E> entityPath = getEntityPath(query.getClass());
+            PathBuilder<E> pathBuilder = new PathBuilder<>(
+                    entityPath.getType(),
+                    entityPath.getMetadata()
             );
 
-            List<ExpressionItem> items     = collectExpressions(pathBuilder, fields);
-            Predicate            predicate = buildWithPrecedence(items);
-            Optional.ofNullable(predicate).ifPresent(builder::and);
+            // ========== 原有逻辑 ==========
+            if (!CollectionUtils.isEmpty(fields)) {
+                List<ExpressionItem> items     = collectExpressions(pathBuilder, fields);
+                Predicate            predicate = buildWithPrecedence(items);
+                Optional.ofNullable(predicate).ifPresent(builder::and);
+            }
+
+            // ========== 插件追加条件 ==========
+            BooleanExpression pluginExpr = QueryPluginChain.getInstance()
+                    .apply(pathBuilder, entityPath.getType());
+            if (pluginExpr != null) {
+                builder.and(pluginExpr);
+            }
         }
 
         for (BooleanExpression expression : expressions) {
@@ -96,14 +103,12 @@ public class PredicateAssembler {
                         items.add(new ExpressionItem(expr, fm.operator()));
                     }
                 }
-
                 case GROUP -> {
                     Predicate groupPredicate = buildGroupPredicate(pathBuilder, fm, value);
                     if (groupPredicate != null) {
                         items.add(new ExpressionItem(groupPredicate, fm.operator()));
                     }
                 }
-
                 case SUB_QUERY -> {
                     BooleanExpression subExpr = SubQueryBuilder.build(pathBuilder, fm, value);
                     if (subExpr != null) {
@@ -116,9 +121,6 @@ public class PredicateAssembler {
         return items;
     }
 
-    /**
-     * 构建分组条件
-     */
     private static <E extends JpaEntity> Predicate buildGroupPredicate(
             PathBuilder<E> pathBuilder,
             FieldMeta groupMeta,
@@ -150,9 +152,6 @@ public class PredicateAssembler {
         return buildWithPrecedence(nestedItems);
     }
 
-    /**
-     * 处理运算符优先级
-     */
     private static Predicate buildWithPrecedence(List<ExpressionItem> items) {
 
         if (items.isEmpty()) return null;

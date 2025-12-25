@@ -40,9 +40,8 @@ public class LoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request, CACHE_LIMIT);
-        String                       requestPath    = request.getRequestURI();
+        String requestPath = request.getServletPath();
 
-        // ✅ 只处理 /api/** 路径
         if (!shouldLog(requestPath)) {
             filterChain.doFilter(request, response);
             return;
@@ -53,8 +52,7 @@ public class LoggingFilter extends OncePerRequestFilter {
                 traceId = IntEncoder.encode52(IDWorker.nextID());
             }
             MDC.put("trace_id", traceId);
-
-            // ✅ 先放行，让 Controller 消费流
+            log.info("Request received");
             filterChain.doFilter(wrappedRequest, response);
         } finally {
             logRequest(wrappedRequest);
@@ -138,7 +136,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             args.add(keyValue("business", business));
         }
 
-        log.info("Request received", args.toArray());
+        log.info("Request completed", args.toArray());
     }
 
 }

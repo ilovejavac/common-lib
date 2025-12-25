@@ -5,7 +5,6 @@ import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.storage.domain.adapter.StorageFileRepo;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageFileToFileItemMapper;
-import com.dev.lib.storage.domain.service.impl.StorageService;
 import com.dev.lib.storage.serialize.FileItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,9 +24,9 @@ public class FileServiceImpl implements FileService {
 
     private final AppStorageProperties fileProperties;
 
-    private final StorageService       storage;
+    private final StorageService storage;
 
-    private final StorageFileRepo      repo;
+    private final StorageFileRepo repo;
 
     public StorageFile upload(MultipartFile file, String category) throws IOException {
 

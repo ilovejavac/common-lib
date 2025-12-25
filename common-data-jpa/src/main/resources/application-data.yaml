@@ -1,16 +1,21 @@
 spring:
+  sql:
+    init:
+      mode: never
+      encoding: utf-8
   datasource:
     hikari:
-      maximum-pool-size: 15
+      maximum-pool-size: 31
       connection-timeout: 10000
       validation-timeout: 3000
-      idle-timeout: 600000
+      idle-timeout: 150000
       max-lifetime: 1800000
       keepalive-time: 300000
       leak-detection-threshold: 60000
       auto-commit: true
       pool-name: HikariPool-${spring.application.name}
       initialization-fail-timeout: 1
+      minimum-idle: 7
   jpa:
     open-in-view: false
     show-sql: false
@@ -35,3 +40,4 @@ spring:
           use_second_level_cache: false
           use_query_cache: false
         generate_statistics: false
+    defer-datasource-initialization: true

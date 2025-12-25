@@ -12,15 +12,13 @@ spring:
       file-size-threshold: 10MB
       location: ${UPLOAD_TEMP_DIR:/tmp}
       resolve-lazily: false
-    encoding:
-      charset: utf-8
-      enabled: true
-      force-response: true
-      force: true
+#    encoding: # springboot4
+#      charset: utf-8
+#      enabled: true
+#      force-response: true
+#      force: true
   config:
     import:
-      - optional:consul:${app.cloud.host}:${app.cloud.port}
-      - optional:nacos:${spring.application.name}.yaml
       - optional:classpath:application-cloud.yaml
       - optional:classpath:application-data.yaml
       - optional:classpath:application-cache.yaml
@@ -32,15 +30,18 @@ spring:
       - optional:classpath:application-excel.yaml
       - optional:classpath:application-storage.yaml
       - optional:classpath:application-local-task-message.yaml
+#      - optional:consul:${app.cloud.host}:${app.cloud.port}
+#      - optional:nacos:${spring.application.name}.yaml
   web:
     resources:
       add-mappings: false
-    error:
-      include-message: never
-      include-stacktrace: never
-      include-exception: false
-      whitelabel:
-        enabled: false
+#    error: # springboot4
+#      include-message: never
+#      include-stacktrace: never
+#      include-exception: false
+#      whitelabel:
+#        enabled: false
+
 server:
   tomcat:
     max-connections: 8192
@@ -58,6 +59,18 @@ server:
       - application/javascript
       - image/svg+xml
     min-response-size: 1KB
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force-response: true
+      force: true
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-exception: false
+    whitelabel:
+      enabled: false
 
 logging:
   config: classpath:logback-spring.xml
