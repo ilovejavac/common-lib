@@ -28,15 +28,8 @@ public class LocalTaskMessageService implements LocalTaskMessageHandleService {
             adapt.saveMessage(cmd);
             event.publish(cmd);
         } catch (Exception e) {
-            log.error(
-                    "受理任务消息执行失败 {}",
-                    cmd,
-                    e
-            );
-            throw new BizException(
-                    50060,
-                    "受理任务消息执行失败"
-            );
+            log.error("受理任务消息执行失败 {}", cmd, e);
+            throw new BizException(50060, "受理任务消息执行失败");
         }
     }
 

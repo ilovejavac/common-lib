@@ -30,7 +30,7 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
                     Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getHttp)
                             .orElseThrow(() -> new BizException(
                                     50040,
-                                    ""
+                                    "没有配置 http"
                             ));
 
             GenerichHttpGateway http = GenerichHttpGateway.resolve(config);
@@ -51,7 +51,7 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
                 Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getRabbit)
                         .orElseThrow(() -> new BizException(
                                 50041,
-                                ""
+                                "没有配置 rabbitmq"
                         ));
 
         try {
@@ -59,7 +59,6 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
                     config.getExchange(),
                     config.getTopic(),
                     JSON.toJSONString(config.getPayload())
-//                    mapper.writeValueAsString(config.getPayload())
             );
             adapt.updateTaskStatusToSuccess(cmd.getTaskId());
         } catch (Exception e) {

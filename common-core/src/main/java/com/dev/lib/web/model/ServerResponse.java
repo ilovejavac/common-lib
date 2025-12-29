@@ -81,6 +81,11 @@ public class ServerResponse<T> {
         result.setPager(pager);
     }
 
+    public static ServerResponse<Void> fail(CodeEnums codeEnums) {
+
+        return fail(codeEnums.getCode(), codeEnums.getMessage());
+    }
+
     public static ServerResponse<Void> fail(Integer code, String message) {
 
         return fail(code, message, null);

@@ -19,7 +19,7 @@ import java.util.function.Function;
 public class TaskNotifyService implements ITaskNotifyService, InitializingBean {
 
     @Resource
-    private       ILocalTaskMessagePort                                       messageEvent;
+    private ILocalTaskMessagePort messageEvent;
 
     private final Map<NotifyType, Function<TaskMessageEntityCommand, String>> notifyStrategy =
             new EnumMap<>(NotifyType.class);
@@ -32,10 +32,7 @@ public class TaskNotifyService implements ITaskNotifyService, InitializingBean {
             return notifier.apply(command);
         }
 
-        throw new BizException(
-                50050,
-                "消息通知处理器不存在"
-        );
+        throw new BizException(50050, "消息通知处理器不存在");
     }
 
     @Override
