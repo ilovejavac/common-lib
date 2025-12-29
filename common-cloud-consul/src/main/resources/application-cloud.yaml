@@ -10,11 +10,12 @@ dubbo:
     check: false
     retries: 0
   application:
-    name: dubbo-${spring.application.name}
+    name: ${spring.application.name}.rpc.dubbo
     qos-enable: false
     qos-accept-foreign-ip: false
     register-mode: instance
     enable-file-cache: false
+    metadata-type: local
   protocol:
     name: tri
     port: -1
@@ -27,6 +28,8 @@ dubbo:
       verbose: false # 是否启用冗长模式。当为真时，应用程序会生成详细的日志输出，以帮助调试和监控
   registry:
     address: consul://${app.cloud.host}:${app.cloud.port}
+    use-as-config-center: false
+    use-as-metadata-center: false
   scan:
     base-packages: ${app.dubbo.scan-packages}
 spring:

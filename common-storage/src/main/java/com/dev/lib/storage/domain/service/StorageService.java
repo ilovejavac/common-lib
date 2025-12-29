@@ -12,6 +12,11 @@ interface StorageService {
      */
     String upload(MultipartFile file, String path) throws IOException;
 
+    default String upload(InputStream is, String path) throws IOException {
+
+        return null;
+    }
+
     /**
      * 下载文件
      */

@@ -6,10 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 
 @Component
 @RequiredArgsConstructor
@@ -21,13 +18,21 @@ public class LocalFileStorage implements StorageService {
     @Override
     public String upload(MultipartFile file, String path) throws IOException {
 
+        return upload(file.getInputStream(), path);
+    }
+
+    @Override
+    public String upload(InputStream is, String path) throws IOException {
+
         File destFile = resolveSafePath(path);
 
         if (!destFile.getParentFile().exists()) {
             destFile.getParentFile().mkdirs();
         }
 
-        file.transferTo(destFile);
+        try (FileOutputStream fos = new FileOutputStream(destFile)) {
+            is.transferTo(fos);
+        }
         return path;
     }
 
@@ -42,7 +47,7 @@ public class LocalFileStorage implements StorageService {
     public void delete(String path) {
 
         String basePath = fileProperties.getLocal().getPath();
-        File file = new File(basePath, path);
+        File   file     = new File(basePath, path);
         file.delete();
     }
 

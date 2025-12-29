@@ -12,6 +12,7 @@ import org.springframework.util.DigestUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
@@ -27,6 +28,24 @@ public class FileServiceImpl implements FileService {
     private final StorageService storage;
 
     private final StorageFileRepo repo;
+
+    @Override
+    public StorageFile upload(InputStream is, String category) throws IOException {
+        String storageName = generateFileName();
+        String storagePath = generatePath(category, storageName);
+
+        storage.upload(is, storagePath);
+
+        StorageFile sf = new StorageFile();
+        sf.setStorageName(storageName);
+        sf.setStoragePath(storagePath);
+        sf.setUrl(storage.getUrl(storagePath));
+        sf.setStorageType(fileProperties.getType());
+        sf.setCategory(category);
+
+        repo.saveFile(sf);
+        return sf;
+    }
 
     public StorageFile upload(MultipartFile file, String category) throws IOException {
 

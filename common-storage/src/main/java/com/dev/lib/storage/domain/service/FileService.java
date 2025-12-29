@@ -13,6 +13,8 @@ public interface FileService {
 
     FileItem getItem(String value);
 
+    StorageFile upload(InputStream is, String category) throws IOException;
+
     StorageFile upload(MultipartFile file, String category) throws IOException;
 
     StorageFile getById(String id);
