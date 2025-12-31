@@ -1,0 +1,68 @@
+package com.dev.lib.local.task.message.domain.adapter;
+
+import com.alibaba.fastjson2.JSON;
+import com.dev.lib.exceptions.BizException;
+import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
+import com.dev.lib.util.http.GenerichHttpGateway;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
+
+    private final IRabbitPublish rabbitPublish;
+
+    private final GenerichHttpGateway httpGateway;
+
+    private final ILocalTaskMessageAdapt adapt;
+
+    @Override
+    public String notify2http(TaskMessageEntityCommand cmd) {
+
+        try {
+            TaskMessageEntityCommand.NotifyConfig.Http config =
+                    Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getHttp)
+                            .orElseThrow(() -> new BizException(
+                                    50040,
+                                    "没有配置 http"
+                            ));
+
+            GenerichHttpGateway http = GenerichHttpGateway.resolve(config);
+
+            adapt.updateTaskStatusToSuccess(cmd.getTaskId());
+        } catch (Exception e) {
+            adapt.updateTaskStatusToFailed(cmd.getTaskId());
+
+        }
+
+        return "";
+    }
+
+    @Override
+    public String notify2rabbit(TaskMessageEntityCommand cmd) {
+
+        TaskMessageEntityCommand.NotifyConfig.Rabbit config =
+                Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getRabbit)
+                        .orElseThrow(() -> new BizException(
+                                50041,
+                                "没有配置 rabbitmq"
+                        ));
+
+        try {
+            rabbitPublish.publish(
+                    config.getExchange(),
+                    config.getTopic(),
+                    JSON.toJSONString(config.getPayload())
+            );
+            adapt.updateTaskStatusToSuccess(cmd.getTaskId());
+        } catch (Exception e) {
+            adapt.updateTaskStatusToFailed(cmd.getTaskId());
+        }
+
+        return "";
+    }
+
+}

@@ -28,22 +28,22 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-dict</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-storage</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-schedule</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-local-task-message</artifactId>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.dev.lib</groupId>-->
+<!--            <artifactId>common-dict</artifactId>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>com.dev.lib</groupId>-->
+<!--            <artifactId>common-storage</artifactId>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>com.dev.lib</groupId>-->
+<!--            <artifactId>common-schedule</artifactId>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>com.dev.lib</groupId>-->
+<!--            <artifactId>common-local-task-message</artifactId>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>com.dev.lib</groupId>
             <artifactId>common-core</artifactId>

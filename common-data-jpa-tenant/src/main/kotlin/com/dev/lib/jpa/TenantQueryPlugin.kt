@@ -17,6 +17,9 @@ class TenantQueryPlugin : QueryPlugin {
         path: PathBuilder<*>,
         entityClass: Class<*>
     ): BooleanExpression? {
+        if (SecurityContextHolder.isSuperAdmin()) {
+            return null
+        }
 
         return path.getNumber("tenantId", Long::class.java)
             ?.eq(SecurityContextHolder.getTenantId())

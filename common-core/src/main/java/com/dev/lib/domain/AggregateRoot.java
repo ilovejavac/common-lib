@@ -20,7 +20,7 @@ public abstract class AggregateRoot extends BaseVO {
 
     private final List<DomainEvent> domainEvents = Lists.mutable.empty();
 
-    public Collection<DomainEvent> domainEvents() {
+    Collection<DomainEvent> domainEvents() {
 
         return Collections.unmodifiableList(domainEvents);
     }

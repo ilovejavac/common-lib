@@ -11,4 +11,11 @@
 
     <artifactId>common-schedule</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-data-jpa</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
 </project>

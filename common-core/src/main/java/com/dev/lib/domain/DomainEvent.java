@@ -10,9 +10,9 @@ public abstract class DomainEvent extends ApplicationEvent {
 
     private final LocalDateTime occurAt;
 
-    private final String        name;
+    private final String name;
 
-    private final Integer       version;
+    private final Integer version;
 
     public DomainEvent(String name, Integer version) {
 

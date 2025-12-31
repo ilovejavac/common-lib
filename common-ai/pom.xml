@@ -16,6 +16,20 @@
             <groupId>com.dev.lib</groupId>
             <artifactId>common-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-data-jpa-tenant</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-data-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-spring-boot-starter</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

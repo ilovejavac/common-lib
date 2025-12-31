@@ -1,18 +1,18 @@
 package com.dev.lib.web.model;
 
-import com.dev.lib.exceptions.BizException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ServerResponse<T> {
+public class ServerResponse<T> implements Serializable {
 
     private Integer code;
 
@@ -60,10 +60,7 @@ public class ServerResponse<T> {
         }
         result.setData(page.getContent());
 
-        setPage(
-                page,
-                result
-        );
+        setPage(page, result);
 
         return result;
     }
@@ -89,11 +86,6 @@ public class ServerResponse<T> {
     public static ServerResponse<Void> fail(Integer code, String message) {
 
         return fail(code, message, null);
-    }
-
-    public static ServerResponse<Void> fail(BizException e) {
-
-        return fail(e.getCoder(), e.getMsger(), null);
     }
 
     public static <T> ServerResponse<T> fail(Integer code, String message, T data) {
