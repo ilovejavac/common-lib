@@ -24,18 +24,18 @@ class AiChatController(
     /**
      * 获取用户所有会话
      */
-    @GetMapping("/api/agent/chat/sessions")
+    @GetMapping("/api/ai/agent/chat/sessions")
     fun listSessions(): ServerResponse<List<AgentChatResponse.SessionDto>> =
         ServerResponse.success(listOf())
 
     /**
      * 新增会话
      */
-    @PostMapping("/api/agent/chat/open-session")
+    @PostMapping("/api/ai/agent/chat/open-session")
     fun openSession(): ServerResponse<String> =
         ServerResponse.success(service.opensession())
 
-    @PostMapping("/api/agent/chat")
+    @PostMapping("/api/ai/agent/chat")
     fun chat(@Validated @RequestBody cmd: AgentChatRequest.Chat): SseEmitter =
         service.chat(cmd)
 }

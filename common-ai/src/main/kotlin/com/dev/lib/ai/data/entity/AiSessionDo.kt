@@ -1,5 +1,6 @@
 package com.dev.lib.ai.data.entity
 
+import com.dev.lib.ai.model.AceItem
 import com.dev.lib.jpa.TenantEntity
 import jakarta.persistence.*
 import org.hibernate.annotations.JdbcTypeCode
@@ -19,18 +20,26 @@ class AiSessionDo(
     var modelId: Long? = null,
     @ManyToOne
     @JoinColumn(name = "model_id", insertable = false, updatable = false)
-    var model: AiAgentConfigDo? = null,
+    var model: AiModelConfigDo? = null,
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")
     var summary: String? = null,
 
     var tokens: Int = 0,
-    var tokenLimit: Int = 50000,
-    var threshold: BigDecimal = BigDecimal("0.95"),
+    var tokenLimit: Int = 120_000,
+    var threshold: BigDecimal = BigDecimal("0.85"),
 
     @OneToMany(mappedBy = "session", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var histories: MutableList<AiSessionHistoryDo> = mutableListOf()
+    var histories: MutableList<AiSessionHistoryDo> = mutableListOf(),
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "text")
+    var acePayloads: MutableList<AceItem> = mutableListOf(),
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "text")
+    var keyPoints: MutableList<SessionKeyPoint> = mutableListOf()
 ) : TenantEntity() {
 
     fun addContent(content: AiSessionHistoryDo) {
@@ -38,9 +47,20 @@ class AiSessionDo(
         histories.add(content)
     }
 
-    fun setAiModel(model: AiAgentConfigDo) {
+    fun setAiModel(model: AiModelConfigDo) {
         modelId = model.id
         this.model = model
     }
+
+    fun toChatMessage() =
+        histories.map(AiSessionHistoryDo::toChatMessage).toMutableList()
+
+}
+
+class AcePayload {
+
+}
+
+class SessionKeyPoint {
 
 }

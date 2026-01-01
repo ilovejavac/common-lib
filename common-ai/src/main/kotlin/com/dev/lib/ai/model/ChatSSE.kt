@@ -3,13 +3,24 @@ package com.dev.lib.ai.model
 import com.alibaba.fastjson2.JSON
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ChatSSE(
     timeout: Long = Duration.ofMinutes(5).toMillis()
 ) : SseEmitter(timeout) {
 
+    private val completed = AtomicBoolean(false)
+
     fun send(envelope: ChatEnvelope<Any>): ChatSSE {
-        send("message", envelope)
+        if (completed.get()) {
+            return this
+        }
+
+        try {
+            send("message", envelope)
+        } catch (e: Exception) {
+            completeWithError(e)
+        }
         return this
     }
 
@@ -18,8 +29,11 @@ class ChatSSE(
         return this
     }
 
-    fun done(envelope: ChatEnvelope<Any>) {
-        send("done", envelope)
+    fun done() {
+        if (!completed.compareAndSet(false, true)) {
+            return
+        }
+
         complete()
     }
 
@@ -30,6 +44,14 @@ class ChatSSE(
         } catch (e: Exception) {
             completeWithError(e)
         }
+    }
+
+    override fun completeWithError(ex: Throwable) {
+        if (!(completed.compareAndSet(false, true))) {
+            return
+        }
+
+        super.completeWithError(ex)
     }
 
     fun completion(block: Runnable): ChatSSE {

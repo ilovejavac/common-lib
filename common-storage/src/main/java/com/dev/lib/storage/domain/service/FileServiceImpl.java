@@ -12,7 +12,6 @@ import org.springframework.util.DigestUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
@@ -31,6 +30,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public StorageFile upload(InputStream is, String category) throws IOException {
+
         String storageName = generateFileName();
         String storagePath = generatePath(category, storageName);
 

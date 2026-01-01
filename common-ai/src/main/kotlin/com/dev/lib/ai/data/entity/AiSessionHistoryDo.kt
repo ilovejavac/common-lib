@@ -1,5 +1,6 @@
 package com.dev.lib.ai.data.entity
 
+import com.dev.lib.ai.model.ChatMessage
 import com.dev.lib.jpa.TenantEntity
 import jakarta.persistence.*
 
@@ -15,8 +16,20 @@ class AiSessionHistoryDo(
     @JoinColumn(name = "session_id")
     var session: AiSessionDo? = null,
 
-    var role: String? = null,
-    var content: String? = null,
+    var role: String,
+    var content: String,
+
+    var inputToken: Int = 0,
+    var outputToken: Int = 0,
 
     var documents: MutableList<String> = mutableListOf()
-) : TenantEntity()
+) : TenantEntity() {
+    fun toChatMessage(): ChatMessage {
+        return ChatMessage(
+            role = role,
+            content = content,
+            input = inputToken,
+            output = outputToken
+        )
+    }
+}

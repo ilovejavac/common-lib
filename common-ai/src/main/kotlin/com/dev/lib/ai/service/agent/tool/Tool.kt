@@ -1,4 +1,4 @@
-package com.dev.lib.ai.service.agent
+package com.dev.lib.ai.service.agent.tool
 
 /**
  * agent 工具

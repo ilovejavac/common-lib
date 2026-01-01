@@ -1,4 +1,4 @@
 package com.dev.lib.ai.trigger.dto
 
-class DocumentRequest {
+class AgentToolResponse {
 }

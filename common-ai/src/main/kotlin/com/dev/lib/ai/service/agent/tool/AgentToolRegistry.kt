@@ -1,6 +1,6 @@
 package com.dev.lib.ai.service.agent.tool
 
-import com.dev.lib.ai.service.agent.Tool
+import com.dev.lib.ai.service.agent.tool.Tool
 import org.springframework.context.annotation.Configuration
 
 @Configuration
