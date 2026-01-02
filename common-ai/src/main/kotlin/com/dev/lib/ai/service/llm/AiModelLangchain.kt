@@ -20,24 +20,33 @@ import kotlin.coroutines.resumeWithException
 
 typealias Response = com.dev.lib.ai.model.ChatResponse
 
-class LangchainModel(
-    private val model: String,
-    private val endpoint: ModelEndpoint,
-    private val baseUrl: String,  // 用户自定义 baseUrl，或用默认值
-    private val apiKey: String,
-    private val temperature: BigDecimal?,
-    private val topP: BigDecimal?,
-    private val maxTokens: Int?
+data class AiModelLangchain(
+    val model: String,
+    val endpoint: ModelEndpoint,
+    val baseUrl: String,  // 用户自定义 baseUrl，或用默认值
+    val apiKey: String,
+    val temperature: BigDecimal?,
+    val topP: BigDecimal?,
+    val maxTokens: Int?
 ) : LLM {
 
     private val streamingClient: StreamingChatModel by lazy {
         when (endpoint) {
-            ModelEndpoint.OPENAI -> OpenAiStreamingChatModel.builder().baseUrl(baseUrl).apiKey(apiKey).modelName(model)
-                .temperature(temperature?.toDouble()).topP(topP?.toDouble()).maxTokens(maxTokens).build()
+            ModelEndpoint.OPENAI -> OpenAiStreamingChatModel.builder()
+                .baseUrl(baseUrl + ModelEndpoint.OPENAI.path)
+                .apiKey(apiKey)
+                .modelName(model)
+                .temperature(temperature?.toDouble())
+                .topP(topP?.toDouble())
+                .maxTokens(maxTokens).build()
 
-            ModelEndpoint.ANTHROPIC -> AnthropicStreamingChatModel.builder().baseUrl(baseUrl).apiKey(apiKey)
-                .modelName(model).temperature(temperature?.toDouble()).topP(topP?.toDouble())
-                .maxTokens(maxTokens ?: 4096).build()
+            ModelEndpoint.ANTHROPIC -> AnthropicStreamingChatModel.builder()
+                .baseUrl(baseUrl + ModelEndpoint.ANTHROPIC.path)
+                .apiKey(apiKey)
+                .modelName(model)
+                .temperature(temperature?.toDouble())
+                .topP(topP?.toDouble())
+                .maxTokens(maxTokens ?: 150_000).build()
         }
     }
 
@@ -54,31 +63,31 @@ class LangchainModel(
     override suspend fun stream(
         messages: List<ChatMessage>, block: (chunk: String) -> Unit
     ): Response = suspendCancellableCoroutine<Response> { cont ->
-        streamingClient.chat(
-            messages.toLangchain(), object : StreamingChatResponseHandler {
+        streamingClient.chat(messages.toLangchain(), object : StreamingChatResponseHandler {
 
-                override fun onPartialResponse(partialResponse: String) {
-                    block(partialResponse)
-                }
+            override fun onPartialResponse(partialResponse: String) {
+                block(partialResponse)
+            }
 
-                override fun onCompleteResponse(completeResponse: ChatResponse) {
-                    cont.resumeWith(Result.success(
+            override fun onCompleteResponse(completeResponse: ChatResponse) {
+                cont.resumeWith(
+                    Result.success(
                         Response(
                             thinking = completeResponse.aiMessage().thinking(),
                             content = completeResponse.aiMessage().text(),
-                            inputTokenCount = completeResponse.metadata().tokenUsage().inputTokenCount(),
-                            outputTokenCount = completeResponse.metadata().tokenUsage().outputTokenCount(),
-                            totalTokenCount = completeResponse.metadata().tokenUsage().totalTokenCount(),
+                            inputTokenCount = completeResponse.tokenUsage()?.inputTokenCount(),
+                            outputTokenCount = completeResponse.tokenUsage()?.outputTokenCount(),
+                            totalTokenCount = completeResponse.tokenUsage()?.totalTokenCount()
                         )
-                    ))
-                }
+                    )
+                )
+            }
 
-                override fun onError(error: Throwable) {
-                    cont.resumeWithException(error)
-                }
-            })
+            override fun onError(error: Throwable) {
+                cont.resumeWithException(error)
+            }
+        })
     }
-
 
     override fun call(messages: List<ChatMessage>): String {
         return syncClient.chat(messages.toLangchain()).aiMessage().text()

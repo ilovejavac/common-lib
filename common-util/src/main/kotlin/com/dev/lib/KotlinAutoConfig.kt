@@ -10,12 +10,13 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class KotlinAutoConfig : InitializingBean, DisposableBean {
+    private val globalScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Bean
-    fun scope() = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    fun scope() = globalScope
 
     override fun afterPropertiesSet() {
-        CoroutineScopeHolder.initGlobalScope(scope())
+        CoroutineScopeHolder.initGlobalScope(globalScope)
     }
 
     override fun destroy() {

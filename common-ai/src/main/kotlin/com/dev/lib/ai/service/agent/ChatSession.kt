@@ -2,6 +2,7 @@ package com.dev.lib.ai.service.agent
 
 import com.dev.lib.ai.model.AceItem
 import com.dev.lib.ai.model.ChatMessage
+import com.dev.lib.ai.model.ChatResponse
 import com.dev.lib.ai.model.ChatSSE
 import com.dev.lib.ai.service.llm.LLM
 
@@ -20,6 +21,8 @@ interface ChatSession {
 
     // ace
     val acePayload: MutableList<AceItem>
+
+    var response: ChatResponse
 
     fun workingMemory(prompt: String): List<ChatMessage>
 

@@ -5,10 +5,12 @@ import com.dev.lib.security.util.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Arrays;
 
+@ComponentScan
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {

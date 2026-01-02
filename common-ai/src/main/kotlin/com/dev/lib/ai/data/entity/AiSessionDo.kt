@@ -12,38 +12,40 @@ import java.math.BigDecimal
  */
 @Entity
 @Table(name = "sys_ai_agent_session")
-class AiSessionDo(
-    var name: String? = null,
-    var description: String? = null,
+data class AiSessionDo(
+    var name: String? = null
+) : TenantEntity() {
 
-    @JoinColumn(name = "model_id")
-    var modelId: Long? = null,
+    var description: String? = null
+
+    @Column(name = "model_id")
+    var modelId: Long? = null
+
     @ManyToOne
     @JoinColumn(name = "model_id", insertable = false, updatable = false)
-    var model: AiModelConfigDo? = null,
+    var model: AiModelConfigDo? = null
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")
-    var summary: String? = null,
+    var summary: String? = null
 
-    var tokens: Int = 0,
-    var tokenLimit: Int = 120_000,
-    var threshold: BigDecimal = BigDecimal("0.85"),
+    var tokens: Int = 0
+    var tokenLimit: Int = 130_000
+    var threshold: BigDecimal = BigDecimal("0.85")
 
     @OneToMany(mappedBy = "session", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var histories: MutableList<AiSessionHistoryDo> = mutableListOf(),
+    var histories: MutableList<AiSessionHistoryDo> = mutableListOf()
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")
-    var acePayloads: MutableList<AceItem> = mutableListOf(),
+    var acePayloads: MutableList<AceItem> = mutableListOf()
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")
     var keyPoints: MutableList<SessionKeyPoint> = mutableListOf()
-) : TenantEntity() {
 
     fun addContent(content: AiSessionHistoryDo) {
-        content.sessionId = id
+        content.sessionId = id!!
         histories.add(content)
     }
 
@@ -54,10 +56,6 @@ class AiSessionDo(
 
     fun toChatMessage() =
         histories.map(AiSessionHistoryDo::toChatMessage).toMutableList()
-
-}
-
-class AcePayload {
 
 }
 

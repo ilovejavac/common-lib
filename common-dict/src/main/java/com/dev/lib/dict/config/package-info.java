@@ -1,1 +1,0 @@
-package com.dev.lib.dict.config;

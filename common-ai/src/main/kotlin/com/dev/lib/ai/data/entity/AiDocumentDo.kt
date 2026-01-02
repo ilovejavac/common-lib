@@ -9,19 +9,19 @@ import jakarta.persistence.*
 @Entity
 @Table(name = "sys_ai_document")
 class AiDocumentDo(
-    var name: String? = null,
+    var name: String,
     var description: String? = null,
 
     //    文件类型
-    var docType: String? = null,
+    var docType: String,
 
     //    源文件 id
     @Column(length = 12)
-    var source: String,
+    var source: String
+) : TenantEntity() {
 
     @OneToMany(mappedBy = "document", cascade = [CascadeType.ALL], orphanRemoval = true)
     var chunks: MutableList<AiDocumentChunkDo> = mutableListOf()
-) : TenantEntity() {
 
     fun addChunk(chunk: AiDocumentChunkDo) {
         chunk.documentId = id

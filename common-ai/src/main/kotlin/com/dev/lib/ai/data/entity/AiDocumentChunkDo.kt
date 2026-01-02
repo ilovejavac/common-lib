@@ -7,15 +7,17 @@ import jakarta.persistence.*
 @Table(name = "sys_ai_document_item")
 class AiDocumentChunkDo(
     @Column(name = "document_id")
-    var documentId: Long? = null,
-    @ManyToOne
-    @JoinColumn(name = "document_id", insertable = false, updatable = false)
-    var document: AiDocumentDo? = null,
+    var documentId: Long?,
 
-    var chunkIndex: Int? = null,
+
+    var chunkIndex: Int = 0,
 
     // length(450)
-    var content: String? = null,
-    var contentHash: String?
+    var content: String,
+    var contentHash: String
 ) : TenantEntity() {
+
+    @ManyToOne
+    @JoinColumn(name = "document_id", insertable = false, updatable = false)
+    lateinit var document: AiDocumentDo
 }

@@ -6,8 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @Configuration
-@EntityScan("com.dev.lib.jpa")
+@EntityScan("com.dev.lib")
 @EnableJpaRepositories(
+        basePackages = "com.dev.lib",
         repositoryBaseClass = BaseRepositoryImpl.class
 )
 public class CommonJpaAutoConfig {

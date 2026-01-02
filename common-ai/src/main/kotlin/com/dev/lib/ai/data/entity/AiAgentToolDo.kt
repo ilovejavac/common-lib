@@ -10,8 +10,7 @@ import jakarta.persistence.Table
 @Entity
 @Table(name = "sys_ai_agent_tool")
 class AiAgentToolDo(
-    var name: String? = null,
+    var name: String,
     var description: String? = null,
-
-    ) : TenantEntity() {
+) : TenantEntity() {
 }

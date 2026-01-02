@@ -7,9 +7,11 @@ import java.math.BigDecimal
 class AiModelResponse {
 
     data class AiModelDto(
-        var name: String? = null,
+        var name: String,
         var model: String,
+        var baseUrl: String,
         var endpoint: ModelEndpoint,
+
         var apiKey: String,
 
         var temperature: BigDecimal? = null,
@@ -17,6 +19,6 @@ class AiModelResponse {
         var topK: Int? = null,
         var maxTokens: Int? = null,
 
-        var enabled: Boolean,
+        var enabled: Boolean
     ) : BaseVO()
 }
