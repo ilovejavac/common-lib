@@ -1,6 +1,7 @@
 package com.dev.lib.ai.data.entity
 
 import com.dev.lib.ai.model.ChatItem
+import com.dev.lib.ai.model.ChatRole
 import com.dev.lib.jpa.TenantEntity
 import jakarta.persistence.*
 import org.hibernate.annotations.JdbcTypeCode
@@ -12,31 +13,34 @@ import org.hibernate.type.SqlTypes
 @Entity
 @Table(name = "sys_ai_session_history")
 class AiSessionHistoryDo(
-    @Column(name = "session_id", nullable = false)
-    var sessionId: Long = 0,
+    @Column(columnDefinition = "text")
+    var content: String,
 
-    @Column(name = "user_prompt", columnDefinition = "text")
-    var user: String,
-
-    @Column(name = "assistant_content", columnDefinition = "text")
-    var assistant: String
+    @Column(name = "chat_role")
+    @Enumerated(EnumType.STRING)
+    val role: ChatRole
 ) : TenantEntity() {
+
+    @Column(name = "session_id", nullable = false)
+    var sessionId: Long? = 0
+
+    var tokenUsage: Int = 0
+
     @ManyToOne
     @JoinColumn(name = "session_id", insertable = false, updatable = false)
     lateinit var session: AiSessionDo
-
-    var inputToken: Int = 0
-    var outputToken: Int = 0
-    var totalToken: Int = 0
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")
     var documents: MutableList<String> = mutableListOf()
 
-    fun toChatMessage(): List<ChatItem> {
-        return listOf(
-            ChatItem.user(user),
-            ChatItem.assistant(assistant),
-        )
+    fun toChatMessage(): ChatItem {
+        return when (role) {
+            ChatRole.USER -> ChatItem.user(content)
+            ChatRole.ASSISTANT -> ChatItem.assistant(content)
+            ChatRole.SYSTEM -> ChatItem.system(content)
+        }.apply {
+            token = tokenUsage
+        }
     }
 }

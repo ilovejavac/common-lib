@@ -21,8 +21,12 @@ class AiAgent : Agent, AggregateRoot() {
         sse.done()
 
         // 写入 history
-        session.history += ChatItem.user(prompt)
-        session.history += ChatItem.assistant(session.response.content)
+        session.history += ChatItem.user(prompt).apply {
+            token = session.response.inputTokenCount ?: 0
+        }
+        session.history += ChatItem.assistant(session.response.content).apply {
+            token = session.response.outputTokenCount ?: 0
+        }
 
         marketCompleted(session)
         publishAndClear()

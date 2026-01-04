@@ -3,8 +3,7 @@ package com.dev.lib.ai.model
 data class ChatItem(
     val content: String,
     val role: ChatRole,
-    val input: Int = 0,
-    val output: Int = 0
+    var token: Int = 0,
 ) {
     companion object {
         fun system(prompt: String): ChatItem {

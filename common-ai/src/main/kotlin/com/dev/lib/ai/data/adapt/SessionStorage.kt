@@ -3,7 +3,10 @@ package com.dev.lib.ai.data.adapt
 import com.dev.lib.ai.data.dao.AiSessionDao
 import com.dev.lib.ai.data.entity.AiSessionDo
 import com.dev.lib.ai.data.entity.AiSessionHistoryDo
-import com.dev.lib.ai.model.*
+import com.dev.lib.ai.model.AceItem
+import com.dev.lib.ai.model.ChatItem
+import com.dev.lib.ai.model.ChatResponse
+import com.dev.lib.ai.model.ChatSSE
 import com.dev.lib.ai.repo.AiSessionStore
 import com.dev.lib.ai.service.agent.AiAgent
 import com.dev.lib.ai.service.agent.AiChatSession
@@ -52,16 +55,13 @@ class SessionStorage(
         }).orElseThrow()
         val last2 = session.history.takeLast(2)
 
-        val history = AiSessionHistoryDo(
-            user = last2.first { it.role == ChatRole.USER }.content,
-            assistant = last2.first { it.role == ChatRole.ASSISTANT }.content
-        ).apply {
-            inputToken = session.response.inputTokenCount ?: 0
-            outputToken = session.response.outputTokenCount ?: 0
-            totalToken = session.response.totalTokenCount ?: 0
+        last2.map {
+            AiSessionHistoryDo(content = it.content, role = it.role).apply {
+                tokenUsage = it.token
+            }
+        }.forEach {
+            sessionDo.addContent(it)
         }
-
-        sessionDo.addContent(history)
     }
 
     private class OfflineSession(

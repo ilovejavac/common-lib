@@ -55,7 +55,7 @@ data class AiSessionDo(
     }
 
     fun toChatMessage() =
-        histories.flatMap(AiSessionHistoryDo::toChatMessage).toMutableList()
+        histories.map(AiSessionHistoryDo::toChatMessage).toMutableList()
 
 }
 
