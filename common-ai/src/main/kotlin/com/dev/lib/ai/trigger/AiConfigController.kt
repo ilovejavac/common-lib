@@ -16,20 +16,26 @@ import org.springframework.web.bind.annotation.*
 class AiConfigController(
     val service: ModelConfigService
 ) {
-    // 新增 ai 配置
+
+    /**
+     * 新增模型
+     */
     @PostMapping("/api/ai/model-create")
     fun createModel(@RequestBody @Validated cmd: AiModelRequest.CreateModel) =
         ServerResponse.success<String>(service.handle(cmd))
 
-    // 修改 ai 配置
+    /**
+     * 修改模型
+     */
     @PutMapping("/api/ai/model-update")
     fun updateModel(@RequestBody @Validated cmd: AiModelRequest.UpdateModel): ServerResponse<Unit> {
         service.handle(cmd)
         return ServerResponse.ok()
     }
 
-
-    // 删除 ai 配置
+    /**
+     * 删除模型
+     */
     @DeleteMapping("/api/ai/model-delete/{id}")
     fun removeModel(@PathVariable id: String): ServerResponse<Unit> {
         service.remove(id)
@@ -37,7 +43,9 @@ class AiConfigController(
         return ServerResponse.ok()
     }
 
-    // 查询 ai 配置
+    /**
+     * 查询模型
+     */
     @PostMapping("/api/ai/model-list")
     fun listModel(@RequestBody @Validated q: QueryRequest<AiModelRequest.QueryModel>) =
         ServerResponse.success(service.query(q))

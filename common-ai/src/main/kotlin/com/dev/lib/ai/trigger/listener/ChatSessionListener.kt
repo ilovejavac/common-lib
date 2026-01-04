@@ -15,7 +15,7 @@ class ChatSessionListener(
     @EventListener
     fun storeSessionOnSessionCompleted(event: SessionCompletedEvent) {
         log.info("持久化 session")
-        store.storeSession(event.session)
+        store.storeSessionHistory(event.session)
     }
 
     @EventListener

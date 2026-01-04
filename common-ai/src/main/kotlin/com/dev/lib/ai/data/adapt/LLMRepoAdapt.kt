@@ -11,8 +11,9 @@ class LLMRepoAdapt(
     val dao: AiModelConfigDao
 ) : AiLLMRepo {
     override fun loadLLM(id: String): LLM? {
-        return dao.load(AiModelConfigDao.Q().apply {
+        val model = dao.load(AiModelConfigDao.Q().apply {
             bizId = id
-        }).orNull()?.toLLM()
+        }).orNull()
+        return model?.toLLM(130_000)
     }
 }

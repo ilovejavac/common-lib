@@ -1,6 +1,6 @@
 package com.dev.lib.ai.service.llm
 
-import com.dev.lib.ai.model.ChatMessage
+import com.dev.lib.ai.model.ChatItem
 import com.dev.lib.ai.model.ChatRole
 import com.dev.lib.ai.model.ModelEndpoint
 import dev.langchain4j.data.message.AiMessage
@@ -23,11 +23,11 @@ typealias Response = com.dev.lib.ai.model.ChatResponse
 data class AiModelLangchain(
     val model: String,
     val endpoint: ModelEndpoint,
-    val baseUrl: String,  // 用户自定义 baseUrl，或用默认值
+    val baseUrl: String,
     val apiKey: String,
     val temperature: BigDecimal?,
     val topP: BigDecimal?,
-    val maxTokens: Int?
+    val maxTokens: Int
 ) : LLM {
 
     private val streamingClient: StreamingChatModel by lazy {
@@ -46,7 +46,7 @@ data class AiModelLangchain(
                 .modelName(model)
                 .temperature(temperature?.toDouble())
                 .topP(topP?.toDouble())
-                .maxTokens(maxTokens ?: 150_000).build()
+                .maxTokens(maxTokens).build()
         }
     }
 
@@ -56,12 +56,12 @@ data class AiModelLangchain(
                 .temperature(temperature?.toDouble()).topP(topP?.toDouble()).maxTokens(maxTokens).build()
 
             ModelEndpoint.ANTHROPIC -> AnthropicChatModel.builder().baseUrl(baseUrl).apiKey(apiKey).modelName(model)
-                .temperature(temperature?.toDouble()).topP(topP?.toDouble()).maxTokens(maxTokens ?: 4096).build()
+                .temperature(temperature?.toDouble()).topP(topP?.toDouble()).maxTokens(maxTokens).build()
         }
     }
 
     override suspend fun stream(
-        messages: List<ChatMessage>, block: (chunk: String) -> Unit
+        messages: List<ChatItem>, block: (chunk: String) -> Unit
     ): Response = suspendCancellableCoroutine<Response> { cont ->
         streamingClient.chat(messages.toLangchain(), object : StreamingChatResponseHandler {
 
@@ -89,11 +89,11 @@ data class AiModelLangchain(
         })
     }
 
-    override fun call(messages: List<ChatMessage>): String {
+    override fun call(messages: List<ChatItem>): String {
         return syncClient.chat(messages.toLangchain()).aiMessage().text()
     }
 
-    private fun List<ChatMessage>.toLangchain() = map {
+    private fun List<ChatItem>.toLangchain() = map {
         when (it.role) {
             ChatRole.USER -> UserMessage.from(it.content)
             ChatRole.ASSISTANT -> AiMessage.from(it.content)

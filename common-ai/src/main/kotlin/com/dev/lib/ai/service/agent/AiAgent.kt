@@ -1,7 +1,7 @@
 package com.dev.lib.ai.service.agent
 
 import com.dev.lib.ai.model.ChatEnvelope
-import com.dev.lib.ai.model.ChatMessage
+import com.dev.lib.ai.model.ChatItem
 import com.dev.lib.ai.model.ChatSSE
 import com.dev.lib.ai.model.event.SessionCompletedEvent
 import com.dev.lib.domain.AggregateRoot
@@ -21,8 +21,8 @@ class AiAgent : Agent, AggregateRoot() {
         sse.done()
 
         // 写入 history
-        session.history += ChatMessage.user(prompt)
-        session.history += ChatMessage.assistant(session.response.content)
+        session.history += ChatItem.user(prompt)
+        session.history += ChatItem.assistant(session.response.content)
 
         marketCompleted(session)
         publishAndClear()

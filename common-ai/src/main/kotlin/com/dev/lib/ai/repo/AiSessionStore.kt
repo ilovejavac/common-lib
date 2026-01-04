@@ -11,5 +11,5 @@ interface AiSessionStore {
 
     fun loadSession(id: String, llm: LLM? = null): ChatSession
 
-    fun storeSession(session: ChatSession)
+    fun storeSessionHistory(session: ChatSession)
 }

@@ -1,8 +1,8 @@
 package com.dev.lib.ai.data.entity
 
 import com.dev.lib.ai.model.ModelEndpoint
-import com.dev.lib.ai.service.llm.LLM
 import com.dev.lib.ai.service.llm.AiModelLangchain
+import com.dev.lib.ai.service.llm.LLM
 import com.dev.lib.ai.trigger.dto.AiModelResponse
 import com.dev.lib.ai.trigger.request.AiModelRequest
 import com.dev.lib.jpa.TenantEntity
@@ -33,7 +33,7 @@ data class AiModelConfigDo(
     var temperature: BigDecimal? = null
     var topP: BigDecimal? = null
     var topK: Int? = null
-    var maxTokens: Int? = 150_000
+    var maxTokens: Int? = 130_000
 
     var enabled: Boolean = true
 
@@ -47,7 +47,7 @@ data class AiModelConfigDo(
         sessions.clear()
     }
 
-    fun toLLM(): LLM {
+    fun toLLM(tokenLimit: Int): LLM {
         return AiModelLangchain(
             model = model,
             endpoint = endpoint,
@@ -55,7 +55,7 @@ data class AiModelConfigDo(
             temperature = temperature,
             topP = topP,
             baseUrl = baseUrl,
-            maxTokens = maxTokens
+            maxTokens = maxTokens ?: tokenLimit
         )
     }
 }

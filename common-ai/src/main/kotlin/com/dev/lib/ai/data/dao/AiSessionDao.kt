@@ -6,6 +6,5 @@ import com.dev.lib.jpa.entity.BaseRepository
 
 interface AiSessionDao : BaseRepository<AiSessionDo> {
     class Q : DslQuery<AiSessionDo>() {
-
     }
 }

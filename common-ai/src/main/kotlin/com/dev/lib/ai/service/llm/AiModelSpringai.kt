@@ -1,6 +1,6 @@
 package com.dev.lib.ai.service.llm
 
-import com.dev.lib.ai.model.ChatMessage
+import com.dev.lib.ai.model.ChatItem
 import com.dev.lib.ai.model.ChatResponse
 import com.dev.lib.ai.model.ModelEndpoint
 import java.math.BigDecimal
@@ -15,17 +15,17 @@ data class AiModelSpringai(
     val maxTokens: Int?
 ) : LLM {
     override suspend fun stream(
-        messages: List<ChatMessage>,
+        messages: List<ChatItem>,
         block: (chunk: String) -> Unit
     ): ChatResponse {
         TODO("Not yet implemented")
     }
 
-    override fun call(messages: List<ChatMessage>): String {
+    override fun call(messages: List<ChatItem>): String {
         TODO("Not yet implemented")
     }
 
-    private fun List<ChatMessage>.toSpringai() = map {
+    private fun List<ChatItem>.toSpringai() = map {
 
     }
 }

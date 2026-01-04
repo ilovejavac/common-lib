@@ -2,7 +2,7 @@ package com.dev.lib.ai.service.agent
 
 import com.dev.lib.CoroutineScopeHolder
 import com.dev.lib.ai.model.AceItem
-import com.dev.lib.ai.model.ChatMessage
+import com.dev.lib.ai.model.ChatItem
 import com.dev.lib.ai.model.ChatResponse
 import com.dev.lib.ai.model.ChatSSE
 import com.dev.lib.ai.service.llm.LLM
@@ -19,7 +19,7 @@ class AiChatSession(
     /**
      * 全量记忆
      * */
-    override val history: MutableList<ChatMessage> = mutableListOf(),
+    override val history: MutableList<ChatItem> = mutableListOf(),
     /**
      * ACE 行动指南
      */
@@ -28,21 +28,14 @@ class AiChatSession(
 
     override lateinit var response: ChatResponse
 
-    override fun workingMemory(prompt: String): List<ChatMessage> {
-        val messages = mutableListOf<ChatMessage>()
-
-//        messages += ChatMessage.Companion.system(
-//            "".format(
-//                // ace
-//                // keypoint
-//            )
-//        )
+    override fun workingMemory(prompt: String): List<ChatItem> {
+        val messages = mutableListOf<ChatItem>()
 
         history.takeLast(10).forEach {
             messages += it
         }
 
-        messages += ChatMessage.Companion.user(prompt)
+        messages += ChatItem.user(prompt)
 
         return messages
     }

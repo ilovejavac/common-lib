@@ -35,6 +35,9 @@ class AiChatController(
     fun openSession(): ServerResponse<String> =
         ServerResponse.success(service.opensession())
 
+    /**
+     * 对话
+     */
     @PostMapping("/api/ai/agent/chat")
     fun chat(@Validated @RequestBody cmd: AgentChatRequest.Chat): SseEmitter =
         service.chat(cmd)

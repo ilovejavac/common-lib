@@ -3,10 +3,7 @@ package com.dev.lib.ai.data.adapt
 import com.dev.lib.ai.data.dao.AiSessionDao
 import com.dev.lib.ai.data.entity.AiSessionDo
 import com.dev.lib.ai.data.entity.AiSessionHistoryDo
-import com.dev.lib.ai.model.AceItem
-import com.dev.lib.ai.model.ChatMessage
-import com.dev.lib.ai.model.ChatResponse
-import com.dev.lib.ai.model.ChatSSE
+import com.dev.lib.ai.model.*
 import com.dev.lib.ai.repo.AiSessionStore
 import com.dev.lib.ai.service.agent.AiAgent
 import com.dev.lib.ai.service.agent.AiChatSession
@@ -36,7 +33,7 @@ class SessionStorage(
             .orElseThrow { IllegalArgumentException("会话不存在: $id") }
 
         val model = llm
-            ?: session.model?.toLLM()
+            ?: session.model?.toLLM(session.tokenLimit)
             ?: throw IllegalStateException("未关联有效LLM模型")
 
         return AiChatSession(
@@ -49,20 +46,22 @@ class SessionStorage(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    override fun storeSession(session: ChatSession) {
-        val d = dao.load(AiSessionDao.Q().setBizId(session.sessionId)).orElseThrow()
+    override fun storeSessionHistory(session: ChatSession) {
+        val sessionDo = dao.load(AiSessionDao.Q().apply {
+            bizId = session.sessionId
+        }).orElseThrow()
+        val last2 = session.history.takeLast(2)
 
-        session.history.takeLast(2).map {
-            val history = AiSessionHistoryDo(role = it.role, content = it.content)
-            history.inputToken = session.response.inputTokenCount ?: 0
-            history.outputToken = session.response.outputTokenCount ?: 0
-            history.totalToken = session.response.totalTokenCount ?: 0
-            history
-        }.forEach {
-            d.addContent(it)
+        val history = AiSessionHistoryDo(
+            user = last2.first { it.role == ChatRole.USER }.content,
+            assistant = last2.first { it.role == ChatRole.ASSISTANT }.content
+        ).apply {
+            inputToken = session.response.inputTokenCount ?: 0
+            outputToken = session.response.outputTokenCount ?: 0
+            totalToken = session.response.totalTokenCount ?: 0
         }
 
-        d.acePayloads = session.acePayload
+        sessionDo.addContent(history)
     }
 
     private class OfflineSession(
@@ -73,12 +72,12 @@ class SessionStorage(
             set(value) {}
         override val llm: LLM
             get() = TODO("Not yet implemented")
-        override val history: MutableList<ChatMessage>
+        override val history: MutableList<ChatItem>
             get() = TODO()
         override val acePayload: MutableList<AceItem>
             get() = TODO()
 
-        override fun workingMemory(prompt: String): List<ChatMessage> {
+        override fun workingMemory(prompt: String): List<ChatItem> {
             TODO()
         }
 
