@@ -1,6 +1,7 @@
 package com.dev.lib.ai.data.entity
 
 import com.dev.lib.ai.model.AceItem
+import com.dev.lib.ai.model.SessionKeyPoint
 import com.dev.lib.jpa.TenantEntity
 import jakarta.persistence.*
 import org.hibernate.annotations.JdbcTypeCode
@@ -30,10 +31,10 @@ data class AiSessionDo(
     var summary: String? = null
 
     var tokens: Int = 0
-    var tokenLimit: Int = 130_000
+    var tokenLimit: Int = 80_000
     var threshold: BigDecimal = BigDecimal("0.85")
 
-    @OneToMany(mappedBy = "session", cascade = [CascadeType.ALL], orphanRemoval = true)
+    @OneToMany(mappedBy = "session", cascade = [CascadeType.REMOVE], orphanRemoval = true)
     var histories: MutableList<AiSessionHistoryDo> = mutableListOf()
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -44,21 +45,14 @@ data class AiSessionDo(
     @Column(columnDefinition = "text")
     var keyPoints: MutableList<SessionKeyPoint> = mutableListOf()
 
-    fun addContent(content: AiSessionHistoryDo) {
+    fun setContent(content: AiSessionHistoryDo): AiSessionHistoryDo {
         content.sessionId = id!!
-        histories.add(content)
+        return content
     }
 
     fun setAiModel(model: AiModelConfigDo) {
         modelId = model.id
         this.model = model
     }
-
-    fun toChatMessage() =
-        histories.map(AiSessionHistoryDo::toChatMessage).toMutableList()
-
-}
-
-class SessionKeyPoint {
 
 }

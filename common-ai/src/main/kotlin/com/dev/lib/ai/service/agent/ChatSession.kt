@@ -7,7 +7,7 @@ import com.dev.lib.ai.model.ChatSSE
 import com.dev.lib.ai.service.llm.LLM
 
 /**
- * 当前会话
+ * 会话
  */
 interface ChatSession {
     val sessionId: String

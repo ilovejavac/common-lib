@@ -7,7 +7,6 @@ import com.dev.lib.entity.dsl.core.FieldMetaCache.FieldMeta;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.jpa.entity.JpaEntity;
-import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -58,13 +57,6 @@ public class PredicateAssembler {
                 List<ExpressionItem> items     = collectExpressions(pathBuilder, fields);
                 Predicate            predicate = buildWithPrecedence(items);
                 Optional.ofNullable(predicate).ifPresent(builder::and);
-            }
-
-            // ========== 插件追加条件 ==========
-            BooleanExpression pluginExpr = QueryPluginChain.getInstance()
-                    .apply(pathBuilder, entityPath.getType());
-            if (pluginExpr != null) {
-                builder.and(pluginExpr);
             }
         }
 
@@ -155,7 +147,7 @@ public class PredicateAssembler {
     private static Predicate buildWithPrecedence(List<ExpressionItem> items) {
 
         if (items.isEmpty()) return null;
-        if (items.size() == 1) return items.get(0).expression;
+        if (items.size() == 1) return items.getFirst().expression;
 
         List<List<ExpressionItem>> andGroups    = new ArrayList<>();
         List<ExpressionItem>       currentGroup = new ArrayList<>();
@@ -186,7 +178,7 @@ public class PredicateAssembler {
         }
 
         if (groupPredicates.isEmpty()) return null;
-        if (groupPredicates.size() == 1) return groupPredicates.get(0);
+        if (groupPredicates.size() == 1) return groupPredicates.getFirst();
 
         BooleanBuilder result = new BooleanBuilder();
         for (Predicate pred : groupPredicates) {
@@ -198,7 +190,7 @@ public class PredicateAssembler {
     @AllArgsConstructor
     private static class ExpressionItem {
 
-        Predicate       expression;
+        Predicate expression;
 
         LogicalOperator operator;
 

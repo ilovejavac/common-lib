@@ -1,9 +1,13 @@
 package com.dev.lib.ai.data.adapt
 
 import com.dev.lib.ai.data.dao.AiSessionDao
+import com.dev.lib.ai.data.dao.AiSessionHistoryDao
 import com.dev.lib.ai.data.entity.AiSessionDo
 import com.dev.lib.ai.data.entity.AiSessionHistoryDo
-import com.dev.lib.ai.model.*
+import com.dev.lib.ai.model.AceItem
+import com.dev.lib.ai.model.ChatItem
+import com.dev.lib.ai.model.ChatResponse
+import com.dev.lib.ai.model.ChatSSE
 import com.dev.lib.ai.repo.AiSessionStore
 import com.dev.lib.ai.service.agent.AiAgent
 import com.dev.lib.ai.service.agent.AiChatSession
@@ -11,23 +15,12 @@ import com.dev.lib.ai.service.agent.ChatSession
 import com.dev.lib.ai.service.llm.LLM
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 
 @Component
 class SessionStorage(
-    val dao: AiSessionDao
+    val dao: AiSessionDao,
+    val history: AiSessionHistoryDao
 ) : AiSessionStore {
-
-    private val chatLock = ConcurrentHashMap<String, AtomicBoolean>()
-
-    override fun tryAcquire(session: String): Boolean =
-        chatLock.computeIfAbsent(session) { AtomicBoolean(false) }
-            .compareAndSet(false, true)
-
-    override fun release(session: String) {
-        chatLock[session]?.set(false)
-    }
 
     override fun openSession(): ChatSession {
         val session = dao.save(
@@ -41,8 +34,9 @@ class SessionStorage(
 
     @Transactional(readOnly = true)
     override fun loadSession(id: String, llm: LLM?): ChatSession {
-        val session = dao.load(AiSessionDao.Q().setBizId(id))
-            .orElseThrow { IllegalArgumentException("会话不存在: $id") }
+        val session = dao.load(AiSessionDao.Q().apply {
+            bizId = id
+        }).orElseThrow { IllegalArgumentException("会话不存在: $id") }
 
         val model = llm
             ?: session.model?.toLLM(session.tokenLimit)
@@ -52,7 +46,10 @@ class SessionStorage(
             sessionId = id,
             llm = model,
             agent = AiAgent(),
-            history = session.toChatMessage(),
+            history = history.loads(AiSessionHistoryDao.Q().apply {
+                limit = 20
+                sessionId = session.id!!
+            }).reversed().toChatMessage(),
             acePayload = session.acePayloads
         )
     }
@@ -64,14 +61,18 @@ class SessionStorage(
         }).orElseThrow()
         val last2 = session.history.takeLast(2)
 
-        last2.map {
+        history.saveAll(last2.map {
             AiSessionHistoryDo(content = it.content, role = it.role).apply {
                 tokenUsage = it.token
             }
-        }.forEach {
-            sessionDo.addContent(it)
-        }
+        }.map {
+            sessionDo.setContent(it)
+        })
     }
+
+    private fun List<AiSessionHistoryDo>.toChatMessage() =
+        map(AiSessionHistoryDo::toChatMessage)
+            .toMutableList()
 
     private class OfflineSession(
         override val sessionId: String

@@ -4,6 +4,7 @@ import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
+import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.util.StringUtils;
 import com.querydsl.core.BooleanBuilder;
@@ -578,12 +579,20 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     private Predicate buildPredicate(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         BooleanBuilder builder = new BooleanBuilder();
+
+        // 1. deleted（外层）
         switch (ctx.getDeletedFilter()) {
             case EXCLUDE_DELETED -> builder.and(deletedPath.eq(false));
             case ONLY_DELETED -> builder.and(deletedPath.eq(true));
-            case INCLUDE_DELETED -> { /* 不设置 */ }
-            default -> { /* 不设置 */ }
         }
+
+        // 2. 插件条件（外层）
+        BooleanExpression pluginExpr = QueryPluginChain.getInstance()
+                .apply(pathBuilder, path.getType());
+        if (pluginExpr != null) {
+            builder.and(pluginExpr);
+        }
+
         Predicate dsl = toPredicate(dslQuery, expressions);
         if (dsl != null) builder.and(dsl);
         return builder.getValue();

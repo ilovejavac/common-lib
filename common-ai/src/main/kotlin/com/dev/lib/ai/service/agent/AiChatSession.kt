@@ -16,13 +16,9 @@ class AiChatSession(
     val agent: Agent,
 
     override val llm: LLM,
-    /**
-     * 全量记忆
-     * */
+
     override val history: MutableList<ChatItem> = mutableListOf(),
-    /**
-     * ACE 行动指南
-     */
+
     override val acePayload: MutableList<AceItem> = mutableListOf()
 ) : ChatSession {
 
@@ -31,10 +27,8 @@ class AiChatSession(
     override fun workingMemory(prompt: String): List<ChatItem> {
         val messages = mutableListOf<ChatItem>()
 
-        history.takeLast(10).forEach {
-            messages += it
-        }
-
+//        messages += ChatItem.system("")
+        messages.addAll(history)
         messages += ChatItem.user(prompt)
 
         return messages
@@ -45,10 +39,12 @@ class AiChatSession(
 
         val job = CoroutineScopeHolder.launch {
             agent.run(prompt, this@AiChatSession, sse)
+            block()
         }
 
-        return sse.completion {
-            block()
+        return sse.timeout {
+            job.cancel()
+        }.error {
             job.cancel()
         }
     }
