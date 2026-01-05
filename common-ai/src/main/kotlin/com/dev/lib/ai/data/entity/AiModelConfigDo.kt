@@ -33,7 +33,7 @@ data class AiModelConfigDo(
     var temperature: BigDecimal? = null
     var topP: BigDecimal? = null
     var topK: Int? = null
-    var maxTokens: Int? = 80_000
+    var maxTokens: Int? = 128_000
 
     var enabled: Boolean = true
 

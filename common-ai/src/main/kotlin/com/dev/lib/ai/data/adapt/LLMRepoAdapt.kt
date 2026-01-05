@@ -14,6 +14,6 @@ class LLMRepoAdapt(
         val model = dao.load(AiModelConfigDao.Q().apply {
             bizId = id
         }).orNull()
-        return model?.toLLM(80_000)
+        return model?.toLLM(128_000)
     }
 }

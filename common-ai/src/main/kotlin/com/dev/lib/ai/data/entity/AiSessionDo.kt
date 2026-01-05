@@ -31,7 +31,7 @@ data class AiSessionDo(
     var summary: String? = null
 
     var tokens: Int = 0
-    var tokenLimit: Int = 80_000
+    var tokenLimit: Int = 128_000
     var threshold: BigDecimal = BigDecimal("0.85")
 
     @OneToMany(mappedBy = "session", cascade = [CascadeType.REMOVE], orphanRemoval = true)

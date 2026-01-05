@@ -1,6 +1,7 @@
 package com.dev.lib.ai.trigger.request
 
 import jakarta.validation.constraints.NotBlank
+import org.hibernate.validator.constraints.Length
 
 class AgentChatRequest {
 
@@ -20,6 +21,7 @@ class AgentChatRequest {
          * 用户输入提示词
          */
         @field:NotBlank(message = "对话内容不能为空")
+        @field:Length(max = 8192, message = "对话内容长度不能超过8192个字符")
         val prompt: String,
 
         /**
