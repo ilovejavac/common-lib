@@ -4,4 +4,4 @@ import com.dev.lib.exceptions.BizException
 
 data class AiAgentException(
     val err: AiAgentErrorCode
-) : BizException(err.code, err.message)
+) : BizException(err.code, err.msg)

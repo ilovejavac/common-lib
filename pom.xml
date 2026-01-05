@@ -135,9 +135,20 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <!-- 禁用默认的 javac compile -->
+                            <execution>
+                                <id>default-compile</id>
+                                <phase>none</phase>
+                            </execution>
+                            <!-- 禁用默认的 javac test-compile -->
+                            <execution>
+                                <id>default-testCompile</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
                         <configuration>
                             <proc>none</proc>
-                            <parameters>true</parameters>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -615,13 +626,14 @@
                     </execution>
                     <execution>
                         <id>compile</id>
-                        <phase>process-sources</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
                         <configuration>
                             <sourceDirs>
                                 <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                                <sourceDir>${project.build.directory}/generated-sources/kapt/compile</sourceDir>
                             </sourceDirs>
                         </configuration>
                     </execution>
