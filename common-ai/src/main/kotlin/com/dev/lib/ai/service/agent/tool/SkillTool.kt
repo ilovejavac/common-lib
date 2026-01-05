@@ -1,9 +1,13 @@
 package com.dev.lib.ai.service.agent.tool
 
+import com.dev.lib.storage.domain.service.FileService
+
 /**
  * 加载 skill.md
  */
-class SkillTool {
+class SkillTool (
+    val fileService: FileService
+) {
 
     fun loadSkill(skillName: String): String {
 
