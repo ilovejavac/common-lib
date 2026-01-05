@@ -1,5 +1,7 @@
 package com.dev.lib.ai.service
 
+import com.dev.lib.ai.model.AiAgentErrorCode
+import com.dev.lib.ai.model.AiAgentException
 import com.dev.lib.ai.repo.AiLLMRepo
 import com.dev.lib.ai.repo.AiSessionStore
 import com.dev.lib.ai.service.agent.session.SessionInterceptor
@@ -29,12 +31,17 @@ class AiService(
             interceptor.perHandle(SecurityContextHolder.get(), cmd)
         }
 
-        // 加载历史对话 session(history,ace)
+        if (!store.tryAcquire(cmd.session)) {
+            throw AiAgentException(AiAgentErrorCode.CONCURRENT_CHAT_ERROR)
+        }
+
         val session = store.loadSession(cmd.session, cmd.model?.let {
             llmRepo.loadLLM(it)
         })
 
-        return session.generate(cmd.prompt)
+        return session.generate(cmd.prompt) {
+            store.release(cmd.session)
+        }
     }
 
     fun opensession(): String {

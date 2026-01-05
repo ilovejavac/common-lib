@@ -26,5 +26,5 @@ interface ChatSession {
 
     fun workingMemory(prompt: String): List<ChatItem>
 
-    fun generate(prompt: String): ChatSSE
+    fun generate(prompt: String, block: () -> Unit): ChatSSE
 }

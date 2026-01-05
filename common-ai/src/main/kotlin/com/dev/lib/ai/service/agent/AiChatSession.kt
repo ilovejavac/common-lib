@@ -40,16 +40,15 @@ class AiChatSession(
         return messages
     }
 
-    override fun generate(prompt: String): ChatSSE {
+    override fun generate(prompt: String, block: () -> Unit): ChatSSE {
         val sse = ChatSSE()
 
         val job = CoroutineScopeHolder.launch {
             agent.run(prompt, this@AiChatSession, sse)
         }
 
-        return sse.timeout {
-            job.cancel()
-        }.error {
+        return sse.completion {
+            block()
             job.cancel()
         }
     }
