@@ -7,4 +7,6 @@ enum class ModelEndpoint(
     OPENAI("openai", "/v1"),
     ANTHROPIC("Anthropic", "/v1"),
     ;
+
+    fun path_of(endpoint: String): String = endpoint + path;
 }

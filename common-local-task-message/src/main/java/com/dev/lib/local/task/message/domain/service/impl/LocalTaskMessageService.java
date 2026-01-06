@@ -29,7 +29,7 @@ public class LocalTaskMessageService implements LocalTaskMessageHandleService {
             event.publish(cmd);
         } catch (Exception e) {
             log.error("受理任务消息执行失败 {}", cmd, e);
-            throw new BizException(50060, "受理任务消息执行失败");
+            throw new BizException(103003, "受理任务消息执行失败");
         }
     }
 

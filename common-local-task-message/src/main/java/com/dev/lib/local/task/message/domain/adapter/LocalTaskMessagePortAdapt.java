@@ -26,7 +26,7 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
             TaskMessageEntityCommand.NotifyConfig.Http config =
                     Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getHttp)
                             .orElseThrow(() -> new BizException(
-                                    50040,
+                                    103001,
                                     "没有配置 http"
                             ));
 
@@ -47,7 +47,7 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
         TaskMessageEntityCommand.NotifyConfig.Rabbit config =
                 Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getRabbit)
                         .orElseThrow(() -> new BizException(
-                                50041,
+                                103002,
                                 "没有配置 rabbitmq"
                         ));
 

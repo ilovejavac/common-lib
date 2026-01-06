@@ -70,10 +70,7 @@ public class DictController {
     @PostMapping("/api/dict/type/{id}/add-item")
     public ServerResponse<Void> addItem(@RequestBody DictItemDTO.CreateItem cmd, @PathVariable String id) {
 
-        adapt.addItem(
-                id,
-                cmd
-        );
+        adapt.addItem(id, cmd);
 
         return ServerResponse.ok();
     }
@@ -110,16 +107,10 @@ public class DictController {
     ) {
 
         if (!StringUtils.hasText(id)) {
-            throw new BizException(
-                    4101,
-                    "请指定字典类型 id"
-            );
+            throw new BizException(102001, "请指定字典类型 id");
         }
 
-        return adapt.pageItem(
-                id,
-                request
-        );
+        return adapt.pageItem(id, request);
     }
 
 }

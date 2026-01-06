@@ -32,7 +32,7 @@ public class TaskNotifyService implements ITaskNotifyService, InitializingBean {
             return notifier.apply(command);
         }
 
-        throw new BizException(50050, "消息通知处理器不存在");
+        throw new BizException(103004, "消息通知处理器不存在");
     }
 
     @Override

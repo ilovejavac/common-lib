@@ -6,7 +6,7 @@ public class TokenException extends BizException {
 
     public TokenException(String message) {
 
-        super(970, message);
+        super(104001, message);
     }
 
 }

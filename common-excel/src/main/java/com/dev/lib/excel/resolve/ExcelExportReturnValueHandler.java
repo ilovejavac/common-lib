@@ -63,13 +63,7 @@ public class ExcelExportReturnValueHandler implements HandlerMethodReturnValueHa
         // 2. 处理文件名编码
         String fileName = ExcelUtils.resolveFileName(annotation.fileName());
         // UTF-8编码，替换+为%20避免空格问题
-        String encodedName = URLEncoder.encode(
-                fileName,
-                StandardCharsets.UTF_8
-        ).replace(
-                "+",
-                "%20"
-        );
+        String encodedName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
 
         // 3. 设置基础响应头
         response.setContentType(CONTENT_TYPE);
@@ -88,10 +82,7 @@ public class ExcelExportReturnValueHandler implements HandlerMethodReturnValueHa
 
         // 5. 写入Excel数据到响应流
         Class<?> dataClass = ExcelUtils.extractReturnGenericType(returnType);
-        FastExcelFactory.write(
-                        response.getOutputStream(),
-                        dataClass
-                )
+        FastExcelFactory.write(response.getOutputStream(), dataClass)
                 .sheet(annotation.sheetName())
                 .doWrite((Collection<?>) returnValue);
     }
@@ -109,10 +100,7 @@ public class ExcelExportReturnValueHandler implements HandlerMethodReturnValueHa
         HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
 
         if (request == null) {
-            log.warn(
-                    "获取HttpServletRequest失败，使用默认Excel加载方式: {}",
-                    defaultAction
-            );
+            log.warn("获取HttpServletRequest失败，使用默认Excel加载方式: {}", defaultAction);
             return defaultAction;
         }
 
@@ -126,12 +114,7 @@ public class ExcelExportReturnValueHandler implements HandlerMethodReturnValueHa
         try {
             return ExcelLoadAction.valueOf(actionStr.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn(
-                    "无效的ExcelLoadAction请求头值: {}，使用默认值: {}",
-                    actionStr,
-                    defaultAction,
-                    e
-            );
+            log.warn("无效的ExcelLoadAction请求头值: {}，使用默认值: {}", actionStr, defaultAction, e);
             return defaultAction;
         }
     }

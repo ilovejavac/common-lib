@@ -16,7 +16,7 @@ public interface TaskMessageRepository extends BaseRepository<LocalTaskMessagePo
 
         private List<Integer> houseNumberIn;
 
-        private Long          idGe;
+        private Long idGe;
 
     }
 

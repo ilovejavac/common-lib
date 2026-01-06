@@ -6,7 +6,7 @@ enum class AiAgentErrorCode(
     val code: Int,
     val msg: String
 ) : CodeEnums {
-    CONCURRENT_CHAT_ERROR(1010, "并发访问冲突");
+    CONCURRENT_CHAT_ERROR(101001, "并发访问冲突");
 
     override fun getCode(): Int = this.code
 

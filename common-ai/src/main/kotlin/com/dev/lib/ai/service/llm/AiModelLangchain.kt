@@ -33,7 +33,7 @@ data class AiModelLangchain(
     private val streamingClient: StreamingChatModel by lazy {
         when (endpoint) {
             ModelEndpoint.OPENAI -> OpenAiStreamingChatModel.builder()
-                .baseUrl(baseUrl + ModelEndpoint.OPENAI.path)
+                .baseUrl(ModelEndpoint.OPENAI.path_of(baseUrl))
                 .apiKey(apiKey)
                 .modelName(model)
                 .temperature(temperature?.toDouble())
@@ -41,7 +41,7 @@ data class AiModelLangchain(
                 .maxTokens(maxTokens).build()
 
             ModelEndpoint.ANTHROPIC -> AnthropicStreamingChatModel.builder()
-                .baseUrl(baseUrl + ModelEndpoint.ANTHROPIC.path)
+                .baseUrl(ModelEndpoint.ANTHROPIC.path_of(baseUrl))
                 .apiKey(apiKey)
                 .modelName(model)
                 .temperature(temperature?.toDouble())

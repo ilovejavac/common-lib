@@ -62,7 +62,7 @@ public class PermissionValidator implements InitializingBean {
         // 6. 必须登录
         if (!SecurityContextHolder.isLogin()) {
             throw new BizException(
-                    401,
+                    104101,
                     "认证失败，请先登录"
             );
         }
@@ -72,7 +72,7 @@ public class PermissionValidator implements InitializingBean {
         if (methodRole != null) {
             if (!permissionService.hasRole(methodRole.value())) {
                 throw new BizException(
-                        403,
+                        104102,
                         "无权限访问"
                 );
             }
@@ -83,7 +83,7 @@ public class PermissionValidator implements InitializingBean {
         RequireRole classRole = controllerClass.getAnnotation(RequireRole.class);
         if (classRole != null && !permissionService.hasRole(classRole.value())) {
             throw new BizException(
-                    403,
+                    104102,
                     "无权限访问"
             );
         }
@@ -93,7 +93,7 @@ public class PermissionValidator implements InitializingBean {
         if (methodPermission != null) {
             if (!permissionService.hasPermission(methodPermission.value())) {
                 throw new BizException(
-                        403,
+                        104103,
                         "无权限访问"
                 );
             }
@@ -104,7 +104,7 @@ public class PermissionValidator implements InitializingBean {
         RequirePermission classPermission = controllerClass.getAnnotation(RequirePermission.class);
         if (classPermission != null && !permissionService.hasPermission(classPermission.value())) {
             throw new BizException(
-                    403,
+                    104103,
                     "无权限访问"
             );
         }

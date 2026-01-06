@@ -16,13 +16,13 @@ public class DictItemDTO {
     @Data
     public static class CreateItem {
 
-        private String       itemCode;
+        private String itemCode;
 
-        private String       itemLabel;
+        private String itemLabel;
 
-        private String       css;
+        private String css;
 
-        private Integer      sort;
+        private Integer sort;
 
         private EntityStatus status;
 

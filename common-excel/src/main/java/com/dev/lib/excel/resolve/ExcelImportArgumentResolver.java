@@ -47,11 +47,7 @@ public class ExcelImportArgumentResolver implements HandlerMethodArgumentResolve
         }
 
         Class<?> dataClass = ExcelUtils.extractGenericType(parameter);
-        return FastExcelFactory.read(
-                        file.getInputStream(),
-                        dataClass,
-                        null
-                )
+        return FastExcelFactory.read(file.getInputStream(), dataClass, null)
                 .sheet()
                 .doReadSync();
     }

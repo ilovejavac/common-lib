@@ -16,11 +16,11 @@ public class DictTypeDTO {
     @Data
     public static class CreateType {
 
-        private String       typeCode;
+        private String typeCode;
 
-        private String       typeName;
+        private String typeName;
 
-        private Integer      sort;
+        private Integer sort;
 
         private EntityStatus status;
 

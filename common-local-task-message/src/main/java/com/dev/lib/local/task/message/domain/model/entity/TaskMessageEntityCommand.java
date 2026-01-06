@@ -33,9 +33,9 @@ public class TaskMessageEntityCommand implements Serializable {
         @Data
         public static class Rabbit {
 
-            private String              topic;
+            private String topic;
 
-            private String              exchange;
+            private String exchange;
 
             private Map<String, Object> payload;  // 任务参数
 
@@ -45,15 +45,15 @@ public class TaskMessageEntityCommand implements Serializable {
         public static class Http {
 
             @RequestUrl
-            private String              url;
+            private String url;
 
-            private String              method;
-
-            @Header
-            private String              contentType;
+            private String method;
 
             @Header
-            private String              authorization;
+            private String contentType;
+
+            @Header
+            private String authorization;
 
             @RequestData
             private Map<String, Object> payload;  // 任务参数
@@ -62,7 +62,7 @@ public class TaskMessageEntityCommand implements Serializable {
 
         private Rabbit rabbit;
 
-        private Http   http;
+        private Http http;
 
     }
 
