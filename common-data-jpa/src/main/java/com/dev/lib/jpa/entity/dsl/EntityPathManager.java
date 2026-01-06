@@ -15,7 +15,7 @@ public class EntityPathManager {
 
     }
 
-    private static final Map<Class<?>, EntityPathBase<?>> CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, EntityPathBase<?>> CACHE = new ConcurrentHashMap<>(128);
 
     @SuppressWarnings("unchecked")
     public static <E> EntityPathBase<E> getEntityPath(Class<E> entityClass) {

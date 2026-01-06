@@ -3,6 +3,7 @@ package com.dev.lib.ai.service
 import com.dev.lib.ai.repo.AiLLMRepo
 import com.dev.lib.ai.repo.AiSessionStore
 import com.dev.lib.ai.service.agent.session.SessionInterceptor
+import com.dev.lib.ai.service.agent.tool.skill.SkillToolManager
 import com.dev.lib.ai.trigger.request.AgentChatRequest
 import com.dev.lib.log
 import com.dev.lib.security.util.SecurityContextHolder
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 class AiService(
     val store: AiSessionStore,
     val llmRepo: AiLLMRepo,
+    val skillToolManager: SkillToolManager,
     val interceptors: List<SessionInterceptor>
 ) {
 
@@ -33,6 +35,7 @@ class AiService(
         val session = store.loadSession(cmd.session, cmd.model?.let {
             llmRepo.loadLLM(it)
         })
+        session.skillToolManager = skillToolManager
 
         return session.generate(cmd.prompt) {
             for (interceptor in interceptors) {

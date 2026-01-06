@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class JpaRelationResolver implements RelationResolver {
 
-    private static final Map<String, RelationInfo> CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, RelationInfo> CACHE = new ConcurrentHashMap<>(512);
 
     @PostConstruct
     public void init() {

@@ -5,6 +5,7 @@ import com.dev.lib.ai.model.AceItem
 import com.dev.lib.ai.model.ChatItem
 import com.dev.lib.ai.model.ChatResponse
 import com.dev.lib.ai.model.ChatSSE
+import com.dev.lib.ai.service.agent.tool.skill.SkillToolManager
 import com.dev.lib.ai.service.llm.LLM
 
 /**
@@ -22,9 +23,11 @@ class AiChatSession(
     override val acePayload: MutableList<AceItem> = mutableListOf()
 ) : ChatSession {
 
+    override lateinit var skillToolManager: SkillToolManager
     override lateinit var response: ChatResponse
 
     override fun workingMemory(prompt: String): List<ChatItem> {
+        skillToolManager.to_prompt()
         val messages = mutableListOf<ChatItem>()
 
 //        messages += ChatItem.system("")

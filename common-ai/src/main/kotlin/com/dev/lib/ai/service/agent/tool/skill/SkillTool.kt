@@ -1,4 +1,4 @@
-package com.dev.lib.ai.service.agent.tool
+package com.dev.lib.ai.service.agent.tool.skill
 
 import com.dev.lib.storage.domain.service.FileService
 

@@ -40,7 +40,7 @@ public class FieldMetaCache {
 
     }
 
-    private static final Map<Class<?>, ClassMeta> CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, ClassMeta> CACHE = new ConcurrentHashMap<>(512);
 
     public static ClassMeta getMeta(Class<?> queryClass) {
 
@@ -105,21 +105,21 @@ public class FieldMetaCache {
         QueryFieldParser.ParsedField parsed    = QueryFieldParser.parse(field.getName());
 
         // 合并注解和后缀解析结果（注解优先）
-        String          targetField = resolveTargetField(
+        String targetField = resolveTargetField(
                 condition,
                 parsed
         );
-        QueryType       queryType   = resolveQueryType(
+        QueryType queryType = resolveQueryType(
                 condition,
                 parsed
         );
-        LogicalOperator operator    = resolveOperator(
+        LogicalOperator operator = resolveOperator(
                 condition,
                 parsed
         );
-        String          select      = condition != null ? condition.select() : "";
-        String          orderBy     = condition != null ? condition.orderBy() : "";
-        boolean         desc        = condition == null || condition.desc();
+        String  select  = condition != null ? condition.select() : "";
+        String  orderBy = condition != null ? condition.orderBy() : "";
+        boolean desc    = condition == null || condition.desc();
 
         // 判断字段元数据类型
         FieldMetaType metaType = determineMetaType(
@@ -270,12 +270,12 @@ public class FieldMetaCache {
 
         // 3. 注解 field 直接指向 JPA 关联字段 → 子查询
         if (condition != null && StringUtils.hasText(condition.field()) && entityClass != null) {
-            String       fieldPath = condition.field();
-            String       firstPart = fieldPath.contains(".") ? fieldPath.substring(
+            String fieldPath = condition.field();
+            String firstPart = fieldPath.contains(".") ? fieldPath.substring(
                     0,
                     fieldPath.indexOf(".")
             ) : fieldPath;
-            RelationInfo relation  = resolveRelation(
+            RelationInfo relation = resolveRelation(
                     entityClass,
                     firstPart
             );
@@ -377,14 +377,14 @@ public class FieldMetaCache {
      */
     public static class FieldMeta {
 
-        private final Field           field;
+        private final Field field;
 
-        private final FieldMetaType   metaType;
+        private final FieldMetaType metaType;
 
         private final LogicalOperator operator;
 
         // CONDITION 字段
-        private final String    targetField;
+        private final String targetField;
 
         private final QueryType queryType;
 
@@ -392,20 +392,20 @@ public class FieldMetaCache {
         private final List<FieldMeta> nestedMetas;
 
         // SUB_QUERY 字段（关联子查询）
-        private final RelationInfo    relationInfo;
+        private final RelationInfo relationInfo;
 
         private final List<FieldMeta> filterMetas;
 
-        private final String          select;
+        private final String select;
 
-        private final String          orderBy;
+        private final String orderBy;
 
-        private final boolean         desc;
+        private final boolean desc;
 
         // SUB_QUERY 字段（同表子查询）
         private final Class<?> targetEntityClass;
 
-        private final String   parentField;
+        private final String parentField;
 
         private FieldMeta(Field field, FieldMetaType metaType, LogicalOperator operator,
                           String targetField, QueryType queryType,

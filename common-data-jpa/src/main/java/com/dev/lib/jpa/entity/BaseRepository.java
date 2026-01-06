@@ -1,6 +1,8 @@
 package com.dev.lib.jpa.entity;
 
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.jpa.entity.dsl.FieldSelector;
+import com.dev.lib.jpa.entity.dsl.SFunction;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,54 +16,81 @@ import java.util.stream.Stream;
 @NoRepositoryBean
 public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
 
-    // 查询修饰符
-    default RepositoryQuery<T> lockForUpdate() {
+    // ==================== 构建器入口 ====================
 
-        return new RepositoryQuery<>(this, new QueryContext().lockForUpdate());
+    default QueryBuilder<T> lockForUpdate() {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).lockForUpdate();
     }
 
-    default RepositoryQuery<T> lockForShare() {
-
-        return new RepositoryQuery<>(this, new QueryContext().lockForShare());
+    default QueryBuilder<T> lockForShare() {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).lockForShare();
     }
 
-    default RepositoryQuery<T> withDeleted() {
-
-        return new RepositoryQuery<>(this, new QueryContext().withDeleted());
+    default QueryBuilder<T> withDeleted() {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).withDeleted();
     }
 
-    default RepositoryQuery<T> onlyDeleted() {
-
-        return new RepositoryQuery<>(this, new QueryContext().onlyDeleted());
+    default QueryBuilder<T> onlyDeleted() {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).onlyDeleted();
     }
 
-    default PhysicalDeleteRepository<T> physicalDelete() {
+    @SuppressWarnings("unchecked")
+    default QueryBuilder<T> select(SFunction<T, ?>... fields) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(fields);
+    }
 
-        return new PhysicalDeleteRepository<>(this);
+    @SuppressWarnings("unchecked")
+    default QueryBuilder<T> select(FieldSelector<T>... selectors) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(selectors);
+    }
+
+    default QueryBuilder<T> select(String... fieldNames) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).selectByNames(fieldNames);
+    }
+
+    // ==================== 直接查询 ====================
+
+    Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);
+
+    default Optional<T> load(BooleanExpression... expressions) {
+        return load(null, expressions);
+    }
+
+    List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions);
+
+    default List<T> loads(BooleanExpression... expressions) {
+        return loads(null, expressions);
+    }
+
+    Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions);
+
+    long count(DslQuery<T> dslQuery, BooleanExpression... expressions);
+
+    default long count(BooleanExpression... expressions) {
+        return count(null, expressions);
+    }
+
+    boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions);
+
+    default boolean exists(BooleanExpression... expressions) {
+        return exists(null, expressions);
+    }
+
+    Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions);
+
+    default Stream<T> stream(BooleanExpression... expressions) {
+        return stream(null, expressions);
     }
 
     void delete(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-    /**
-     * 流式查询，适合大数据量场景
-     * <p><b>重要：必须使用 try-with-resources 或手动 close</b></p>
-     * <pre>
-     * try (Stream<User> stream = repo.stream(query)) {
-     *     stream.forEach(...);
-     * }
-     * </pre>
-     */
-    Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions);
+    default void delete(BooleanExpression... expressions) {
+        delete(null, expressions);
+    }
 
-    Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);
+    // ==================== 物理删除 ====================
 
-    List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-    Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-    boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-    long count(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
+    default PhysicalDeleteRepository<T> physicalDelete() {
+        return new PhysicalDeleteRepository<>(this);
+    }
 }
-

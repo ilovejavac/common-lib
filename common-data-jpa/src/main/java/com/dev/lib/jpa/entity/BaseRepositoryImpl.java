@@ -4,14 +4,13 @@ import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
+import com.dev.lib.jpa.entity.dsl.SelectBuilder;
 import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.util.StringUtils;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.types.EntityPath;
-import com.querydsl.core.types.Order;
-import com.querydsl.core.types.OrderSpecifier;
-import com.querydsl.core.types.Predicate;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.*;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.BooleanPath;
 import com.querydsl.core.types.dsl.PathBuilder;
@@ -24,6 +23,7 @@ import jakarta.persistence.OneToOne;
 import org.hibernate.Hibernate;
 import org.hibernate.jpa.HibernateHints;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.support.JpaEntityInformation;
 import org.springframework.data.jpa.repository.support.QuerydslJpaPredicateExecutor;
@@ -43,10 +43,9 @@ import java.util.stream.Stream;
 
 public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository<T, Long> implements BaseRepository<T> {
 
-    /**
-     * 级联删除字段缓存：Class -> 需要级联删除的字段列表
-     */
-    private static final Map<Class<?>, List<Field>> CASCADE_FIELDS_CACHE = new ConcurrentHashMap<>();
+    private static final int BATCH_SIZE = 512;
+
+    private static final Map<Class<?>, List<Field>> CASCADE_FIELDS_CACHE = new ConcurrentHashMap<>(128);
 
     private final EntityManager entityManager;
 
@@ -60,9 +59,8 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private final BooleanPath deletedPath;
 
-    /**
-     * 当前实体是否有级联删除字段（缓存结果，避免重复计算）
-     */
+    private final Class<T> entityClass;
+
     private final boolean hasCascadeFields;
 
     public BaseRepositoryImpl(JpaEntityInformation<T, Long> entityInformation, EntityManager em) {
@@ -72,36 +70,50 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         this.queryFactory = new JPAQueryFactory(em);
         this.path = SimpleEntityPathResolver.INSTANCE.createPath(entityInformation.getJavaType());
         this.pathBuilder = new PathBuilder<>(path.getType(), path.getMetadata());
-
+        this.entityClass = entityInformation.getJavaType();
         this.querydslExecutor = new QuerydslJpaPredicateExecutor<>(
-                entityInformation,
-                em,
-                SimpleEntityPathResolver.INSTANCE,
-                null
+                entityInformation, em, SimpleEntityPathResolver.INSTANCE, null
         );
         this.deletedPath = resolvePath("deleted", BooleanPath.class);
-        // 初始化时计算一次，避免每次删除都重复计算
         this.hasCascadeFields = !getCascadeFields(path.getType()).isEmpty();
     }
 
-    // ========== 查询（默认排除已删除）==========
+    // ==================== Getter ====================
+
+    Class<T> getEntityClass() {
+
+        return entityClass;
+    }
+
+    PathBuilder<T> getPathBuilder() {
+
+        return pathBuilder;
+    }
+
+    // ==================== 公开接口方法（默认上下文）====================
 
     @Override
     public Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return load(new QueryContext(), dslQuery, expressions);
+        return load(new QueryContext(), null, entityClass, dslQuery, expressions);
     }
 
     @Override
     public List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return loads(new QueryContext(), dslQuery, expressions);
+        return loads(new QueryContext(), null, entityClass, dslQuery, expressions);
     }
 
     @Override
     public Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return page(new QueryContext(), dslQuery, expressions);
+        return page(new QueryContext(), null, entityClass, dslQuery, expressions);
+    }
+
+    @Override
+    public Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        return stream(new QueryContext(), null, entityClass, dslQuery, expressions);
     }
 
     @Override
@@ -116,11 +128,169 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         return count(new QueryContext(), dslQuery, expressions);
     }
 
-    // ========== 查询（带上下文）==========
+    // ==================== 核心查询方法（统一入口）====================
 
-    Optional<T> load(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    /**
+     * 统一查询单条
+     *
+     * @param ctx         查询上下文
+     * @param select      字段选择器，null 表示全字段
+     * @param resultClass 返回类型
+     */
+    @SuppressWarnings("unchecked")
+    <D> Optional<D> load(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        // 全字段查询走优化路径
+        if (select == null && resultClass == entityClass) {
+            return (Optional<D>) loadFullEntity(ctx, dslQuery, expressions);
+        }
+
+        List<D> results = doQuery(ctx, select, resultClass, dslQuery, expressions, 1);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
+    /**
+     * 统一查询多条
+     */
+    @SuppressWarnings("unchecked")
+    <D> List<D> loads(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        if (select == null && resultClass == entityClass) {
+            return (List<D>) loadsFullEntity(ctx, dslQuery, expressions);
+        }
+
+        return doQuery(ctx, select, resultClass, dslQuery, expressions, null);
+    }
+
+    /**
+     * 统一分页查询
+     */
+    @SuppressWarnings("unchecked")
+    <D> Page<D> page(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        if (ctx.hasLock()) {
+            throw new UnsupportedOperationException("分页不支持加锁");
+        }
+
+        if (select == null && resultClass == entityClass) {
+            return (Page<D>) pageFullEntity(ctx, dslQuery, expressions);
+        }
+
+        List<D> content = doQuery(ctx, select, resultClass, dslQuery, expressions, null);
+        long    total   = count(ctx, dslQuery, expressions);
+        return new PageImpl<>(content, dslQuery.toPageable(null), total);
+    }
+
+    /**
+     * 统一流式查询
+     */
+    @SuppressWarnings("unchecked")
+    <D> Stream<D> stream(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        if (ctx.hasLock()) {
+            throw new UnsupportedOperationException("流式查询不支持加锁");
+        }
+
+        if (select == null && resultClass == entityClass) {
+            return (Stream<D>) streamFullEntity(ctx, dslQuery, expressions);
+        }
+
+        return doStreamQuery(ctx, select, resultClass, dslQuery, expressions);
+    }
+
+    /**
+     * 统一计数
+     */
+    long count(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        return querydslExecutor.count(buildPredicate(ctx, dslQuery, expressions));
+    }
+
+    /**
+     * 统一存在判断
+     */
+    boolean exists(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        return querydslExecutor.exists(buildPredicate(ctx, dslQuery, expressions));
+    }
+
+    // ==================== 内部查询实现 ====================
+
+    /**
+     * 执行部分字段查询
+     */
+    @SuppressWarnings("unchecked")
+    private <D> List<D> doQuery(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression[] expressions, Integer limit) {
+
+        Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
+
+        Expression<?>[] selectExprs = select.buildExpressions(pathBuilder);
+
+        JPAQuery<Tuple> query = queryFactory.select(selectExprs).from(path);
 
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
+        if (predicate != null) {
+            query.where(predicate);
+        }
+
+        if (ctx.hasLock()) {
+            query.setLockMode(ctx.getLockMode());
+        }
+
+        if (dslQuery != null) {
+            applySort(query, dslQuery);
+            if (limit == null) {
+                applyLimit(query, dslQuery);
+            }
+        }
+
+        if (limit != null) {
+            query.limit(limit);
+        }
+
+        List<Tuple> tuples = query.fetch();
+
+        if (resultClass == entityClass) {
+            return (List<D>) tuples.stream().map(select::toEntity).toList();
+        }
+        return tuples.stream().map(t -> select.toDto(t, resultClass)).toList();
+    }
+
+    /**
+     * 执行部分字段流式查询
+     */
+    @SuppressWarnings("unchecked")
+    private <D> Stream<D> doStreamQuery(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression[] expressions) {
+
+        Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
+
+        Expression<?>[] selectExprs = select.buildExpressions(pathBuilder);
+
+        JPAQuery<Tuple> query = queryFactory.select(selectExprs).from(path);
+
+        Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
+        if (predicate != null) {
+            query.where(predicate);
+        }
+
+        query.setHint(HibernateHints.HINT_FETCH_SIZE, BATCH_SIZE * 2);
+
+        if (dslQuery != null) {
+            applySort(query, dslQuery);
+        }
+
+        if (resultClass == entityClass) {
+            return (Stream<D>) query.stream().map(select::toEntity);
+        }
+        return query.stream().map(t -> select.toDto(t, resultClass));
+    }
+
+    // ==================== 全字段查询（优化路径）====================
+
+    private Optional<T> loadFullEntity(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
+
         if (ctx.hasLock()) {
             List<T> result = queryFactory.selectFrom(path)
                     .where(predicate)
@@ -133,9 +303,10 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         return querydslExecutor.findOne(predicate);
     }
 
-    List<T> loads(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    private List<T> loadsFullEntity(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
+
         if (ctx.hasLock()) {
             JPAQuery<T> query = queryFactory.selectFrom(path)
                     .where(predicate)
@@ -146,55 +317,54 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             }
             return query.fetch();
         }
+
         if (dslQuery != null && dslQuery.getLimit() != null) {
             return querydslExecutor.findAll(predicate, dslQuery.toPageable(getAllowFields(dslQuery)))
                     .getContent();
         }
+
         Sort sort = dslQuery != null ? dslQuery.toSort(getAllowFields(dslQuery)) : Sort.unsorted();
         return querydslExecutor.findAll(predicate, sort);
     }
 
-    Page<T> page(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    private Page<T> pageFullEntity(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        if (ctx.hasLock()) {
-            throw new UnsupportedOperationException("分页不支持加锁");
-        }
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
         return querydslExecutor.findAll(predicate, dslQuery.toPageable(getAllowFields(dslQuery)));
     }
 
-    long count(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    private Stream<T> streamFullEntity(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return querydslExecutor.count(buildPredicate(ctx, dslQuery, expressions));
-    }
+        Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
 
-    boolean exists(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+        JPAQuery<T> query = queryFactory.selectFrom(path).where(predicate);
+        query.setHint(HibernateHints.HINT_FETCH_SIZE, BATCH_SIZE * 2);
 
-        return querydslExecutor.exists(buildPredicate(ctx, dslQuery, expressions));
-    }
-
-    // ========== 逻辑删除（支持级联）==========
-    private boolean isEmptyPredicate(Predicate predicate) {
-
-        if (predicate == null) return true;
-        if (predicate instanceof BooleanBuilder bb) {
-            return !bb.hasValue();
+        if (dslQuery != null) {
+            applySort(query, dslQuery);
         }
-        return false;
+
+        return query.stream();
     }
+
+    // ==================== 删除 ====================
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-        // 1. 先校验业务条件
+
+        delete(new QueryContext(), dslQuery, expressions);
+    }
+
+    void delete(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
         Predicate businessPredicate = toPredicate(dslQuery, expressions);
         if (isEmptyPredicate(businessPredicate)) {
             throw new IllegalArgumentException("批量删除必须指定业务条件，防止误删全表");
         }
 
         if (hasCascadeFields) {
-            // 2. 级联删除需要完整条件来查询实体
-            Predicate   fullPredicate = buildPredicate(new QueryContext(), dslQuery, expressions);
+            Predicate   fullPredicate = buildPredicate(ctx, dslQuery, expressions);
             JPAQuery<T> query         = queryFactory.selectFrom(path).where(fullPredicate);
             if (dslQuery != null) {
                 applySort(query, dslQuery);
@@ -204,8 +374,12 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
                 cascadeSoftDeleteBatch(entities);
             }
         } else {
-            // 3. 非级联删除：只传业务条件，batchSoftDelete 会加 deleted=false
-            batchSoftDelete(businessPredicate);
+            BooleanBuilder where = new BooleanBuilder();
+            if (ctx.getDeletedFilter() == QueryContext.DeletedFilter.EXCLUDE_DELETED) {
+                where.and(deletedPath.eq(false));
+            }
+            where.and(businessPredicate);
+            batchSoftDelete(where);
         }
     }
 
@@ -216,7 +390,6 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         if (entity == null || entity.getId() == null) return;
 
         if (hasCascadeFields) {
-            // 优先使用已托管的实体，避免重复查询
             T managed = entityManager.contains(entity)
                         ? entity
                         : entityManager.find(path.getType(), entity.getId());
@@ -226,7 +399,6 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             }
         }
 
-        // 无级联或实体不存在：直接批量更新
         BooleanExpression idCondition = pathBuilder.getNumber("id", Long.class).eq(entity.getId());
         batchSoftDelete(idCondition);
     }
@@ -267,7 +439,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         if (!hasCascadeFields) {
             for (int i = 0; i < ids.size(); i += BATCH_SIZE) {
                 List<Long> batch = ids.subList(i, Math.min(i + BATCH_SIZE, ids.size()));
-                batchSoftDelete(pathBuilder.getNumber("id", Long.class).in(batch));  // ✅ 正确
+                batchSoftDelete(pathBuilder.getNumber("id", Long.class).in(batch));
             }
             return;
         }
@@ -294,15 +466,10 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
                 cascadeSoftDeleteBatch(all);
             }
         } else {
-            batchSoftDelete(null);  // ✅ 正确，batchSoftDelete 会加 deleted=false
+            batchSoftDelete(null);
         }
     }
 
-    /**
-     * 批量软删除
-     *
-     * @param businessPredicate 业务条件（不含 deleted 条件），可为 null
-     */
     private void batchSoftDelete(Predicate businessPredicate) {
 
         BooleanBuilder where = new BooleanBuilder();
@@ -324,15 +491,8 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         }
     }
 
-    /**
-     * 级联软删除（批量优化版）
-     * 收集所有需要软删除的实体，按类型分组后批量 UPDATE
-     */
-    private static final int BATCH_SIZE = 512;
-
     private void cascadeSoftDeleteBatch(List<T> rootEntities) {
 
-        // 如果实体已经加载了级联关系，直接用；否则用 fetch join 重新加载
         List<T> fullyLoadedEntities = ensureCascadeFieldsLoaded(rootEntities);
 
         Map<Class<?>, Set<Long>> toDeleteByType = new LinkedHashMap<>();
@@ -342,19 +502,17 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             collectCascadeEntities(entity, visited, toDeleteByType);
         }
 
-        // 按类型批量更新
         LocalDateTime now        = LocalDateTime.now();
         Long          modifierId = SecurityContextHolder.getUserId();
 
         for (Map.Entry<Class<?>, Set<Long>> entry : toDeleteByType.entrySet()) {
-            Class<?>   entityClass = entry.getKey();
-            List<Long> ids         = new ArrayList<>(entry.getValue());
+            Class<?>   clazz = entry.getKey();
+            List<Long> ids   = new ArrayList<>(entry.getValue());
 
             if (ids.isEmpty()) continue;
 
-            PathBuilder<?> builder = createPathBuilder(entityClass);
+            PathBuilder<?> builder = createPathBuilder(clazz);
 
-            // 分批更新
             for (int i = 0; i < ids.size(); i += BATCH_SIZE) {
                 List<Long> batch = ids.subList(i, Math.min(i + BATCH_SIZE, ids.size()));
 
@@ -371,155 +529,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         entityManager.clear();
     }
 
-    /**
-     * 确保级联字段已加载，避免 N+1
-     */
-    private List<T> ensureCascadeFieldsLoaded(List<T> entities) {
-
-        if (entities.isEmpty()) return entities;
-
-        // 检查是否需要重新加载
-        boolean needsReload = entities.stream().anyMatch(this::hasUninitializedCascadeFields);
-        if (!needsReload) {
-            return entities;
-        }
-
-        // 用 fetch join 重新加载（需要根据实际级联字段动态构建）
-        List<Long> ids = entities.stream().map(JpaEntity::getId).toList();
-
-        JPAQuery<T> query = queryFactory.selectFrom(path)
-                .where(pathBuilder.getNumber("id", Long.class).in(ids));
-
-        // 动态添加 fetch join
-        List<Field> cascadeFields = getCascadeFields(path.getType());
-        for (Field field : cascadeFields) {
-            // 注意：这里简化处理，实际可能需要处理嵌套级联
-            query.leftJoin(pathBuilder.getCollection(field.getName(), field.getType())).fetchJoin();
-        }
-
-        return query.fetch();
-    }
-
-    private boolean hasUninitializedCascadeFields(T entity) {
-
-        List<Field> cascadeFields = getCascadeFields(Hibernate.getClass(entity));
-        for (Field field : cascadeFields) {
-            Object value = ReflectionUtils.getField(field, entity);
-            if (!Hibernate.isInitialized(value)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private PathBuilder<?> createPathBuilder(Class<?> entityClass) {
-
-        String entityName   = entityClass.getSimpleName();
-        String variableName = Character.toLowerCase(entityName.charAt(0)) + entityName.substring(1);
-        return new PathBuilder<>(entityClass, variableName);
-    }
-
-    /**
-     * 递归收集所有需要级联删除的实体 ID
-     */
-    private void collectCascadeEntities(Object entity, Set<Object> visited,
-                                        Map<Class<?>, Set<Long>> toDeleteByType) {
-
-        if (entity == null || visited.contains(entity)) return;
-        visited.add(entity);
-
-        // 获取真实类型，而非代理类
-        Class<?> realClass = Hibernate.getClass(entity);
-
-        if (entity instanceof JpaEntity jpaEntity) {
-            if (Boolean.TRUE.equals(jpaEntity.getDeleted())) return;
-
-            toDeleteByType
-                    .computeIfAbsent(realClass, k -> new LinkedHashSet<>())
-                    .add(jpaEntity.getId());
-        }
-
-        List<Field> cascadeFields = getCascadeFields(realClass);
-        for (Field field : cascadeFields) {
-            Object value = ReflectionUtils.getField(field, entity);
-
-            // 检查是否已初始化
-            if (!Hibernate.isInitialized(value)) {
-                Hibernate.initialize(value);  // 显式初始化
-            }
-
-            if (value instanceof Collection<?> collection) {
-                for (Object item : collection) {
-                    collectCascadeEntities(item, visited, toDeleteByType);
-                }
-            } else if (value != null) {
-                collectCascadeEntities(value, visited, toDeleteByType);
-            }
-        }
-    }
-
-    /**
-     * 获取类的级联删除字段（带缓存）
-     */
-    private List<Field> getCascadeFields(Class<?> clazz) {
-
-        return CASCADE_FIELDS_CACHE.computeIfAbsent(clazz, this::resolveCascadeFields);
-    }
-
-    /**
-     * 解析类的级联删除字段
-     */
-    private List<Field> resolveCascadeFields(Class<?> clazz) {
-
-        List<Field> result = new ArrayList<>();
-
-        Class<?> current = clazz;
-        while (current != null && current != Object.class) {
-            for (Field field : current.getDeclaredFields()) {
-                if (shouldCascadeRemove(field)) {
-                    ReflectionUtils.makeAccessible(field);
-                    result.add(field);
-                }
-            }
-            current = current.getSuperclass();
-        }
-
-        return result;
-    }
-
-    /**
-     * 判断字段是否配置了级联删除
-     */
-    private boolean shouldCascadeRemove(Field field) {
-
-        OneToMany oneToMany = field.getAnnotation(OneToMany.class);
-        if (oneToMany != null) {
-            if (hasCascadeRemove(oneToMany.cascade()) || oneToMany.orphanRemoval()) {
-                return true;
-            }
-        }
-
-        OneToOne oneToOne = field.getAnnotation(OneToOne.class);
-        if (oneToOne != null) {
-            if (hasCascadeRemove(oneToOne.cascade()) || oneToOne.orphanRemoval()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private boolean hasCascadeRemove(CascadeType[] cascadeTypes) {
-
-        for (CascadeType type : cascadeTypes) {
-            if (type == CascadeType.REMOVE || type == CascadeType.ALL) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // ========== 物理删除 ==========
+    // ==================== 物理删除 ====================
 
     void hardDelete(T entity) {
 
@@ -564,7 +574,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     long hardDelete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        List<T> entities = loads(new QueryContext().withDeleted(), dslQuery, expressions);
+        List<T> entities = loads(new QueryContext().withDeleted(), null, entityClass, dslQuery, expressions);
         if (entities.isEmpty()) return 0;
 
         for (T entity : entities) {
@@ -574,21 +584,18 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         return entities.size();
     }
 
-    // ========== Predicate ==========
+    // ==================== Predicate 构建 ====================
 
-    private Predicate buildPredicate(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    Predicate buildPredicate(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         BooleanBuilder builder = new BooleanBuilder();
 
-        // 1. deleted（外层）
         switch (ctx.getDeletedFilter()) {
             case EXCLUDE_DELETED -> builder.and(deletedPath.eq(false));
             case ONLY_DELETED -> builder.and(deletedPath.eq(true));
         }
 
-        // 2. 插件条件（外层）
-        BooleanExpression pluginExpr = QueryPluginChain.getInstance()
-                .apply(pathBuilder, path.getType());
+        BooleanExpression pluginExpr = QueryPluginChain.getInstance().apply(pathBuilder, path.getType());
         if (pluginExpr != null) {
             builder.and(pluginExpr);
         }
@@ -615,12 +622,19 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             }
             return PredicateAssembler.assemble(query, fields.values(), expressions);
         }
-        return expressions.length == 0
-               ? null
-               : PredicateAssembler.assemble(null, null, expressions);
+        return expressions.length == 0 ? null : PredicateAssembler.assemble(null, null, expressions);
     }
 
-    // ========== 工具 ==========
+    private boolean isEmptyPredicate(Predicate predicate) {
+
+        if (predicate == null) return true;
+        if (predicate instanceof BooleanBuilder bb) {
+            return !bb.hasValue();
+        }
+        return false;
+    }
+
+    // ==================== 工具方法 ====================
 
     @SuppressWarnings("unchecked")
     private <P> P resolvePath(String fieldName, Class<P> type) {
@@ -632,20 +646,20 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         }
     }
 
-    private void applySort(JPAQuery<T> query, DslQuery<T> dslQuery) {
+    private void applySort(JPAQuery<?> query, DslQuery<T> dslQuery) {
 
         Sort sort = dslQuery.toSort(getAllowFields(dslQuery));
         if (sort.isUnsorted()) return;
-        PathBuilder<T> builder = new PathBuilder<>(path.getType(), path.getMetadata());
+
         for (Sort.Order order : sort) {
             query.orderBy(new OrderSpecifier<>(
                     order.isAscending() ? Order.ASC : Order.DESC,
-                    builder.getComparable(order.getProperty(), Comparable.class)
+                    pathBuilder.getComparable(order.getProperty(), Comparable.class)
             ));
         }
     }
 
-    private void applyLimit(JPAQuery<T> query, DslQuery<T> dslQuery) {
+    private void applyLimit(JPAQuery<?> query, DslQuery<T> dslQuery) {
 
         if (dslQuery.getLimit() != null) query.limit(dslQuery.getLimit());
         if (dslQuery.getOffset() != null) query.offset(dslQuery.getOffset());
@@ -659,7 +673,125 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
                 .collect(Collectors.toSet());
     }
 
-    // ========== 委托 QueryDSL ==========
+    private PathBuilder<?> createPathBuilder(Class<?> clazz) {
+
+        String entityName   = clazz.getSimpleName();
+        String variableName = Character.toLowerCase(entityName.charAt(0)) + entityName.substring(1);
+        return new PathBuilder<>(clazz, variableName);
+    }
+
+    // ==================== 级联字段处理 ====================
+
+    private List<T> ensureCascadeFieldsLoaded(List<T> entities) {
+
+        if (entities.isEmpty()) return entities;
+
+        boolean needsReload = entities.stream().anyMatch(this::hasUninitializedCascadeFields);
+        if (!needsReload) return entities;
+
+        List<Long> ids = entities.stream().map(JpaEntity::getId).toList();
+
+        JPAQuery<T> query = queryFactory.selectFrom(path)
+                .where(pathBuilder.getNumber("id", Long.class).in(ids));
+
+        List<Field> cascadeFields = getCascadeFields(path.getType());
+        for (Field field : cascadeFields) {
+            query.leftJoin(pathBuilder.getCollection(field.getName(), field.getType())).fetchJoin();
+        }
+
+        return query.fetch();
+    }
+
+    private boolean hasUninitializedCascadeFields(T entity) {
+
+        List<Field> cascadeFields = getCascadeFields(Hibernate.getClass(entity));
+        for (Field field : cascadeFields) {
+            Object value = ReflectionUtils.getField(field, entity);
+            if (!Hibernate.isInitialized(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void collectCascadeEntities(Object entity, Set<Object> visited, Map<Class<?>, Set<Long>> toDeleteByType) {
+
+        if (entity == null || visited.contains(entity)) return;
+        visited.add(entity);
+
+        Class<?> realClass = Hibernate.getClass(entity);
+
+        if (entity instanceof JpaEntity jpaEntity) {
+            if (Boolean.TRUE.equals(jpaEntity.getDeleted())) return;
+
+            toDeleteByType
+                    .computeIfAbsent(realClass, k -> new LinkedHashSet<>())
+                    .add(jpaEntity.getId());
+        }
+
+        List<Field> cascadeFields = getCascadeFields(realClass);
+        for (Field field : cascadeFields) {
+            Object value = ReflectionUtils.getField(field, entity);
+
+            if (!Hibernate.isInitialized(value)) {
+                Hibernate.initialize(value);
+            }
+
+            if (value instanceof Collection<?> collection) {
+                for (Object item : collection) {
+                    collectCascadeEntities(item, visited, toDeleteByType);
+                }
+            } else if (value != null) {
+                collectCascadeEntities(value, visited, toDeleteByType);
+            }
+        }
+    }
+
+    private List<Field> getCascadeFields(Class<?> clazz) {
+
+        return CASCADE_FIELDS_CACHE.computeIfAbsent(clazz, this::resolveCascadeFields);
+    }
+
+    private List<Field> resolveCascadeFields(Class<?> clazz) {
+
+        List<Field> result = new ArrayList<>();
+
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            for (Field field : current.getDeclaredFields()) {
+                if (shouldCascadeRemove(field)) {
+                    ReflectionUtils.makeAccessible(field);
+                    result.add(field);
+                }
+            }
+            current = current.getSuperclass();
+        }
+
+        return result;
+    }
+
+    private boolean shouldCascadeRemove(Field field) {
+
+        OneToMany oneToMany = field.getAnnotation(OneToMany.class);
+        if (oneToMany != null && (hasCascadeRemove(oneToMany.cascade()) || oneToMany.orphanRemoval())) {
+            return true;
+        }
+
+        OneToOne oneToOne = field.getAnnotation(OneToOne.class);
+        return oneToOne != null && (hasCascadeRemove(oneToOne.cascade()) || oneToOne.orphanRemoval());
+    }
+
+    private boolean hasCascadeRemove(CascadeType[] cascadeTypes) {
+
+        for (CascadeType type : cascadeTypes) {
+            if (type == CascadeType.REMOVE || type == CascadeType.ALL) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ==================== 委托 QueryDSL ====================
 
     @Override
     public Optional<T> findOne(Predicate predicate) {
@@ -713,31 +845,6 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     public <S extends T, R> R findBy(Predicate predicate, Function<FluentQuery.FetchableFluentQuery<S>, R> queryFunction) {
 
         return querydslExecutor.findBy(predicate, queryFunction);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        return stream(new QueryContext(), dslQuery, expressions);
-    }
-
-    Stream<T> stream(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        if (ctx.hasLock()) {
-            throw new UnsupportedOperationException("流式查询不支持加锁");
-        }
-
-        Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
-
-        JPAQuery<T> query = queryFactory.selectFrom(path).where(predicate);
-        query.setHint(HibernateHints.HINT_FETCH_SIZE, BATCH_SIZE + BATCH_SIZE);
-
-        if (dslQuery != null) {
-            applySort(query, dslQuery);
-        }
-
-        return query.stream();
     }
 
 }
