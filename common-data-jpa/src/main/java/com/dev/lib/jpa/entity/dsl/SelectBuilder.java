@@ -4,6 +4,8 @@ import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.dsl.PathBuilder;
 import lombok.Getter;
+import org.apache.el.util.ReflectionUtil;
+import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -105,7 +107,7 @@ public class SelectBuilder<T> {
     private <D> D tryCreateWithNoArg(Class<D> targetClass, ClassFieldCache cache, Map<String, Object> values) {
         try {
             Constructor<D> constructor = targetClass.getDeclaredConstructor();
-            constructor.setAccessible(true);
+            ReflectionUtils.makeAccessible(constructor);
             D instance = constructor.newInstance();
 
             for (Map.Entry<String, Object> entry : values.entrySet()) {
@@ -131,7 +133,7 @@ public class SelectBuilder<T> {
                 }
 
                 if (field != null) {
-                    field.set(instance, convertValue(value, field.getType()));
+                    ReflectionUtils.setField(field, instance, convertValue(value, field.getType()));
                 }
             }
 
