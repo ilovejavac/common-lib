@@ -63,12 +63,6 @@ public class FileServiceImpl implements FileService {
                 storageName
         );
 
-        // 计算MD5(去重)
-        String                md5       = calculateMd5(file);
-        Optional<StorageFile> existFile = repo.findByMd5(md5);
-        if (existFile.isPresent()) {
-            return existFile.get();
-        }
 
         // 上传文件
         storage.upload(
@@ -84,7 +78,6 @@ public class FileServiceImpl implements FileService {
         sf.setContentType(file.getContentType());
         sf.setSize(file.getSize());
         sf.setStorageType(fileProperties.getType());
-        sf.setMd5(md5);
         sf.setCategory(category);
 
         repo.saveFile(sf);
@@ -152,11 +145,6 @@ public class FileServiceImpl implements FileService {
                 now.getDayOfMonth(),
                 filename
         );
-    }
-
-    private String calculateMd5(MultipartFile file) throws IOException {
-
-        return DigestUtils.md5DigestAsHex(file.getInputStream());
     }
 
     private final StorageFileToFileItemMapper mapper;

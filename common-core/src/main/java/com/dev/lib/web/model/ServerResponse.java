@@ -96,7 +96,19 @@ public class ServerResponse<T> implements Serializable {
         ServerResponse<T> result = new ServerResponse<>();
 
         result.setCode(code);
-        result.setMessage("failed");
+        result.setMessage("server failed");
+        result.setError(message);
+        result.setData(data);
+
+        return result;
+    }
+
+    public static <T> ServerResponse<T> requestFail(Integer code, String message, T data) {
+
+        ServerResponse<T> result = new ServerResponse<>();
+
+        result.setCode(code);
+        result.setMessage("request failed");
         result.setError(message);
         result.setData(data);
 

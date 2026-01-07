@@ -12,8 +12,6 @@ public interface StorageFileRepo {
 
     void remove(String bizId);
 
-    Optional<StorageFile> findByMd5(String md5);
-
     void saveFile(StorageFile storageFile);
 
     List<StorageFile> findByIds(Collection<String> ids);

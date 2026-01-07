@@ -30,7 +30,7 @@ public class TokenItem implements Serializable {
 
     private Long expireTime;
 
-    private String              clientId;
+    private String clientId;
 
     private Map<String, Object> metadata;
 

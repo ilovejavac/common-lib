@@ -30,7 +30,7 @@ public class StorageFile {
 
     private StorageType storageType;     // 存储类型
 
-    private String md5;             // MD5值(去重)
+//    private String md5;             // MD5值(去重)
 
     private String category;        // 分类(avatar/document/image)
 

@@ -31,8 +31,6 @@ public interface SysFileRepository extends BaseRepository<SysFile> {
 
     Optional<SysFile> findByBizId(String bizId);
 
-    Optional<SysFile> findByMd5(String md5);
-
     default List<SysFile> findByIds(Collection<String> ids) {
 
         return loads(new Query().setBizIdIn(ids));

@@ -1,6 +1,6 @@
 package com.dev.lib.storage.data;
 
-import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.jpa.TenantEntity;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageType;
 import com.dev.lib.storage.serialize.FileItem;
@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
         @AutoMapper(target = FileItem.class, reverseConvertGenerate = false),
         @AutoMapper(target = StorageFile.class)
 })
-public class SysFile extends JpaEntity {
+public class SysFile extends TenantEntity {
 
     @Column(nullable = false)
     private String originalName;    // 原始文件名
@@ -28,26 +28,29 @@ public class SysFile extends JpaEntity {
     @Column(nullable = false, length = 50)
     private String storageName;     // 存储文件名
 
-    private String        storagePath;     // 存储路径
+    private String storagePath;     // 存储路径
 
-    private String        url;             // 访问URL
+    private String url;             // 访问URL
 
     @Column(length = 20)
-    private String        extension;       // 扩展名
+    private String extension;       // 扩展名
 
-    private String        contentType;     // MIME类型
+    private String contentType;     // MIME类型
 
-    private Long          size;              // 文件大小(字节)
+    private Long size;              // 文件大小(字节)
 
-    private StorageType   storageType;     // 存储类型
+    private StorageType storageType;     // 存储类型
 
-    @Column(columnDefinition = "text", unique = true, nullable = false)
-    private String        md5;             // MD5值(去重)
+    private String category;        // 分类(avatar/document/image)
 
-    private String        category;        // 分类(avatar/document/image)
-
-    private Boolean       temporary = false; // 临时文件
+    private Boolean temporary = false; // 临时文件
 
     private LocalDateTime expirationAt; // 过期时间
+
+    private String virtualPath;       // 逻辑路径: "/a/d/d3.md"
+
+    private String parentPath;        // 父路径: "/a/d" (加速查询)
+
+    private Boolean isDirectory = false;  // 是否目录
 
 }

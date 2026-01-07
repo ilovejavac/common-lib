@@ -20,37 +20,6 @@ springboot项目根 pom
 ```
 
 ## 最小配置
-添加一个AuthenticateService实现类
-```java
-@Component
-@DubboService
-@RequiredArgsConstructor
-public class UserDetailRpc implements AuthenticateService {
-
-    @Override
-    public UserDetails loadUserById(Long userid) {
-
-        return UserDetails.builder()
-                .id(0L)
-                .username("test")
-                .permissions(List.of("test"))
-                .roles(List.of("test"))
-                .build();
-    }
-
-    @Override
-    public Collection<UserDetails> batchLoadUserByIds(Set<Long> ids) {
-
-        return new ArrayList<>();
-    }
-
-    @Override
-    public void registerPermissions(List<EndpointPermission> permissions) {
-
-    }
-
-}
-```
 ```yaml
 # in your application.yaml
 app:
@@ -85,11 +54,11 @@ spring:
   sql:
     init:
       schema-locations: classpath:index.sql
-  datasource:
-    driver-class-name: @db.driver@
   profiles:
     include: lib
     active: dev
+  datasource:
+    driver-class-name: @db.driver@
   jpa:
     database-platform: @db.dialect@
     hibernate:
@@ -98,6 +67,21 @@ server:
   servlet:
     context-path: /your-server-path
   port: 8080
+```
+
+```xml
+<mysql>
+    <db.driver>com.mysql.cj.jdbc.Driver</db.driver>
+    <db.dialect>org.hibernate.dialect.MySQLDialect</db.dialect>
+</mysql>
+<pgsql>
+    <db.driver>org.postgresql.Driver</db.driver>
+    <db.dialect>org.hibernate.dialect.PostgreSQLDialect</db.dialect>
+</pgsql>
+<dm>
+    <db.driver>org.postgresql.Driver</db.driver>
+    <db.dialect>org.hibernate.dialect.PostgreSQLDialect</db.dialect>
+</dm>
 ```
 
 # 业务模块依赖指引
@@ -114,9 +98,6 @@ server:
 </dependency>
 ```
 
-> idea 中明确勾选当前项目需要的数据库环境
-![img.png](md/img.png)
-  - 此时项目会自动引入数据库驱动并配置 driver-class-name
 ## 业务说明
 
 ### 请求
@@ -191,7 +172,7 @@ ServerResponse的结构为
 - 配置了 cors 跨域，默认 AllowedOriginPattern("*") 可通过 yaml 配置
 
 ```yaml
-# in your application.yaml
+# application.yaml
 app:
   cors:
     allowedOrigins:

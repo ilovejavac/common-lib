@@ -18,7 +18,6 @@ class ModelConfigService(
     ) {
 
     fun handle(cmd: AiModelRequest.CreateModel): String {
-        log.info("cmd {}", cmd)
         return repo.addModel(cmd).bizId
     }
 

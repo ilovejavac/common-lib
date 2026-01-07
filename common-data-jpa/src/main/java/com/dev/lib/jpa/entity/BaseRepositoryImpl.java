@@ -3,9 +3,12 @@ package com.dev.lib.jpa.entity;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
+import com.dev.lib.jpa.TransactionHelper;
 import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
 import com.dev.lib.jpa.entity.dsl.SelectBuilder;
 import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
+import com.dev.lib.jpa.entity.insert.EntityMeta;
+import com.dev.lib.jpa.entity.insert.EntityMetaCache;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.util.StringUtils;
 import com.querydsl.core.BooleanBuilder;
@@ -16,11 +19,10 @@ import com.querydsl.core.types.dsl.BooleanPath;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.*;
 import org.hibernate.Hibernate;
+import org.hibernate.Session;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.jpa.HibernateHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -34,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
+import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -212,6 +215,59 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     boolean exists(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         return querydslExecutor.exists(buildPredicate(ctx, dslQuery, expressions));
+    }
+
+    BaseEntityListener listener = new BaseEntityListener();
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public <S extends T> List<S> saveAll(Iterable<S> entities) {
+
+        List<S> list = new ArrayList<>();
+
+        for (S entity : entities) {
+            listener.prePersist(entity);
+            list.add(entity);
+        }
+
+        if (list.isEmpty()) {
+            return list;
+        }
+
+        // 有级联关系走 JPA
+        if (hasCascadeFields) {
+            return super.saveAll(list);
+        }
+
+        batchInsertNative(list);
+
+        return list;
+    }
+
+
+    private <S extends T> void batchInsertNative(List<S> entities) {
+
+        EntityMeta meta = EntityMetaCache.get(entityClass);
+
+        String sql = meta.getInsertSql();
+
+        Session session = entityManager.unwrap(Session.class);
+        session.doWork(connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                int count = 0;
+                for (S entity : entities) {
+                    meta.setParameters(ps, entity);
+                    ps.addBatch();
+
+                    if (++count % BATCH_SIZE == 0) {
+                        ps.executeBatch();
+                    }
+                }
+                if (count % BATCH_SIZE != 0) {
+                    ps.executeBatch();
+                }
+            }
+        });
     }
 
     // ==================== 内部查询实现 ====================
@@ -444,13 +500,16 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             return;
         }
 
-        List<T> toDelete = queryFactory.selectFrom(path)
-                .where(pathBuilder.getNumber("id", Long.class).in(ids))
-                .where(deletedPath.eq(false))
-                .fetch();
+        for (int i = 0; i < ids.size(); i += BATCH_SIZE) {
+            List<Long> batch = ids.subList(i, Math.min(i + BATCH_SIZE, ids.size()));
 
-        if (!toDelete.isEmpty()) {
-            cascadeSoftDeleteBatch(toDelete);
+            List<T> toDelete = queryFactory.selectFrom(path)
+                    .where(pathBuilder.getNumber("id", Long.class).in(batch))
+                    .where(deletedPath.eq(false))
+                    .fetch();
+            if (!toDelete.isEmpty()) {
+                cascadeSoftDeleteBatch(toDelete);
+            }
         }
     }
 
@@ -559,29 +618,64 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     void hardDeleteAll(Iterable<? extends T> entities) {
 
         if (entities == null) return;
+
+        List<Long> ids = new ArrayList<>();
         for (T entity : entities) {
-            hardDelete(entity);
+            if (entity != null && entity.getId() != null) {
+                ids.add(entity.getId());
+            }
         }
+
+        TransactionHelper.run(() -> {
+            batchHardDeleteById(ids);
+        });
     }
 
     void hardDeleteAllById(Iterable<Long> ids) {
 
         if (ids == null) return;
+
+        List<Long> list = new ArrayList<>();
         for (Long id : ids) {
-            hardDeleteById(id);
+            if (id != null) {
+                list.add(id);
+            }
         }
+
+        TransactionHelper.run(() -> {
+            batchHardDeleteById(list);
+        });
+    }
+
+    void batchHardDeleteById(List<Long> list) {
+
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+
+        for (int i = 0; i < list.size(); i += BATCH_SIZE) {
+            List<Long> batch = list.subList(i, Math.min(i + BATCH_SIZE, list.size()));
+            queryFactory.delete(path)
+                    .where(pathBuilder.getNumber("id", Long.class).in(batch))
+                    .execute();
+        }
+
+        entityManager.flush();
+        entityManager.clear();
     }
 
     long hardDelete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        List<T> entities = loads(new QueryContext().withDeleted(), null, entityClass, dslQuery, expressions);
-        if (entities.isEmpty()) return 0;
+        Predicate predicate = buildPredicate(new QueryContext().withDeleted(), dslQuery, expressions);
 
-        for (T entity : entities) {
-            entityManager.remove(entity);
-        }
+        long affected = queryFactory.delete(path)
+                .where(predicate)
+                .execute();
 
-        return entities.size();
+        entityManager.flush();
+        entityManager.clear();
+
+        return affected;
     }
 
     // ==================== Predicate 构建 ====================

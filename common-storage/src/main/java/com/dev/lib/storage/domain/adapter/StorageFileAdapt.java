@@ -24,12 +24,6 @@ public class StorageFileAdapt implements StorageFileRepo {
     private final StorageFileToSysFileMapper sysFileMapper;
 
     @Override
-    public Optional<StorageFile> findByMd5(String md5) {
-
-        return fileRepository.findByMd5(md5).map(storageFileMapper::convert);
-    }
-
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public void remove(String bizId) {
 
