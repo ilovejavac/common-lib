@@ -69,7 +69,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                 stack.addLast(part);
             }
         }
-        return stack.isEmpty() ? "" : "/" + String.join("/", stack);
+        // 根路径 / 应返回 / 而不是空字符串
+        return stack.isEmpty() ? "/" : "/" + String.join("/", stack);
     }
 
     private String getParentPath(String virtualPath) {
@@ -564,14 +565,14 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             fullDest = fullDest + "/" + getName(fullSrc);
         }
 
-        // 环检测：不能把父目录移到子目录
-        if (Boolean.TRUE.equals(src.getIsDirectory()) && isSubPath(fullSrc, fullDest)) {
-            throw new IllegalArgumentException("Cannot move directory into itself: " + srcPath + " -> " + destPath);
-        }
-
-        // 检查目标是否已存在（使用悲观锁）
+        // 检查目标是否已存在（使用悲观锁，在环检测之前检查）
         if (findByPathForUpdate(ctx, fullDest).isPresent()) {
             throw new IllegalArgumentException("Destination already exists: " + destPath);
+        }
+
+        // 环检测：不能把父目录移到子目录（必须在目标重计算之后进行）
+        if (Boolean.TRUE.equals(src.getIsDirectory()) && isSubPath(fullSrc, fullDest)) {
+            throw new IllegalArgumentException("Cannot move directory into itself: " + srcPath + " -> " + destPath);
         }
 
         // 确保目标父目录存在
@@ -919,12 +920,13 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                         ensureDirs(ctx, parentPath, createdDirs);
                     }
 
-                    // 流式处理，避免 OOM
+                    // 检查文件是否已存在（同步 Linux 行为：已存在则报错）
                     long size = entry.getSize();
-                    if (findByPath(ctx, entryPath).isEmpty()) {
-                        String bizId = createFile(ctx, entryPath, zis, size);
-                        fileIds.add(bizId);
+                    if (findByPath(ctx, entryPath).isPresent()) {
+                        throw new IllegalArgumentException("File already exists: " + entryPath);
                     }
+                    String bizId = createFile(ctx, entryPath, zis, size);
+                    fileIds.add(bizId);
                     zis.closeEntry();
                 }
             }
@@ -974,11 +976,12 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                     }
                 }
 
-                // 流式处理，避免 OOM
-                if (findByPath(ctx, fullPath).isEmpty()) {
-                    String bizId = createFile(ctx, fullPath, file.getInputStream(), file.getSize());
-                    fileIds.add(bizId);
+                // 检查文件是否已存在（同步 Linux 行为：已存在则报错）
+                if (findByPath(ctx, fullPath).isPresent()) {
+                    throw new IllegalArgumentException("File already exists: " + fullPath);
                 }
+                String bizId = createFile(ctx, fullPath, file.getInputStream(), file.getSize());
+                fileIds.add(bizId);
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload files", e);
