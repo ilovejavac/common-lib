@@ -1,7 +1,8 @@
 package com.dev.lib.storage.domain.command;
 
+import com.dev.lib.bash.BashCommand;
+import com.dev.lib.bash.CommandHandler;
 import com.dev.lib.storage.domain.model.VfsContext;
-import com.dev.lib.storage.domain.model.VfsNode;
 import com.dev.lib.storage.domain.service.VirtualFileSystem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -13,7 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * VFS Bash 命令实现
@@ -25,7 +25,7 @@ public class VfsBashCommand extends BashCommand {
 
     private final VirtualFileSystem vfs;
 
-    private final Map<String, CommandHandler> commands = new HashMap<>();
+    private final Map<String, CommandHandler<VfsContext>> commands = new HashMap<>();
 
     {
         // 注册所有命令
@@ -44,12 +44,13 @@ public class VfsBashCommand extends BashCommand {
 
     @Override
     public Object execute(Object... args) {
+
         if (args.length < 2) {
             throw new IllegalArgumentException("Usage: execute(VfsContext, commandName, ...args)");
         }
 
-        VfsContext ctx = (VfsContext) args[0];
-        String commandName = (String) args[1];
+        VfsContext ctx         = (VfsContext) args[0];
+        String     commandName = (String) args[1];
 
         // 提取命令参数（跳过 ctx 和 commandName）
         Object[] commandArgs = new Object[args.length - 2];
@@ -67,8 +68,9 @@ public class VfsBashCommand extends BashCommand {
      * ls [-l] [path]
      */
     private Object ls(VfsContext ctx, Object... args) {
+
         ParsedArgs parsed = parseArgs(args);
-        String path = parsed.getString(0);
+        String     path   = parsed.getString(0);
         if (path == null) path = "/";
 
         Integer depth = parsed.getInt("d", 1);
@@ -80,10 +82,11 @@ public class VfsBashCommand extends BashCommand {
      * -n: 显示行号
      */
     private Object cat(VfsContext ctx, Object... args) {
-        ParsedArgs parsed = parseArgs(args);
-        boolean showLineNumbers = parsed.hasFlag("n");
-        Integer startLine = parsed.getInt("s", 1);
-        Integer lineCount = parsed.getInt("c", -1);
+
+        ParsedArgs parsed          = parseArgs(args);
+        boolean    showLineNumbers = parsed.hasFlag("n");
+        Integer    startLine       = parsed.getInt("s", 1);
+        Integer    lineCount       = parsed.getInt("c", -1);
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("cat: missing file operand");
@@ -96,8 +99,8 @@ public class VfsBashCommand extends BashCommand {
 
             if (startLine > 1 || lineCount != -1) {
                 // 使用行范围读取（避免 OOM）
-                List<String> lines = vfs.readLines(ctx, path, startLine, lineCount);
-                int lineNum = startLine;
+                List<String> lines   = vfs.readLines(ctx, path, startLine, lineCount);
+                int          lineNum = startLine;
                 for (String line : lines) {
                     if (showLineNumbers) {
                         result.append(String.format("%6d\t%s\n", lineNum++, line));
@@ -111,7 +114,7 @@ public class VfsBashCommand extends BashCommand {
                      BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
                     String line;
-                    int lineNum = 1;
+                    int    lineNum = 1;
                     while ((line = reader.readLine()) != null) {
                         if (showLineNumbers) {
                             result.append(String.format("%6d\t%s\n", lineNum++, line));
@@ -132,41 +135,70 @@ public class VfsBashCommand extends BashCommand {
      * head [-n lines] <file>
      */
     private Object head(VfsContext ctx, Object... args) {
+
         ParsedArgs parsed = parseArgs(args);
-        int lines = parsed.getInt("n", 10);
+        int        lines  = parsed.getInt("n", 10);
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("head: missing file operand");
         }
 
-        String path = parsed.getString(0);
+        String       path      = parsed.getString(0);
         List<String> fileLines = vfs.readLines(ctx, path, 1, lines);
         return String.join("\n", fileLines) + "\n";
     }
 
     /**
      * tail [-n lines] <file>
+     * 使用循环缓冲区，只读取文件一次
      */
     private Object tail(VfsContext ctx, Object... args) {
+
         ParsedArgs parsed = parseArgs(args);
-        int lines = parsed.getInt("n", 10);
+        int        lines  = parsed.getInt("n", 10);
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("tail: missing file operand");
         }
 
         String path = parsed.getString(0);
-        int totalLines = vfs.getLineCount(ctx, path);
-        int startLine = Math.max(1, totalLines - lines + 1);
 
-        List<String> fileLines = vfs.readLines(ctx, path, startLine, -1);
-        return String.join("\n", fileLines) + "\n";
+        // 使用循环缓冲区，只读取文件一次
+        try (InputStream is = vfs.openFile(ctx, path);
+             java.io.BufferedReader reader = new java.io.BufferedReader(
+                     new java.io.InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+            String[] buffer = new String[lines];
+            int      index  = 0;
+            int      count  = 0;
+            String   line;
+
+            while ((line = reader.readLine()) != null) {
+                buffer[index] = line;
+                index = (index + 1) % lines;
+                count++;
+            }
+
+            // 构建结果：从最旧的行开始
+            StringBuilder result = new StringBuilder();
+            int           start  = count < lines ? 0 : index;
+            int           end    = Math.min(count, lines);
+
+            for (int i = 0; i < end; i++) {
+                result.append(buffer[(start + i) % lines]).append("\n");
+            }
+
+            return result.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read file: " + path, e);
+        }
     }
 
     /**
      * touch <file> [file...]
      */
     private Object touch(VfsContext ctx, Object... args) {
+
         ParsedArgs parsed = parseArgs(args);
 
         if (parsed.positionalCount() == 0) {
@@ -186,8 +218,9 @@ public class VfsBashCommand extends BashCommand {
      * cp [-r] <src...> <dest_dir>
      */
     private Object cp(VfsContext ctx, Object... args) {
-        ParsedArgs parsed = parseArgs(args);
-        boolean recursive = parsed.hasFlag("r");
+
+        ParsedArgs parsed    = parseArgs(args);
+        boolean    recursive = parsed.hasFlag("r");
 
         if (parsed.positionalCount() < 2) {
             throw new IllegalArgumentException("cp: missing destination file operand");
@@ -195,7 +228,7 @@ public class VfsBashCommand extends BashCommand {
 
         if (parsed.positionalCount() == 2) {
             // 单个源文件
-            String src = parsed.getString(0);
+            String src  = parsed.getString(0);
             String dest = parsed.getString(1);
             vfs.copy(ctx, src, dest, recursive);
         } else {
@@ -215,6 +248,7 @@ public class VfsBashCommand extends BashCommand {
      * mv <src...> <dest_dir>
      */
     private Object mv(VfsContext ctx, Object... args) {
+
         ParsedArgs parsed = parseArgs(args);
 
         if (parsed.positionalCount() < 2) {
@@ -223,7 +257,7 @@ public class VfsBashCommand extends BashCommand {
 
         if (parsed.positionalCount() == 2) {
             // 单个源文件
-            String src = parsed.getString(0);
+            String src  = parsed.getString(0);
             String dest = parsed.getString(1);
             vfs.move(ctx, src, dest);
         } else {
@@ -242,8 +276,9 @@ public class VfsBashCommand extends BashCommand {
      * rm [-rf] <file> [file...]
      */
     private Object rm(VfsContext ctx, Object... args) {
-        ParsedArgs parsed = parseArgs(args);
-        boolean recursive = parsed.hasFlag("r") || parsed.hasFlag("f");
+
+        ParsedArgs parsed    = parseArgs(args);
+        boolean    recursive = parsed.hasFlag("r") || parsed.hasFlag("f");
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("rm: missing operand");
@@ -261,8 +296,9 @@ public class VfsBashCommand extends BashCommand {
      * mkdir [-p] <dir> [dir...]
      */
     private Object mkdir(VfsContext ctx, Object... args) {
-        ParsedArgs parsed = parseArgs(args);
-        boolean createParents = parsed.hasFlag("p");
+
+        ParsedArgs parsed        = parseArgs(args);
+        boolean    createParents = parsed.hasFlag("p");
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("mkdir: missing operand");
@@ -280,15 +316,16 @@ public class VfsBashCommand extends BashCommand {
      * find [-r] <basePath> -name <pattern>
      */
     private Object find(VfsContext ctx, Object... args) {
-        ParsedArgs parsed = parseArgs(args);
-        boolean recursive = parsed.hasFlag("r");
+
+        ParsedArgs parsed    = parseArgs(args);
+        boolean    recursive = parsed.hasFlag("r");
 
         if (parsed.positionalCount() < 2) {
             throw new IllegalArgumentException("find: missing operand");
         }
 
         String basePath = parsed.getString(0);
-        String pattern = parsed.getString(1);
+        String pattern  = parsed.getString(1);
 
         return vfs.findByName(ctx, basePath, pattern, recursive);
     }
@@ -297,21 +334,18 @@ public class VfsBashCommand extends BashCommand {
      * grep [-r] <content> <basePath>
      */
     private Object grep(VfsContext ctx, Object... args) {
-        ParsedArgs parsed = parseArgs(args);
-        boolean recursive = parsed.hasFlag("r");
+
+        ParsedArgs parsed    = parseArgs(args);
+        boolean    recursive = parsed.hasFlag("r");
 
         if (parsed.positionalCount() < 2) {
             throw new IllegalArgumentException("grep: missing operand");
         }
 
-        String content = parsed.getString(0);
+        String content  = parsed.getString(0);
         String basePath = parsed.getString(1);
 
         return vfs.findByContent(ctx, basePath, content, recursive);
     }
 
-    @FunctionalInterface
-    private interface CommandHandler {
-        Object handle(VfsContext ctx, Object... args);
-    }
 }

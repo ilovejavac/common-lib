@@ -17,6 +17,8 @@ public interface SysFileRepository extends BaseRepository<SysFile> {
     @Data
     class Query extends DslQuery<SysFile> {
 
+        private Boolean temporary;
+
         @Condition(type = QueryType.EQ)
         private String md5;
 

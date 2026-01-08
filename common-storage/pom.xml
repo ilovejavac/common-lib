@@ -34,6 +34,10 @@
         </dependency>
         <dependency>
             <groupId>com.dev.lib</groupId>
+            <artifactId>common-bash</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
             <artifactId>common-data-jpa-tenant</artifactId>
             <optional>true</optional>
         </dependency>

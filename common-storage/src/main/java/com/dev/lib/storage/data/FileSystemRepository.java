@@ -32,7 +32,7 @@ public interface FileSystemRepository extends BaseRepository<SysFile> {
     /**
      * 悲观锁查询，用于并发写操作
      */
-    default Optional<SysFile> findByVirtualPathForUpdate(@Param("virtualPath") String virtualPath) {
+    default Optional<SysFile> findByVirtualPathForUpdate(String virtualPath) {
 
         return lockForUpdate().load(new Query().setVirtualPath(virtualPath));
     }
@@ -50,9 +50,17 @@ public interface FileSystemRepository extends BaseRepository<SysFile> {
     /**
      * 批量悲观锁查询
      */
-    default List<SysFile> findByVirtualPathsForUpdate(@Param("paths") List<String> paths) {
+    default List<SysFile> findByVirtualPathsForUpdate(List<String> paths) {
 
         return lockForUpdate().loads(new Query().setVirtualPathIn(paths));
+    }
+
+    /**
+     * 按前缀悲观锁查询（用于移动目录时锁定所有子项）
+     */
+    default List<SysFile> findByVirtualPathStartingWithForUpdate(String prefix) {
+
+        return lockForUpdate().loads(new Query().setVirtualPathStartWith(prefix));
     }
 
 }

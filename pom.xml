@@ -39,6 +39,7 @@
         <module>common-cloud</module>
         <module>common-data-jpa-tenant</module>
         <module>common-util</module>
+        <module>common-bash</module>
     </modules>
 
     <properties>
@@ -432,6 +433,11 @@
             <dependency>
                 <groupId>com.dev.lib</groupId>
                 <artifactId>common-cloud-nacos</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-bash</artifactId>
                 <version>${lib.version}</version>
             </dependency>
         </dependencies>

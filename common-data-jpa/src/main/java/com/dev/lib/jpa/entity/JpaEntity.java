@@ -8,7 +8,6 @@ import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Data;
-import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.springframework.data.domain.Persistable;
@@ -18,9 +17,12 @@ import java.util.Map;
 
 @Data
 @MappedSuperclass
-@DynamicUpdate
-@EntityListeners({BaseEntityListener.class, EncryptionListener.class, AuditListener.class})
-public class JpaEntity extends CoreEntity implements Persistable<Long> {
+@EntityListeners({
+        BaseEntityListener.class,
+        EncryptionListener.class,
+        AuditListener.class
+})
+public abstract class JpaEntity extends CoreEntity implements Persistable<Long> {
 
     @Id
     private Long id;

@@ -53,26 +53,17 @@ public class SecurityContextHolder {
 
     public static void withSystem(Runnable task) {
 
-        with(
-                UserDetails.System,
-                task
-        );
+        with(UserDetails.System, task);
     }
 
     public static void withInternal(Runnable task) {
 
-        with(
-                UserDetails.Internal,
-                task
-        );
+        with(UserDetails.Internal, task);
     }
 
     public static void withAnonymous(Runnable task) {
 
-        with(
-                UserDetails.Anonymous,
-                task
-        );
+        with(UserDetails.Anonymous, task);
     }
 
     /**

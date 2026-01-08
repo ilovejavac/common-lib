@@ -1,6 +1,5 @@
-package com.dev.lib.storage.domain.command;
+package com.dev.lib.bash;
 
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,6 +21,7 @@ public abstract class BashCommand {
      * 支持格式：
      * - 标志："-r", "-f", "-n" -> {r: true, f: true, n: true}
      * - 键值对："-n", "10" -> {n: 10}
+     * - 组合标志+值："-rn 10" -> {r: true, n: 10}（最后一个标志可以带值）
      * - 位置参数：保存到 "args" 列表中
      */
     protected ParsedArgs parseArgs(Object... args) {
@@ -37,39 +37,32 @@ public abstract class BashCommand {
                 if (str.startsWith("-") && !str.equals("-")) {
                     String flags = str.substring(1);
 
-                    // 处理组合标志（如 -rf）
-                    for (char flag : flags.toCharArray()) {
-                        // 检查下一个参数是否是值
-                        if (i + 1 < args.length && !(args[i + 1] instanceof String && ((String) args[i + 1]).startsWith("-"))) {
-                            // 可能是键值对，但需要判断
-                            if (flags.length() == 1) {
-                                // 单个标志，下一个可能是值
-                                Object nextArg = args[i + 1];
-                                if (nextArg instanceof Integer || nextArg instanceof Long) {
-                                    parsed.options.put(String.valueOf(flag), nextArg);
-                                    i++; // 跳过下一个参数
-                                    break;
-                                } else if (nextArg instanceof String) {
-                                    String nextStr = (String) nextArg;
-                                    // 尝试解析为数字
-                                    try {
-                                        int value = Integer.parseInt(nextStr);
-                                        parsed.options.put(String.valueOf(flag), value);
-                                        i++; // 跳过下一个参数
-                                        break;
-                                    } catch (NumberFormatException e) {
-                                        // 不是数字，当作布尔标志
-                                        parsed.options.put(String.valueOf(flag), true);
-                                    }
-                                } else {
-                                    parsed.options.put(String.valueOf(flag), true);
-                                }
-                            } else {
-                                // 组合标志，都当作布尔值
-                                parsed.options.put(String.valueOf(flag), true);
+                    // 检查下一个参数是否是值
+                    if (i + 1 < args.length && !isOptionLike(args[i + 1])) {
+                        // 下一个参数可能是值，尝试解析
+                        Object nextArg = args[i + 1];
+                        Object value = tryParseValue(nextArg);
+
+                        if (value != null) {
+                            // 下一个参数是值，绑定到组合标志的最后一个字符
+                            // 例如：-rn 10 → {r: true, n: 10}
+                            char lastFlag = flags.charAt(flags.length() - 1);
+                            parsed.options.put(String.valueOf(lastFlag), value);
+                            i++; // 跳过值参数
+
+                            // 处理前面的标志（都作为布尔值）
+                            for (int j = 0; j < flags.length() - 1; j++) {
+                                parsed.options.put(String.valueOf(flags.charAt(j)), true);
                             }
                         } else {
-                            // 布尔标志
+                            // 下一个参数不是值，所有标志都作为布尔值
+                            for (char flag : flags.toCharArray()) {
+                                parsed.options.put(String.valueOf(flag), true);
+                            }
+                        }
+                    } else {
+                        // 下一个参数是选项或没有下一个参数，所有标志都作为布尔值
+                        for (char flag : flags.toCharArray()) {
                             parsed.options.put(String.valueOf(flag), true);
                         }
                     }
@@ -84,6 +77,43 @@ public abstract class BashCommand {
         }
 
         return parsed;
+    }
+
+    /**
+     * 检查参数是否类似选项（以 - 开头）
+     */
+    private boolean isOptionLike(Object arg) {
+        if (arg instanceof String) {
+            String str = (String) arg;
+            return str.startsWith("-");
+        }
+        return false;
+    }
+
+    /**
+     * 尝试将参数解析为值（数字或字符串）
+     * 返回 null 表示不是值类型
+     */
+    private Object tryParseValue(Object arg) {
+        if (arg instanceof Integer || arg instanceof Long) {
+            return arg;
+        }
+        if (arg instanceof String) {
+            String str = (String) arg;
+            // 尝试解析为数字
+            try {
+                return Integer.parseInt(str);
+            } catch (NumberFormatException e) {
+                // 不是数字，返回字符串作为值
+                // 但如果是以 - 开头，则可能是选项，返回 null
+                if (str.startsWith("-")) {
+                    return null;
+                }
+                return str;
+            }
+        }
+        // 其他类型不作为值处理
+        return null;
     }
 
     /**

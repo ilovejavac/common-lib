@@ -12,9 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -100,18 +98,47 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
     /**
      * 通配符模式匹配（支持 * 和 ?）
+     * 转义顺序很重要：先转义 .，再处理 * 和 ?
      */
     private boolean matchPattern(String name, String pattern) {
 
         if (pattern == null || pattern.isEmpty()) return true;
 
         // 转换通配符为正则表达式
-        String regex = pattern
-                .replace(".", "\\.")
-                .replace("*", ".*")
-                .replace("?", ".");
+        // 注意：必须先转义 .，否则后面生成的 .* 中的 . 也会被转义
+        StringBuilder regex = new StringBuilder();
+        for (int i = 0; i < pattern.length(); i++) {
+            char c = pattern.charAt(i);
+            switch (c) {
+                case '.':
+                    regex.append("\\.");  // 转义字面量 .
+                    break;
+                case '*':
+                    regex.append(".*");   // * → .*
+                    break;
+                case '?':
+                    regex.append(".");    // ? → .
+                    break;
+                // 其他正则元字符也需要转义
+                case '^':
+                case '$':
+                case '+':
+                case '|':
+                case '(':
+                case ')':
+                case '[':
+                case ']':
+                case '{':
+                case '}':
+                case '\\':
+                    regex.append("\\").append(c);
+                    break;
+                default:
+                    regex.append(c);
+            }
+        }
 
-        return Pattern.matches(regex, name);
+        return Pattern.matches(regex.toString(), name);
     }
 
     // ==================== 查询（使用悲观锁的版本） ====================
@@ -163,8 +190,13 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             createDirectory(ctx, fullPath);
             created.add(fullPath);
         } catch (DataIntegrityViolationException e) {
-            // 并发创建，忽略
-            created.add(fullPath);
+            // 并发创建导致的唯一约束冲突，验证目录是否真的存在
+            if (findByPath(ctx, fullPath).isPresent()) {
+                created.add(fullPath);
+            } else {
+                // 目录不存在，说明是其他异常，重新抛出
+                throw new RuntimeException("Failed to create directory: " + fullPath, e);
+            }
         }
     }
 
@@ -322,8 +354,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         List<String> result = new ArrayList<>();
 
         try (InputStream is = openFile(ctx, path);
-             java.io.BufferedReader reader = new java.io.BufferedReader(
-                     new java.io.InputStreamReader(is, StandardCharsets.UTF_8))) {
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
             // 跳过前面的行
             for (int i = 1; i < startLine; i++) {
@@ -410,6 +441,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                 // 标记旧文件延迟删除（5分钟后）
                 if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
                     file.setOldStoragePath(oldStoragePath);
+                    file.setTemporary(true);
                     file.setDeleteAfter(LocalDateTime.now().plusMinutes(5));
                 }
 
@@ -491,9 +523,10 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             ensureDirs(ctx, destParent, new HashSet<>());
         }
 
-        // 移动目录时更新所有子项
+        // 移动目录时更新所有子项（使用悲观锁锁定所有子项，防止并发修改）
         if (Boolean.TRUE.equals(src.getIsDirectory())) {
-            List<SysFile> descendants = findDescendants(ctx, fullSrc + "/");
+            // 使用悲观锁查询所有子项
+            List<SysFile> descendants = systemRepository.findByVirtualPathStartingWithForUpdate(fullSrc + "/");
             for (SysFile desc : descendants) {
                 String newPath = fullDest + desc.getVirtualPath().substring(fullSrc.length());
                 desc.setVirtualPath(newPath);
@@ -692,6 +725,14 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         }
 
         List<VfsNode> results = new ArrayList<>();
+
+        // 检查 basePath 本身是否匹配 pattern
+        String baseName = getName(fullBasePath);
+        if (baseName != null && matchPattern(baseName, pattern)) {
+            results.add(toNode(ctx, base, 0));
+        }
+
+        // 递归搜索子项
         findRecursive(ctx, fullBasePath, pattern, recursive, results);
         return results;
     }
@@ -746,10 +787,20 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                     grepRecursive(ctx, child.getVirtualPath(), searchContent, true, results);
                 }
             } else {
-                // 搜索文件内容
-                try {
-                    String fileContent = readFile(ctx, child.getVirtualPath());
-                    if (fileContent.contains(searchContent)) {
+                // 逐行流式搜索文件内容（避免 OOM）
+                try (InputStream is = openFile(ctx, child.getVirtualPath());
+                     java.io.BufferedReader reader = new java.io.BufferedReader(
+                             new java.io.InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+                    String line;
+                    boolean found = false;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.contains(searchContent)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) {
                         results.add(toNode(ctx, child, 0));
                     }
                 } catch (Exception e) {
