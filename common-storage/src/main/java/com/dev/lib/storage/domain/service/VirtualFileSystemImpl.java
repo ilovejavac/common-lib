@@ -99,6 +99,21 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     }
 
     /**
+     * 检查 storagePath 是否被多个虚拟路径引用
+     * @return true 如果只有一个引用，false 如果有多个引用
+     */
+    private boolean isStoragePathUnique(VfsContext ctx, String storagePath, String excludeVirtualPath) {
+
+        List<SysFile> refs = systemRepository.findByStoragePath(storagePath);
+        // 排除当前正在修改的文件
+        long count = refs.stream()
+                .filter(f -> !f.getVirtualPath().equals(excludeVirtualPath))
+                .filter(f -> !Boolean.TRUE.equals(f.getDeleted()))
+                .count();
+        return count == 0;
+    }
+
+    /**
      * 通配符模式匹配（支持 * 和 ?）
      * 转义顺序很重要：先转义 .，再处理 * 和 ?
      */
@@ -214,38 +229,6 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         fileRepository.save(dir);
     }
 
-    private String createFile(VfsContext ctx, String virtualPath, byte[] content) {
-
-        String fileName  = getName(virtualPath);
-        String extension = "";
-        int    dotIdx    = fileName.lastIndexOf('.');
-        if (dotIdx > 0) {
-            extension = fileName.substring(dotIdx + 1).toLowerCase();
-        }
-
-        try {
-            String storagePath = uploadContent(content, fileName);
-
-            SysFile file  = new SysFile();
-            String  bizId = IDWorker.newId();
-            file.setBizId(bizId);
-            file.setVirtualPath(virtualPath);
-            file.setParentPath(getParentPath(virtualPath));
-            file.setIsDirectory(false);
-            file.setOriginalName(fileName);
-            file.setStorageName(fileName);
-            file.setStoragePath(storagePath);
-            file.setUrl(storageService.getUrl(storagePath));
-            file.setExtension(extension);
-            file.setSize((long) content.length);
-            file.setStorageType(storageProperties.getType());
-            fileRepository.save(file);
-            return bizId;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create file", e);
-        }
-    }
-
     private String createFile(VfsContext ctx, String virtualPath, InputStream inputStream, long size) {
 
         String fileName  = getName(virtualPath);
@@ -276,27 +259,6 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         } catch (IOException e) {
             throw new RuntimeException("Failed to create file", e);
         }
-    }
-
-    private String uploadContent(byte[] content, String fileName) throws IOException {
-
-        String storageName = IDWorker.newId();
-        int    dotIdx      = fileName.lastIndexOf('.');
-        if (dotIdx > 0) {
-            storageName += fileName.substring(dotIdx);
-        }
-
-        LocalDate now = LocalDate.now();
-        String storagePath = String.format(
-                "vfs/%d/%02d/%02d/%s",
-                now.getYear(),
-                now.getMonthValue(),
-                now.getDayOfMonth(),
-                storageName
-        );
-
-        storageService.upload(new ByteArrayInputStream(content), storagePath);
-        return storagePath;
     }
 
     private String uploadContent(InputStream inputStream, String fileName, long size) throws IOException {
@@ -392,11 +354,42 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         }
     }
 
+    private static final int MAX_READ_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
     @Override
     public String readFile(VfsContext ctx, String path) {
 
-        try (InputStream is = openFile(ctx, path)) {
-            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        String fullPath = resolvePath(ctx, path);
+        SysFile file = findByPath(ctx, fullPath)
+                .orElseThrow(() -> new IllegalArgumentException("File not found: " + path));
+
+        // 空文件
+        if (file.getSize() != null && file.getSize() == 0) {
+            return "";
+        }
+
+        // 文件过大，建议使用 readLines
+        if (file.getSize() != null && file.getSize() > MAX_READ_FILE_SIZE) {
+            throw new IllegalArgumentException(
+                    "File too large (" + file.getSize() + " bytes). Use readLines() instead."
+            );
+        }
+
+        // 使用 BufferedReader 逐行读取
+        StringBuilder sb = new StringBuilder();
+        try (InputStream is = openFile(ctx, path);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+            String line;
+            boolean first = true;
+            while ((line = reader.readLine()) != null) {
+                if (!first) {
+                    sb.append("\n");
+                }
+                sb.append(line);
+                first = false;
+            }
+            return sb.toString();
         } catch (IOException e) {
             throw new RuntimeException("Failed to read file", e);
         }
@@ -460,13 +453,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     @Transactional(rollbackFor = Exception.class)
     public void writeFile(VfsContext ctx, String path, String content) {
 
-        writeFile(ctx, path, content == null ? new byte[0] : content.getBytes(StandardCharsets.UTF_8));
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void writeFile(VfsContext ctx, String path, byte[] content) {
-
+        byte[] bytes = content == null ? new byte[0] : content.getBytes(StandardCharsets.UTF_8);
         String fullPath   = resolvePath(ctx, path);
         String parentPath = getParentPath(fullPath);
 
@@ -484,17 +471,20 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             }
 
             // Copy-on-Write 策略：
-            // 1. 先上传新文件到存储（此时读操作仍然读取旧文件）
-            // 2. 在事务中原子性地更新数据库记录的 storagePath
-            // 3. 标记旧文件延迟删除
-            try {
+            // 1. 检查是否有多个虚拟路径指向同一个物理文件
+            // 2. 直接上传新内容到新的物理文件路径
+            // 3. 原子性地更新当前虚拟路径的指针
+            // 4. 标记旧文件延迟删除（如果被其他路径引用，保留旧文件）
+            try (InputStream is = new ByteArrayInputStream(bytes)) {
                 String oldStoragePath = file.getStoragePath();
-                String newStoragePath = uploadContent(content, getName(fullPath));
+
+                // 上传新文件（流式处理，避免 OOM）
+                String newStoragePath = uploadContent(is, getName(fullPath), bytes.length);
 
                 // 原子性地替换指针（COW 的核心）
                 file.setStoragePath(newStoragePath);
                 file.setUrl(storageService.getUrl(newStoragePath));
-                file.setSize((long) content.length);
+                file.setSize((long) bytes.length);
 
                 // 标记旧文件延迟删除（5分钟后）
                 if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
@@ -510,7 +500,11 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             }
         } else {
             // 文件不存在，创建新文件
-            createFile(ctx, fullPath, content);
+            try (InputStream is = new ByteArrayInputStream(bytes)) {
+                createFile(ctx, fullPath, is, bytes.length);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to create file", e);
+            }
         }
     }
 
@@ -518,12 +512,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     @Transactional(rollbackFor = Exception.class)
     public void writeFile(VfsContext ctx, String path, InputStream inputStream) {
 
-        try {
-            byte[] content = inputStream.readAllBytes();
-            writeFile(ctx, path, content);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read from input stream", e);
-        }
+        String fullPath = resolvePath(ctx, path);
+        createFile(ctx, fullPath, inputStream, -1);  // size 由 storageService 处理
     }
 
     @Override
@@ -542,7 +532,11 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             fileRepository.save(file);
         } else {
             // 创建空文件
-            writeFile(ctx, path, new byte[0]);
+            try (InputStream is = new ByteArrayInputStream(new byte[0])) {
+                createFile(ctx, fullPath, is, 0);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to create empty file", e);
+            }
         }
     }
 
@@ -652,28 +646,23 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             ensureDirs(ctx, destParent, new HashSet<>());
         }
 
-        // 真正复制文件内容（修复 bug）
-        try {
-            byte[] content        = storageService.download(src.getStoragePath()).readAllBytes();
-            String newStoragePath = uploadContent(content, getName(fullDest));
-
-            SysFile copy = new SysFile();
-            copy.setBizId(IDWorker.newId());
-            copy.setVirtualPath(fullDest);
-            copy.setParentPath(getParentPath(fullDest));
-            copy.setIsDirectory(false);
-            copy.setOriginalName(getName(fullDest));
-            copy.setStorageName(src.getStorageName());
-            copy.setStoragePath(newStoragePath);  // 使用新的存储路径
-            copy.setUrl(storageService.getUrl(newStoragePath));
-            copy.setExtension(src.getExtension());
-            copy.setContentType(src.getContentType());
-            copy.setSize(src.getSize());
-            copy.setStorageType(src.getStorageType());
-            fileRepository.save(copy);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to copy file", e);
-        }
+        // VFS copy：只创建虚拟路径记录，指向同一个物理文件
+        // 多个虚拟路径可以指向同一个物理文件（节省存储空间）
+        // 写入时会自动触发 COW（Copy-on-Write）
+        SysFile copy = new SysFile();
+        copy.setBizId(IDWorker.newId());
+        copy.setVirtualPath(fullDest);
+        copy.setParentPath(getParentPath(fullDest));
+        copy.setIsDirectory(false);
+        copy.setOriginalName(getName(fullDest));
+        copy.setStorageName(src.getStorageName());
+        copy.setStoragePath(src.getStoragePath());  // 指向同一个物理文件
+        copy.setUrl(src.getUrl());
+        copy.setExtension(src.getExtension());
+        copy.setContentType(src.getContentType());
+        copy.setSize(src.getSize());
+        copy.setStorageType(src.getStorageType());
+        fileRepository.save(copy);
     }
 
     /**
@@ -697,28 +686,21 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                 // 递归复制子目录
                 copyDirectoryRecursive(ctx, child.getVirtualPath(), destPath);
             } else {
-                // 复制文件
-                try {
-                    byte[] content        = storageService.download(child.getStoragePath()).readAllBytes();
-                    String newStoragePath = uploadContent(content, childName);
-
-                    SysFile copy = new SysFile();
-                    copy.setBizId(IDWorker.newId());
-                    copy.setVirtualPath(destPath);
-                    copy.setParentPath(destDir);
-                    copy.setIsDirectory(false);
-                    copy.setOriginalName(childName);
-                    copy.setStorageName(child.getStorageName());
-                    copy.setStoragePath(newStoragePath);
-                    copy.setUrl(storageService.getUrl(newStoragePath));
-                    copy.setExtension(child.getExtension());
-                    copy.setContentType(child.getContentType());
-                    copy.setSize(child.getSize());
-                    copy.setStorageType(child.getStorageType());
-                    fileRepository.save(copy);
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to copy file: " + child.getVirtualPath(), e);
-                }
+                // 复制文件（只创建虚拟路径记录，指向同一个物理文件）
+                SysFile copy = new SysFile();
+                copy.setBizId(IDWorker.newId());
+                copy.setVirtualPath(destPath);
+                copy.setParentPath(destDir);
+                copy.setIsDirectory(false);
+                copy.setOriginalName(childName);
+                copy.setStorageName(child.getStorageName());
+                copy.setStoragePath(child.getStoragePath());  // 指向同一个物理文件
+                copy.setUrl(child.getUrl());
+                copy.setExtension(child.getExtension());
+                copy.setContentType(child.getContentType());
+                copy.setSize(child.getSize());
+                copy.setStorageType(child.getStorageType());
+                fileRepository.save(copy);
             }
         }
     }

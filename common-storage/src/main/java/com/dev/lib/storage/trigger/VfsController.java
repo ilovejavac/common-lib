@@ -61,20 +61,5 @@ public class VfsController {
         return ServerResponse.success(result);
     }
 
-    /**
-     * 上传 ZIP 文件并解压
-     * POST /sys/vfs/upload-zip
-     */
-    @PostMapping("/upload-zip")
-    public ServerResponse<Void> uploadZip(
-            @RequestParam String tenantId,
-            @RequestParam(required = false) String root,
-            @RequestParam(required = false, defaultValue = "/") String path,
-            @RequestParam("file") MultipartFile file) throws Exception {
-
-        vfs.uploadZip(VfsContext.of(root), path, file.getInputStream());
-        return ServerResponse.ok();
-    }
-
 }
 

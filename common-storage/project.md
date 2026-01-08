@@ -59,9 +59,11 @@ public class FileService {
 #### 3.2 文件操作
 
 ```java
-// 写入文件
+// 写入文件（字符串）
 vfs.writeFile(ctx, "/test.txt", "Hello World");
-vfs.writeFile(ctx, "/data.json", "{\"key\": \"value\"}".getBytes(UTF_8));
+
+// 写入文件（流）
+vfs.writeFile(ctx, "/data.json", inputStream);
 
 // 读取文件
 String content = vfs.readFile(ctx, "/test.txt");
@@ -148,15 +150,20 @@ boolean isDir = vfs.isDirectory(ctx, "/folder");
 1. **领域模型**
    - `VfsContext`：执行上下文（包含根目录、用户信息）
    - `VfsNode`：文件节点（目录/文件）
-   - `SysFile`：数据库实体（存储虚拟路径与物理路径映射）
+   - `SysFile`：数据库实体（虚拟路径 `virtualPath` 与物理路径 `storagePath` 映射）
 
-2. **核心服务**
+2. **虚拟引用机制**
+   - `copy` 只创建新的 `virtualPath` 记录，`storagePath` 指向同一物理文件
+   - 多个虚拟路径可共享同一物理文件，节省存储空间
+   - `writeFile` 自动触发 COW：检查 `storagePath` 引用数 → 多引用时创建新物理文件
+
+3. **核心服务**
    - `VirtualFileSystem`：VFS 接口
    - `VirtualFileSystemImpl`：核心实现，严格遵循 Linux 文件系统语义
-   - `StorageService`：统一存储接口
-   - `FileService`：文件管理服务
+   - `StorageService`：统一存储接口（支持 `upload(InputStream)`）
+   - `FileSystemRepository`：JPA 仓储，支持 `findByStoragePath()` 用于 COW 检查
 
-3. **存储适配器**
+4. **存储适配器**
    - `LocalFileStorage`：本地文件系统
    - `MinioFileStorage`：MinIO 对象存储
    - `OssFileStorage`：阿里云 OSS
@@ -164,17 +171,33 @@ boolean isDir = vfs.isDirectory(ctx, "/folder");
 
 ### 最近修改 (2025-01-08)
 
-1. **normalizePath** - 修复根路径 `/` 返回空字符串的问题
-2. **move** - 环检测移到目标重计算之后，防止检测失效
-3. **uploadFiles** - 文件已存在时报错（同步 Linux 行为）
-4. **uploadZip** - 文件已存在时报错（同步 Linux 行为）
+1. **COW 架构重构**：
+   - `copy` 操作只创建虚拟路径记录，指向同一物理文件
+   - `writeFile` 实现 Copy-on-Write：检查引用 → 上传新内容 → 更新指针
+   - 添加 `isStoragePathUnique()` 方法检查物理文件引用数
+2. **消除 byte[] 操作**：
+   - 删除所有 `writeFile(byte[])` 和 `uploadContent(byte[])` 方法
+   - 统一使用流式处理避免 OOM
+   - `readFile` 使用 BufferedReader 逐行读取
+3. **readFile 大小检查**：
+   - size == 0 返回空字符串
+   - size > 5MB 抛异常，建议使用 `readLines()`
+4. **早期修复**：
+   - `normalizePath` - 修复根路径 `/` 返回空字符串
+   - `move` - 环检测移到目标重计算之后
+   - `uploadFiles/uploadZip` - 文件已存在时报错
 
 ### 关键设计决策
 
-1. **路径规范化**：空栈返回 `/` 而不是空字符串
-2. **目录自动创建**：move、writeFile 时自动创建父目录（与标准 Linux 不同）
-3. **Copy-on-Write**：文件更新时先写新文件，再原子替换指针
-4. **悲观锁**：写操作使用 `FOR UPDATE` 防止并发冲突
+1. **虚拟引用 + COW**：
+   - `copy` 只创建虚拟路径记录，多个虚拟路径可指向同一物理文件
+   - `writeFile` 时检查引用数，有多引用则创建新物理文件（COW）
+2. **全流式处理**：
+   - 消除所有 `byte[]` 操作，避免大文件 OOM
+   - `readFile` 有 5MB 限制，大文件使用 `readLines()`
+3. **路径规范化**：空栈返回 `/` 而不是空字符串
+4. **目录自动创建**：move、writeFile 时自动创建父目录（与标准 Linux 不同）
+5. **悲观锁**：写操作使用 `FOR UPDATE` 防止并发冲突
 
 ### 修改记录位置
 

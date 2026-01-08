@@ -61,11 +61,6 @@ public interface VirtualFileSystem {
     void writeFile(VfsContext ctx, String path, String content);
 
     /**
-     * 写入文件（字节数组）
-     */
-    void writeFile(VfsContext ctx, String path, byte[] content);
-
-    /**
      * 写入文件（流）
      */
     void writeFile(VfsContext ctx, String path, InputStream inputStream);

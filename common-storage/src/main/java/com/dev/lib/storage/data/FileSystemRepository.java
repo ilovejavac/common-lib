@@ -22,6 +22,8 @@ public interface FileSystemRepository extends BaseRepository<SysFile> {
 
         private Collection<String> virtualPathIn;
 
+        private String storagePath;       // 存储路径（用于 COW 检查）
+
     }
 
     default Optional<SysFile> findByVirtualPath(String virtualPath) {
@@ -61,6 +63,14 @@ public interface FileSystemRepository extends BaseRepository<SysFile> {
     default List<SysFile> findByVirtualPathStartingWithForUpdate(String prefix) {
 
         return lockForUpdate().loads(new Query().setVirtualPathStartWith(prefix));
+    }
+
+    /**
+     * 按 storagePath 查询（用于 COW 检查）
+     */
+    default List<SysFile> findByStoragePath(String storagePath) {
+
+        return loads(new Query().setStoragePath(storagePath));
     }
 
 }
