@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -212,7 +213,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         fileRepository.save(dir);
     }
 
-    private void createFile(VfsContext ctx, String virtualPath, byte[] content) {
+    private String createFile(VfsContext ctx, String virtualPath, byte[] content) {
 
         String fileName  = getName(virtualPath);
         String extension = "";
@@ -224,8 +225,9 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         try {
             String storagePath = uploadContent(content, fileName);
 
-            SysFile file = new SysFile();
-            file.setBizId(IDWorker.newId());
+            SysFile file  = new SysFile();
+            String  bizId = IDWorker.newId();
+            file.setBizId(bizId);
             file.setVirtualPath(virtualPath);
             file.setParentPath(getParentPath(virtualPath));
             file.setIsDirectory(false);
@@ -237,6 +239,39 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             file.setSize((long) content.length);
             file.setStorageType(storageProperties.getType());
             fileRepository.save(file);
+            return bizId;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create file", e);
+        }
+    }
+
+    private String createFile(VfsContext ctx, String virtualPath, InputStream inputStream, long size) {
+
+        String fileName  = getName(virtualPath);
+        String extension = "";
+        int    dotIdx    = fileName.lastIndexOf('.');
+        if (dotIdx > 0) {
+            extension = fileName.substring(dotIdx + 1).toLowerCase();
+        }
+
+        try {
+            String storagePath = uploadContent(inputStream, fileName, size);
+
+            SysFile file  = new SysFile();
+            String  bizId = IDWorker.newId();
+            file.setBizId(bizId);
+            file.setVirtualPath(virtualPath);
+            file.setParentPath(getParentPath(virtualPath));
+            file.setIsDirectory(false);
+            file.setOriginalName(fileName);
+            file.setStorageName(fileName);
+            file.setStoragePath(storagePath);
+            file.setUrl(storageService.getUrl(storagePath));
+            file.setExtension(extension);
+            file.setSize(size);
+            file.setStorageType(storageProperties.getType());
+            fileRepository.save(file);
+            return bizId;
         } catch (IOException e) {
             throw new RuntimeException("Failed to create file", e);
         }
@@ -260,6 +295,27 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         );
 
         storageService.upload(new ByteArrayInputStream(content), storagePath);
+        return storagePath;
+    }
+
+    private String uploadContent(InputStream inputStream, String fileName, long size) throws IOException {
+
+        String storageName = IDWorker.newId();
+        int    dotIdx      = fileName.lastIndexOf('.');
+        if (dotIdx > 0) {
+            storageName += fileName.substring(dotIdx);
+        }
+
+        LocalDate now = LocalDate.now();
+        String storagePath = String.format(
+                "vfs/%d/%02d/%02d/%s",
+                now.getYear(),
+                now.getMonthValue(),
+                now.getDayOfMonth(),
+                storageName
+        );
+
+        storageService.upload(inputStream, storagePath);
         return storagePath;
     }
 
@@ -301,6 +357,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     private VfsNode toNode(VfsContext ctx, SysFile file, int remainingDepth) {
 
         VfsNode node = new VfsNode();
+        node.setId(file.getBizId());
         node.setName(getName(file.getVirtualPath()));
         node.setPath(file.getVirtualPath());
         node.setIsDirectory(file.getIsDirectory());
@@ -366,7 +423,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
             // 读取指定数量的行
             String line;
-            int count = 0;
+            int    count = 0;
             while ((line = reader.readLine()) != null) {
                 result.add(line);
                 count++;
@@ -523,6 +580,22 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             ensureDirs(ctx, destParent, new HashSet<>());
         }
 
+        // 如果目标不存在，且用户输入的 destPath 以 / 结尾，说明想移入目录
+        // 或者：源是文件，目标不存在，且目标的父目录存在，则把目标当作目录创建
+        boolean moveToDir = destPath.endsWith("/") ||
+                (Boolean.FALSE.equals(src.getIsDirectory()) &&
+                 !destOpt.isPresent() &&
+                 destParent != null &&
+                 !"/".equals(destParent) &&
+                 findByPath(ctx, destParent).isPresent());
+
+        if (moveToDir) {
+            // 目标作为目录，创建它并移入
+            String dirPath = fullDest;
+            ensureDirs(ctx, dirPath, new HashSet<>());
+            fullDest = dirPath + "/" + getName(fullSrc);
+        }
+
         // 移动目录时更新所有子项（使用悲观锁锁定所有子项，防止并发修改）
         if (Boolean.TRUE.equals(src.getIsDirectory())) {
             // 使用悲观锁查询所有子项
@@ -555,7 +628,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
         if (Boolean.TRUE.equals(src.getIsDirectory())) {
             if (!recursive) {
-                throw new IllegalArgumentException("Cannot copy directory without recursive flag. Use copy(ctx, src, dest, true)");
+                throw new IllegalArgumentException(
+                        "Cannot copy directory without recursive flag. Use copy(ctx, src, dest, true)");
             }
             copyDirectoryRecursive(ctx, fullSrc, fullDest);
             return;
@@ -579,7 +653,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
         // 真正复制文件内容（修复 bug）
         try {
-            byte[] content = storageService.download(src.getStoragePath()).readAllBytes();
+            byte[] content        = storageService.download(src.getStoragePath()).readAllBytes();
             String newStoragePath = uploadContent(content, getName(fullDest));
 
             SysFile copy = new SysFile();
@@ -616,7 +690,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
         for (SysFile child : children) {
             String childName = getName(child.getVirtualPath());
-            String destPath = destDir + "/" + childName;
+            String destPath  = destDir + "/" + childName;
 
             if (Boolean.TRUE.equals(child.getIsDirectory())) {
                 // 递归复制子目录
@@ -624,7 +698,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             } else {
                 // 复制文件
                 try {
-                    byte[] content = storageService.download(child.getStoragePath()).readAllBytes();
+                    byte[] content        = storageService.download(child.getStoragePath()).readAllBytes();
                     String newStoragePath = uploadContent(content, childName);
 
                     SysFile copy = new SysFile();
@@ -652,8 +726,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     @Transactional(rollbackFor = Exception.class)
     public void delete(VfsContext ctx, String path, boolean recursive) {
 
-        String fullPath = resolvePath(ctx, path);
-        Optional<SysFile> opt = findByPathForUpdate(ctx, fullPath);
+        String            fullPath = resolvePath(ctx, path);
+        Optional<SysFile> opt      = findByPathForUpdate(ctx, fullPath);
 
         if (opt.isEmpty()) {
             if (recursive) {
@@ -792,7 +866,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                      java.io.BufferedReader reader = new java.io.BufferedReader(
                              new java.io.InputStreamReader(is, StandardCharsets.UTF_8))) {
 
-                    String line;
+                    String  line;
                     boolean found = false;
                     while ((line = reader.readLine()) != null) {
                         if (line.contains(searchContent)) {
@@ -812,7 +886,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void uploadZip(VfsContext ctx, String path, InputStream zipStream) {
+    public List<String> uploadZip(VfsContext ctx, String path, InputStream zipStream) {
 
         String basePath = resolvePath(ctx, path);
 
@@ -820,6 +894,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         if (!"/".equals(basePath) && findByPath(ctx, basePath).isEmpty()) {
             ensureDirs(ctx, basePath, new HashSet<>());
         }
+
+        List<String> fileIds = new ArrayList<>();
 
         try (ZipInputStream zis = new ZipInputStream(zipStream)) {
             ZipEntry    entry;
@@ -843,9 +919,11 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                         ensureDirs(ctx, parentPath, createdDirs);
                     }
 
-                    byte[] content = zis.readAllBytes();
+                    // 流式处理，避免 OOM
+                    long size = entry.getSize();
                     if (findByPath(ctx, entryPath).isEmpty()) {
-                        createFile(ctx, entryPath, content);
+                        String bizId = createFile(ctx, entryPath, zis, size);
+                        fileIds.add(bizId);
                     }
                     zis.closeEntry();
                 }
@@ -854,6 +932,59 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             throw new RuntimeException("Failed to extract zip", e);
         }
 
+        return fileIds;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<String> uploadFiles(VfsContext ctx, String targetPath, MultipartFile[] files, String[] relativePaths) {
+
+        String basePath = resolvePath(ctx, targetPath);
+
+        // 确保目标目录存在
+        if (!"/".equals(basePath) && findByPath(ctx, basePath).isEmpty()) {
+            ensureDirs(ctx, basePath, new HashSet<>());
+        }
+
+        Set<String> createdDirs = new HashSet<>();
+        createdDirs.add(basePath);
+        List<String> fileIds = new ArrayList<>();
+
+        try {
+            for (int i = 0; i < files.length; i++) {
+                MultipartFile file         = files[i];
+                String        relativePath = relativePaths != null && i < relativePaths.length
+                                             ? relativePaths[i]
+                                             : file.getOriginalFilename();
+
+                if (relativePath == null || relativePath.isEmpty()) {
+                    continue;
+                }
+
+                // 构建完整的虚拟路径
+                String fullPath = normalizePath(basePath + "/" + relativePath);
+
+                // 确保父目录存在
+                String parentPath = getParentPath(fullPath);
+                if (parentPath != null && !"/".equals(parentPath) && !createdDirs.contains(parentPath)) {
+                    if (findByPath(ctx, parentPath).isEmpty()) {
+                        ensureDirs(ctx, parentPath, createdDirs);
+                    } else {
+                        createdDirs.add(parentPath);
+                    }
+                }
+
+                // 流式处理，避免 OOM
+                if (findByPath(ctx, fullPath).isEmpty()) {
+                    String bizId = createFile(ctx, fullPath, file.getInputStream(), file.getSize());
+                    fileIds.add(bizId);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload files", e);
+        }
+
+        return fileIds;
     }
 
     @Override

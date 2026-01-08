@@ -12,7 +12,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "sys_file",
+@Table(name = "sys_storage_file",
        uniqueConstraints = @UniqueConstraint(columnNames = {"virtualPath"}),
        indexes = {
            @Index(name = "idx_parent_path", columnList = "parentPath"),

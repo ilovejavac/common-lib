@@ -47,7 +47,10 @@ public class OperateLogAspect {
         logger.setModifierId(SecurityContextHolder.getUserId());
 
         if (operateLog.recordParams()) {
-            logger.setRequestParams(JSON.toJSONString(point.getArgs()));
+            Object[] filteredArgs = java.util.Arrays.stream(point.getArgs())
+                    .filter(arg -> !(arg instanceof org.springframework.web.multipart.MultipartFile))
+                    .toArray();
+            logger.setRequestParams(JSON.toJSONString(filteredArgs));
         }
 
         try {

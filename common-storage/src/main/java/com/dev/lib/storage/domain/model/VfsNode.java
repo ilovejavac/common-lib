@@ -8,6 +8,8 @@ import java.util.List;
 @Data
 public class VfsNode {
 
+    private String id;
+
     private String name;           // 文件/目录名
 
     private String path;           // 相对路径

@@ -2,6 +2,7 @@ package com.dev.lib.storage.domain.service;
 
 import com.dev.lib.storage.domain.model.VfsContext;
 import com.dev.lib.storage.domain.model.VfsNode;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.util.List;
@@ -119,7 +120,18 @@ public interface VirtualFileSystem {
 
     /**
      * 上传并解压 ZIP 文件
+     * @return 创建的文件 ID 列表
      */
-    void uploadZip(VfsContext ctx, String path, InputStream zipStream);
+    List<String> uploadZip(VfsContext ctx, String path, InputStream zipStream);
+
+    /**
+     * 批量上传文件到虚拟文件系统
+     * @param ctx 虚拟文件系统上下文
+     * @param targetPath 目标路径
+     * @param files 文件数组
+     * @param relativePaths 相对路径数组（对应每个文件的相对路径，如 "folder/sub/file.txt"）
+     * @return 创建的文件 ID 列表
+     */
+    List<String> uploadFiles(VfsContext ctx, String targetPath, MultipartFile[] files, String[] relativePaths);
 
 }
