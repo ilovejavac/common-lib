@@ -3,6 +3,9 @@ package com.dev.lib.storage.domain.model;
 import com.dev.lib.storage.serialize.FileItem;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.linpeilie.annotations.AutoMapper;
+import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -28,6 +31,8 @@ public class StorageFile {
 
     private Long size;              // 文件大小(字节)
 
+    @Column(length = 12)
+    @Enumerated(EnumType.STRING)
     private StorageType storageType;     // 存储类型
 
 //    private String md5;             // MD5值(去重)
