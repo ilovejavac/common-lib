@@ -56,7 +56,7 @@ public interface VirtualFileSystem {
     // ==================== 文件操作 ====================
 
     /**
-     * 写入文件（字符串）
+     * 写入文件（覆盖模式）
      */
     void writeFile(VfsContext ctx, String path, String content);
 
@@ -64,6 +64,11 @@ public interface VirtualFileSystem {
      * 写入文件（流）
      */
     void writeFile(VfsContext ctx, String path, InputStream inputStream);
+
+    /**
+     * 追加内容到文件末尾
+     */
+    void appendFile(VfsContext ctx, String path, String content);
 
     /**
      * 创建空文件或更新时间戳

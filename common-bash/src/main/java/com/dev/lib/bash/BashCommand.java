@@ -1,6 +1,8 @@
 package com.dev.lib.bash;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -10,11 +12,69 @@ import java.util.Map;
 public abstract class BashCommand {
 
     /**
-     * 执行命令
-     * @param args 动态参数（可以是 String, Integer, Boolean, InputStream 等）
-     * @return 命令执行结果
+     * 解析命令行字符串为 token 数组
+     * 支持：
+     * - 空格分隔：ls -la /path
+     * - 单引号：cat 'file with spaces.txt'
+     * - 双引号：echo "hello world"
+     * - 转义：cat file\ with\ spaces.txt
+     *
+     * @param commandLine 命令行字符串
+     * @return 解析后的 token 数组
      */
-    public abstract Object execute(Object... args);
+    protected String[] parseCommandLine(String commandLine) {
+
+        if (commandLine == null || commandLine.trim().isEmpty()) {
+            return new String[0];
+        }
+
+        List<String> tokens = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+        boolean escaped = false;
+
+        for (int i = 0; i < commandLine.length(); i++) {
+            char c = commandLine.charAt(i);
+
+            if (escaped) {
+                current.append(c);
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\' && !inSingleQuote) {
+                escaped = true;
+                continue;
+            }
+
+            if (c == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+                continue;
+            }
+
+            if (c == '"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+                continue;
+            }
+
+            if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
+                if (current.length() > 0) {
+                    tokens.add(current.toString());
+                    current = new StringBuilder();
+                }
+                continue;
+            }
+
+            current.append(c);
+        }
+
+        if (current.length() > 0) {
+            tokens.add(current.toString());
+        }
+
+        return tokens.toArray(new String[0]);
+    }
 
     /**
      * 解析参数为 Map
@@ -24,54 +84,49 @@ public abstract class BashCommand {
      * - 组合标志+值："-rn 10" -> {r: true, n: 10}（最后一个标志可以带值）
      * - 位置参数：保存到 "args" 列表中
      */
-    protected ParsedArgs parseArgs(Object... args) {
+    protected ParsedArgs parseArgs(String... args) {
+
         ParsedArgs parsed = new ParsedArgs();
 
         for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
+            String arg = args[i];
 
-            if (arg instanceof String) {
-                String str = (String) arg;
+            if (arg == null) continue;
 
-                // 处理标志参数（如 -r, -f, -rf）
-                if (str.startsWith("-") && !str.equals("-")) {
-                    String flags = str.substring(1);
+            // 处理标志参数（如 -r, -f, -rf）
+            if (arg.startsWith("-") && !arg.equals("-")) {
+                String flags = arg.substring(1);
 
-                    // 检查下一个参数是否是值
-                    if (i + 1 < args.length && !isOptionLike(args[i + 1])) {
-                        // 下一个参数可能是值，尝试解析
-                        Object nextArg = args[i + 1];
-                        Object value = tryParseValue(nextArg);
+                // 检查下一个参数是否是值
+                if (i + 1 < args.length && !isOptionLike(args[i + 1])) {
+                    String nextArg = args[i + 1];
+                    Object value = tryParseValue(nextArg);
 
-                        if (value != null) {
-                            // 下一个参数是值，绑定到组合标志的最后一个字符
-                            // 例如：-rn 10 → {r: true, n: 10}
-                            char lastFlag = flags.charAt(flags.length() - 1);
-                            parsed.options.put(String.valueOf(lastFlag), value);
-                            i++; // 跳过值参数
+                    if (value != null) {
+                        // 下一个参数是值，绑定到组合标志的最后一个字符
+                        // 例如：-rn 10 → {r: true, n: 10}
+                        char lastFlag = flags.charAt(flags.length() - 1);
+                        parsed.options.put(String.valueOf(lastFlag), value);
+                        i++; // 跳过值参数
 
-                            // 处理前面的标志（都作为布尔值）
-                            for (int j = 0; j < flags.length() - 1; j++) {
-                                parsed.options.put(String.valueOf(flags.charAt(j)), true);
-                            }
-                        } else {
-                            // 下一个参数不是值，所有标志都作为布尔值
-                            for (char flag : flags.toCharArray()) {
-                                parsed.options.put(String.valueOf(flag), true);
-                            }
+                        // 处理前面的标志（都作为布尔值）
+                        for (int j = 0; j < flags.length() - 1; j++) {
+                            parsed.options.put(String.valueOf(flags.charAt(j)), true);
                         }
                     } else {
-                        // 下一个参数是选项或没有下一个参数，所有标志都作为布尔值
+                        // 下一个参数不是值，所有标志都作为布尔值
                         for (char flag : flags.toCharArray()) {
                             parsed.options.put(String.valueOf(flag), true);
                         }
                     }
                 } else {
-                    // 位置参数
-                    parsed.positionalArgs.add(str);
+                    // 下一个参数是选项或没有下一个参数，所有标志都作为布尔值
+                    for (char flag : flags.toCharArray()) {
+                        parsed.options.put(String.valueOf(flag), true);
+                    }
                 }
             } else {
-                // 非字符串参数（如 InputStream）
+                // 位置参数
                 parsed.positionalArgs.add(arg);
             }
         }
@@ -82,38 +137,29 @@ public abstract class BashCommand {
     /**
      * 检查参数是否类似选项（以 - 开头）
      */
-    private boolean isOptionLike(Object arg) {
-        if (arg instanceof String) {
-            String str = (String) arg;
-            return str.startsWith("-");
-        }
-        return false;
+    private boolean isOptionLike(String arg) {
+        return arg != null && arg.startsWith("-");
     }
 
     /**
-     * 尝试将参数解析为值（数字或字符串）
+     * 尝试将参数解析为值（数字）
      * 返回 null 表示不是值类型
      */
-    private Object tryParseValue(Object arg) {
-        if (arg instanceof Integer || arg instanceof Long) {
+    private Object tryParseValue(String arg) {
+
+        if (arg == null) return null;
+
+        // 尝试解析为数字
+        try {
+            return Integer.parseInt(arg);
+        } catch (NumberFormatException e) {
+            // 不是数字
+            // 但如果是以 - 开头，则可能是选项，返回 null
+            if (arg.startsWith("-")) {
+                return null;
+            }
             return arg;
         }
-        if (arg instanceof String) {
-            String str = (String) arg;
-            // 尝试解析为数字
-            try {
-                return Integer.parseInt(str);
-            } catch (NumberFormatException e) {
-                // 不是数字，返回字符串作为值
-                // 但如果是以 - 开头，则可能是选项，返回 null
-                if (str.startsWith("-")) {
-                    return null;
-                }
-                return str;
-            }
-        }
-        // 其他类型不作为值处理
-        return null;
     }
 
     /**

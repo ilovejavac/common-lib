@@ -11,13 +11,14 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * VFS Bash 命令实现
- * 负责解析 bash 命令参数并调用底层 VFS 接口
+ * 负责解析 bash 命令字符串并调用底层 VFS 接口
  */
 @Component
 @RequiredArgsConstructor
@@ -33,6 +34,7 @@ public class VfsBashCommand extends BashCommand {
         commands.put("cat", this::cat);
         commands.put("head", this::head);
         commands.put("tail", this::tail);
+        commands.put("echo", this::echo);
         commands.put("touch", this::touch);
         commands.put("cp", this::cp);
         commands.put("mv", this::mv);
@@ -42,19 +44,27 @@ public class VfsBashCommand extends BashCommand {
         commands.put("grep", this::grep);
     }
 
-    @Override
-    public Object execute(Object... args) {
+    /**
+     * 执行命令
+     * @param ctx VFS 上下文
+     * @param commandLine 完整命令行，如 "ls -la /path"
+     * @return 执行结果
+     */
+    public Object execute(VfsContext ctx, String commandLine) {
 
-        if (args.length < 2) {
-            throw new IllegalArgumentException("Usage: execute(VfsContext, commandName, ...args)");
+        if (commandLine == null || commandLine.trim().isEmpty()) {
+            throw new IllegalArgumentException("Command line cannot be empty");
         }
 
-        VfsContext ctx         = (VfsContext) args[0];
-        String     commandName = (String) args[1];
+        String[] tokens = parseCommandLine(commandLine);
+        if (tokens.length == 0) {
+            throw new IllegalArgumentException("Command line cannot be empty");
+        }
 
-        // 提取命令参数（跳过 ctx 和 commandName）
-        Object[] commandArgs = new Object[args.length - 2];
-        System.arraycopy(args, 2, commandArgs, 0, commandArgs.length);
+        String commandName = tokens[0];
+        String[] commandArgs = tokens.length > 1
+                ? Arrays.copyOfRange(tokens, 1, tokens.length)
+                : new String[0];
 
         CommandHandler handler = commands.get(commandName);
         if (handler == null) {
@@ -65,9 +75,9 @@ public class VfsBashCommand extends BashCommand {
     }
 
     /**
-     * ls [-l] [path]
+     * ls [-d depth] [path]
      */
-    private Object ls(VfsContext ctx, Object... args) {
+    private Object ls(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed = parseArgs(args);
         String     path   = parsed.getString(0);
@@ -79,10 +89,64 @@ public class VfsBashCommand extends BashCommand {
 
     /**
      * cat [-n] <file> [file...]
+     * cat > <file> << <content>
+     * cat >> <file> << <content>
+     *
      * -n: 显示行号
+     * > <<: 覆盖写入（heredoc风格）
+     * >> <<: 追加写入（heredoc风格）
+     *
+     * 读取文件或写入内容到文件
      */
-    private Object cat(VfsContext ctx, Object... args) {
+    private Object cat(VfsContext ctx, String[] args) {
 
+        // 检查是否是写入模式（heredoc: cat > file << content）
+        boolean isWriteMode = false;
+        boolean isAppendMode = false;
+        String filePath = null;
+        int heredocIndex = -1;
+
+        for (int i = 0; i < args.length; i++) {
+            if (">>".equals(args[i])) {
+                isAppendMode = true;
+                isWriteMode = true;
+                if (i + 2 < args.length && "<<".equals(args[i + 2])) {
+                    filePath = args[i + 1];
+                    heredocIndex = i + 3;
+                    break;
+                }
+            } else if (">".equals(args[i])) {
+                isWriteMode = true;
+                if (i + 2 < args.length && "<<".equals(args[i + 2])) {
+                    filePath = args[i + 1];
+                    heredocIndex = i + 3;
+                    break;
+                }
+            }
+        }
+
+        // 写入模式
+        if (isWriteMode && filePath != null && heredocIndex >= 0) {
+            StringBuilder content = new StringBuilder();
+            for (int i = heredocIndex; i < args.length; i++) {
+                if (content.length() > 0) {
+                    content.append(" ");
+                }
+                content.append(args[i]);
+            }
+
+            String finalContent = content.toString();
+            if (isAppendMode) {
+                // 追加
+                vfs.appendFile(ctx, filePath, finalContent);
+            } else {
+                // 覆盖
+                vfs.writeFile(ctx, filePath, finalContent);
+            }
+            return null;
+        }
+
+        // 读取模式（原有逻辑）
         ParsedArgs parsed          = parseArgs(args);
         boolean    showLineNumbers = parsed.hasFlag("n");
         Integer    startLine       = parsed.getInt("s", 1);
@@ -134,10 +198,10 @@ public class VfsBashCommand extends BashCommand {
     /**
      * head [-n lines] <file>
      */
-    private Object head(VfsContext ctx, Object... args) {
+    private Object head(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed = parseArgs(args);
-        int        lines  = parsed.getInt("n", 10);
+        int        lines  = parsed.getInt("n", 100);
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("head: missing file operand");
@@ -152,10 +216,10 @@ public class VfsBashCommand extends BashCommand {
      * tail [-n lines] <file>
      * 使用循环缓冲区，只读取文件一次
      */
-    private Object tail(VfsContext ctx, Object... args) {
+    private Object tail(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed = parseArgs(args);
-        int        lines  = parsed.getInt("n", 10);
+        int        lines  = parsed.getInt("n", 100);
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("tail: missing file operand");
@@ -165,8 +229,7 @@ public class VfsBashCommand extends BashCommand {
 
         // 使用循环缓冲区，只读取文件一次
         try (InputStream is = vfs.openFile(ctx, path);
-             java.io.BufferedReader reader = new java.io.BufferedReader(
-                     new java.io.InputStreamReader(is, StandardCharsets.UTF_8))) {
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
             String[] buffer = new String[lines];
             int      index  = 0;
@@ -195,9 +258,68 @@ public class VfsBashCommand extends BashCommand {
     }
 
     /**
+     * echo <content> > <file>
+     * echo <content> >> <file>
+     *
+     * 输出内容到文件（支持重定向）
+     * 示例：
+     * echo "hello world" > /file.txt
+     * echo "new line" >> /file.txt
+     * echo "line1\nline2\nline3" > /file.txt
+     */
+    private Object echo(VfsContext ctx, String[] args) {
+
+        if (args.length == 0) {
+            throw new IllegalArgumentException("echo: missing content");
+        }
+
+        // 解析重定向符 >
+        boolean append = false;
+        String  filePath = null;
+        StringBuilder content = new StringBuilder();
+
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+
+            if (">>".equals(arg)) {
+                append = true;
+                if (i + 1 < args.length) {
+                    filePath = args[++i];
+                }
+            } else if (">".equals(arg)) {
+                append = false;
+                if (i + 1 < args.length) {
+                    filePath = args[++i];
+                }
+            } else {
+                if (content.length() > 0) {
+                    content.append(" ");
+                }
+                content.append(arg);
+            }
+        }
+
+        // 如果有重定向，写入文件
+        if (filePath != null) {
+            String finalContent = content.toString();
+            if (append) {
+                // 追加模式
+                vfs.appendFile(ctx, filePath, finalContent);
+            } else {
+                // 覆盖模式
+                vfs.writeFile(ctx, filePath, finalContent);
+            }
+            return null;
+        }
+
+        // 没有重定向，返回内容
+        return content.toString();
+    }
+
+    /**
      * touch <file> [file...]
      */
-    private Object touch(VfsContext ctx, Object... args) {
+    private Object touch(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed = parseArgs(args);
 
@@ -214,28 +336,33 @@ public class VfsBashCommand extends BashCommand {
     }
 
     /**
-     * cp [-r] <src> <dest>
-     * cp [-r] <src...> <dest_dir>
+     * cp <src> <dest>
+     * cp <src...> <dest_dir>
+     *
+     * 复制文件或目录，自动检测目录并递归复制
      */
-    private Object cp(VfsContext ctx, Object... args) {
+    private Object cp(VfsContext ctx, String[] args) {
 
-        ParsedArgs parsed    = parseArgs(args);
-        boolean    recursive = parsed.hasFlag("r");
+        ParsedArgs parsed = parseArgs(args);
 
         if (parsed.positionalCount() < 2) {
             throw new IllegalArgumentException("cp: missing destination file operand");
         }
 
         if (parsed.positionalCount() == 2) {
-            // 单个源文件
+            // 单个源
             String src  = parsed.getString(0);
             String dest = parsed.getString(1);
+            // 自动检测是否为目录
+            boolean recursive = vfs.isDirectory(ctx, src);
             vfs.copy(ctx, src, dest, recursive);
         } else {
             // 多个源文件，目标必须是目录
             String destDir = parsed.getString(parsed.positionalCount() - 1);
             for (int i = 0; i < parsed.positionalCount() - 1; i++) {
                 String src = parsed.getString(i);
+                // 自动检测是否为目录
+                boolean recursive = vfs.isDirectory(ctx, src);
                 vfs.copy(ctx, src, destDir, recursive);
             }
         }
@@ -247,7 +374,7 @@ public class VfsBashCommand extends BashCommand {
      * mv <src> <dest>
      * mv <src...> <dest_dir>
      */
-    private Object mv(VfsContext ctx, Object... args) {
+    private Object mv(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed = parseArgs(args);
 
@@ -275,7 +402,7 @@ public class VfsBashCommand extends BashCommand {
     /**
      * rm [-rf] <file> [file...]
      */
-    private Object rm(VfsContext ctx, Object... args) {
+    private Object rm(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed    = parseArgs(args);
         boolean    recursive = parsed.hasFlag("r") || parsed.hasFlag("f");
@@ -295,7 +422,7 @@ public class VfsBashCommand extends BashCommand {
     /**
      * mkdir [-p] <dir> [dir...]
      */
-    private Object mkdir(VfsContext ctx, Object... args) {
+    private Object mkdir(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed        = parseArgs(args);
         boolean    createParents = parsed.hasFlag("p");
@@ -315,7 +442,7 @@ public class VfsBashCommand extends BashCommand {
     /**
      * find [-r] <basePath> -name <pattern>
      */
-    private Object find(VfsContext ctx, Object... args) {
+    private Object find(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed    = parseArgs(args);
         boolean    recursive = parsed.hasFlag("r");
@@ -333,7 +460,7 @@ public class VfsBashCommand extends BashCommand {
     /**
      * grep [-r] <content> <basePath>
      */
-    private Object grep(VfsContext ctx, Object... args) {
+    private Object grep(VfsContext ctx, String[] args) {
 
         ParsedArgs parsed    = parseArgs(args);
         boolean    recursive = parsed.hasFlag("r");

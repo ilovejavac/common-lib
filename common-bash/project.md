@@ -76,9 +76,18 @@ public class CommandService {
 3. **CommandHandler**：命令处理器
    - execute(input): 执行命令字符串
 
-### 最近修改
+### 最近修改 (2026-01-09)
 
-最近新增模块，从 common-storage 中提取 VFS 命令处理逻辑
+1. **命令格式重构**：
+   - `CommandHandler` 接口签名从 `Object... args` 改为 `String[] args`
+   - `BashCommand` 添加 `parseCommandLine(String)` 方法支持 shell-like 解析
+   - 支持单引号、双引号、转义字符
+
+### TODO
+
+- [ ] 添加单元测试验证 `parseCommandLine()` 方法
+- [ ] 测试各种命令格式：`ls`, `ls -la`, `cat 'file with spaces.txt'`
+- [ ] 文档更新：更新示例代码使用新的接口签名
 
 ### 修改记录位置
 

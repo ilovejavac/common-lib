@@ -20,8 +20,7 @@ public class VfsController {
     @Data
     public static class BashRequest {
         private String root;         // 根路径
-        private String command;      // 命令名（如 "ls", "cat", "rm"）
-        private Object[] args;       // 命令参数
+        private String command;      // 完整命令行，如 "ls -la /path"
     }
 
     /**
@@ -31,35 +30,29 @@ public class VfsController {
      * 示例：
      * {
      *   "root": "/workspace",
-     *   "command": "ls",
-     *   "args": ["-d", "2", "/path"]
+     *   "command": "ls -d 2 /path"
      * }
      *
      * {
      *   "root": "/workspace",
-     *   "command": "cat",
-     *   "args": ["-n", "/file.txt"]
+     *   "command": "cat -n /file.txt"
      * }
      *
      * {
      *   "root": "/workspace",
-     *   "command": "rm",
-     *   "args": ["-rf", "/dir1", "/dir2"]
+     *   "command": "rm -rf /dir1 /dir2"
+     * }
+     *
+     * {
+     *   "root": "/workspace",
+     *   "command": "cat 'file with spaces.txt'"
      * }
      */
     @PostMapping("/exec")
     public ServerResponse<Object> exec(@RequestBody BashRequest req) {
         VfsContext ctx = VfsContext.of(req.getRoot());
-
-        // 构造完整参数：ctx + command + args
-        Object[] fullArgs = new Object[req.getArgs().length + 2];
-        fullArgs[0] = ctx;
-        fullArgs[1] = req.getCommand();
-        System.arraycopy(req.getArgs(), 0, fullArgs, 2, req.getArgs().length);
-
-        Object result = bashCommand.execute(fullArgs);
+        Object result = bashCommand.execute(ctx, req.getCommand());
         return ServerResponse.success(result);
     }
 
 }
-

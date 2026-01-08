@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(verification-before-completion)",
+      "Bash(mvn compile:*)",
+      "Bash(mvn install:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

@@ -169,6 +169,26 @@ boolean isDir = vfs.isDirectory(ctx, "/folder");
    - `OssFileStorage`：阿里云 OSS
    - `RustfsStorage`：RustFS 高性能存储
 
+### 最近修改 (2026-01-09)
+
+1. **Bash 命令重构**：
+   - API 从 `{command, args[]}` 改为单一命令字符串 `"ls -la /path"`
+   - 新增 `echo` 命令支持重定向：`echo "content" > file`, `echo "content" >> file`
+   - `cat` 命令支持 heredoc 写法：`cat > file << "content"`
+   - `VfsController.BashRequest` 简化为 `{root, command}`
+   - `cp` 命令自动检测目录递归复制，不需要 `-r` 标志
+
+2. **新增 appendFile 方法**：
+   - `VirtualFileSystem.appendFile()` 追加内容到文件末尾
+   - `VirtualFileSystemImpl` 实现：读取原内容 → 拼接 → 上传新文件
+   - 未来可优化为 StorageService 原生支持追加
+
+### TODO
+
+- [ ] 单元测试：`echo`, `cat heredoc`, `appendFile` 功能验证
+- [ ] 集成测试：完整命令流程测试（write → read → append → read）
+- [ ] 文档更新：更新 API 示例和命令格式说明
+
 ### 最近修改 (2025-01-08)
 
 1. **COW 架构重构**：
