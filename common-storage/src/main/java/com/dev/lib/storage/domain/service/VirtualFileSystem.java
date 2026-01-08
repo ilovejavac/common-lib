@@ -6,34 +6,120 @@ import com.dev.lib.storage.domain.model.VfsNode;
 import java.io.InputStream;
 import java.util.List;
 
+/**
+ * 虚拟文件系统底层接口
+ * 只提供基础的文件操作能力，不关心命令行参数解析
+ */
 public interface VirtualFileSystem {
 
-    List<VfsNode> ls(VfsContext ctx, String path, Integer depth);
+    // ==================== 基础查询 ====================
 
-    InputStream cat(VfsContext ctx, String path);
+    /**
+     * 列出目录内容
+     */
+    List<VfsNode> listDirectory(VfsContext ctx, String path, Integer depth);
 
-    String read(VfsContext ctx, String path);
+    /**
+     * 打开文件流（用于流式读取，避免 OOM）
+     */
+    InputStream openFile(VfsContext ctx, String path);
 
-    void write(VfsContext ctx, String path, String content);
+    /**
+     * 读取文件全部内容到内存（小文件使用）
+     */
+    String readFile(VfsContext ctx, String path);
 
-    void write(VfsContext ctx, String path, byte[] content);
+    /**
+     * 读取文件指定行范围（避免 OOM）
+     * @param startLine 起始行号（从 1 开始）
+     * @param lineCount 读取行数（-1 表示读到文件末尾）
+     * @return 每行内容的列表
+     */
+    List<String> readLines(VfsContext ctx, String path, int startLine, int lineCount);
 
-    void mv(VfsContext ctx, String srcPath, String destPath);
+    /**
+     * 获取文件总行数
+     */
+    int getLineCount(VfsContext ctx, String path);
 
-    void cp(VfsContext ctx, String srcPath, String destPath);
-
-    void rm(VfsContext ctx, String path);
-
-    void rmrf(VfsContext ctx, String path);
-
-    void mkdir(VfsContext ctx, String path);
-
-    void mkdirp(VfsContext ctx, String path);
-
-    void uploadZip(VfsContext ctx, String path, InputStream zipStream);
-
+    /**
+     * 检查路径是否存在
+     */
     boolean exists(VfsContext ctx, String path);
 
-    boolean isDir(VfsContext ctx, String path);
+    /**
+     * 检查是否为目录
+     */
+    boolean isDirectory(VfsContext ctx, String path);
+
+    // ==================== 文件操作 ====================
+
+    /**
+     * 写入文件（字符串）
+     */
+    void writeFile(VfsContext ctx, String path, String content);
+
+    /**
+     * 写入文件（字节数组）
+     */
+    void writeFile(VfsContext ctx, String path, byte[] content);
+
+    /**
+     * 写入文件（流）
+     */
+    void writeFile(VfsContext ctx, String path, InputStream inputStream);
+
+    /**
+     * 创建空文件或更新时间戳
+     */
+    void touchFile(VfsContext ctx, String path);
+
+    /**
+     * 复制文件或目录
+     * @param recursive 是否递归复制目录
+     */
+    void copy(VfsContext ctx, String srcPath, String destPath, boolean recursive);
+
+    /**
+     * 移动/重命名文件或目录
+     */
+    void move(VfsContext ctx, String srcPath, String destPath);
+
+    /**
+     * 删除文件或目录
+     * @param recursive 是否递归删除
+     */
+    void delete(VfsContext ctx, String path, boolean recursive);
+
+    // ==================== 目录操作 ====================
+
+    /**
+     * 创建目录
+     * @param createParents 是否创建父目录
+     */
+    void createDirectory(VfsContext ctx, String path, boolean createParents);
+
+    // ==================== 搜索功能 ====================
+
+    /**
+     * 按文件名模式搜索
+     * @param pattern 文件名模式（支持通配符 * 和 ?）
+     * @param recursive 是否递归搜索
+     */
+    List<VfsNode> findByName(VfsContext ctx, String basePath, String pattern, boolean recursive);
+
+    /**
+     * 搜索文件内容
+     * @param content 要搜索的内容
+     * @param recursive 是否递归搜索
+     */
+    List<VfsNode> findByContent(VfsContext ctx, String basePath, String content, boolean recursive);
+
+    // ==================== 高级功能 ====================
+
+    /**
+     * 上传并解压 ZIP 文件
+     */
+    void uploadZip(VfsContext ctx, String path, InputStream zipStream);
 
 }

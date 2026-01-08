@@ -8,6 +8,7 @@ import com.dev.lib.storage.data.SysFileRepository;
 import com.dev.lib.storage.domain.model.VfsContext;
 import com.dev.lib.storage.domain.model.VfsNode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +17,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -95,11 +98,35 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         return child.startsWith(prefix);
     }
 
-    // ==================== 查询 ====================
+    /**
+     * 通配符模式匹配（支持 * 和 ?）
+     */
+    private boolean matchPattern(String name, String pattern) {
+
+        if (pattern == null || pattern.isEmpty()) return true;
+
+        // 转换通配符为正则表达式
+        String regex = pattern
+                .replace(".", "\\.")
+                .replace("*", ".*")
+                .replace("?", ".");
+
+        return Pattern.matches(regex, name);
+    }
+
+    // ==================== 查询（使用悲观锁的版本） ====================
 
     private Optional<SysFile> findByPath(VfsContext ctx, String virtualPath) {
 
         return systemRepository.findByVirtualPath(virtualPath);
+    }
+
+    /**
+     * 悲观锁查询，用于写操作
+     */
+    private Optional<SysFile> findByPathForUpdate(VfsContext ctx, String virtualPath) {
+
+        return systemRepository.findByVirtualPathForUpdate(virtualPath);
     }
 
     private List<SysFile> findChildren(VfsContext ctx, String parentPath) {
@@ -116,6 +143,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
     /**
      * 递归创建目录（内部方法，直接用完整路径）
+     * 使用数据库唯一约束来防止并发创建重复目录
      */
     private void ensureDirs(VfsContext ctx, String fullPath, Set<String> created) {
 
@@ -130,9 +158,14 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         if (parent != null && !"/".equals(parent)) {
             ensureDirs(ctx, parent, created);
         }
-        // 再创建当前目录
-        createDirectory(ctx, fullPath);
-        created.add(fullPath);
+        // 再创建当前目录（可能因为并发而失败，忽略唯一约束异常）
+        try {
+            createDirectory(ctx, fullPath);
+            created.add(fullPath);
+        } catch (DataIntegrityViolationException e) {
+            // 并发创建，忽略
+            created.add(fullPath);
+        }
     }
 
     private void createDirectory(VfsContext ctx, String virtualPath) {
@@ -201,7 +234,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     // ==================== 接口实现 ====================
 
     @Override
-    public List<VfsNode> ls(VfsContext ctx, String path, Integer depth) {
+    public List<VfsNode> listDirectory(VfsContext ctx, String path, Integer depth) {
 
         if (depth == null || depth < 1) depth = 1;
         if (depth > 3) depth = 3;
@@ -250,7 +283,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     }
 
     @Override
-    public InputStream cat(VfsContext ctx, String path) {
+    public InputStream openFile(VfsContext ctx, String path) {
 
         String fullPath = resolvePath(ctx, path);
         SysFile file = findByPath(
@@ -270,9 +303,9 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     }
 
     @Override
-    public String read(VfsContext ctx, String path) {
+    public String readFile(VfsContext ctx, String path) {
 
-        try (InputStream is = cat(ctx, path)) {
+        try (InputStream is = openFile(ctx, path)) {
             return new String(is.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read file", e);
@@ -280,15 +313,70 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void write(VfsContext ctx, String path, String content) {
+    public List<String> readLines(VfsContext ctx, String path, int startLine, int lineCount) {
 
-        write(ctx, path, content == null ? new byte[0] : content.getBytes(StandardCharsets.UTF_8));
+        if (startLine < 1) {
+            throw new IllegalArgumentException("Start line must be >= 1");
+        }
+
+        List<String> result = new ArrayList<>();
+
+        try (InputStream is = openFile(ctx, path);
+             java.io.BufferedReader reader = new java.io.BufferedReader(
+                     new java.io.InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+            // 跳过前面的行
+            for (int i = 1; i < startLine; i++) {
+                if (reader.readLine() == null) {
+                    // 起始行超出文件范围
+                    return result;
+                }
+            }
+
+            // 读取指定数量的行
+            String line;
+            int count = 0;
+            while ((line = reader.readLine()) != null) {
+                result.add(line);
+                count++;
+                if (lineCount != -1 && count >= lineCount) {
+                    break;
+                }
+            }
+
+            return result;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read lines from file", e);
+        }
+    }
+
+    @Override
+    public int getLineCount(VfsContext ctx, String path) {
+
+        try (InputStream is = openFile(ctx, path);
+             java.io.BufferedReader reader = new java.io.BufferedReader(
+                     new java.io.InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+            int count = 0;
+            while (reader.readLine() != null) {
+                count++;
+            }
+            return count;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to count lines in file", e);
+        }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void write(VfsContext ctx, String path, byte[] content) {
+    public void writeFile(VfsContext ctx, String path, String content) {
+
+        writeFile(ctx, path, content == null ? new byte[0] : content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void writeFile(VfsContext ctx, String path, byte[] content) {
 
         String fullPath   = resolvePath(ctx, path);
         String parentPath = getParentPath(fullPath);
@@ -298,42 +386,91 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             ensureDirs(ctx, parentPath, new HashSet<>());
         }
 
-        Optional<SysFile> existing = findByPath(ctx, fullPath);
+        // 使用悲观锁查询，防止并发写
+        Optional<SysFile> existing = findByPathForUpdate(ctx, fullPath);
         if (existing.isPresent()) {
             SysFile file = existing.get();
             if (Boolean.TRUE.equals(file.getIsDirectory())) {
                 throw new IllegalArgumentException("Cannot write to directory: " + path);
             }
-            // 更新
+
+            // Copy-on-Write 策略：
+            // 1. 先上传新文件到存储（此时读操作仍然读取旧文件）
+            // 2. 在事务中原子性地更新数据库记录的 storagePath
+            // 3. 标记旧文件延迟删除
             try {
-                storageService.delete(file.getStoragePath());
+                String oldStoragePath = file.getStoragePath();
                 String newStoragePath = uploadContent(content, getName(fullPath));
+
+                // 原子性地替换指针（COW 的核心）
                 file.setStoragePath(newStoragePath);
                 file.setUrl(storageService.getUrl(newStoragePath));
                 file.setSize((long) content.length);
+
+                // 标记旧文件延迟删除（5分钟后）
+                if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
+                    file.setOldStoragePath(oldStoragePath);
+                    file.setDeleteAfter(LocalDateTime.now().plusMinutes(5));
+                }
+
+                // 保存更新（不创建新记录，只更新现有记录）
                 fileRepository.save(file);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to write file", e);
             }
         } else {
+            // 文件不存在，创建新文件
             createFile(ctx, fullPath, content);
         }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void mv(VfsContext ctx, String srcPath, String destPath) {
+    public void writeFile(VfsContext ctx, String path, InputStream inputStream) {
+
+        try {
+            byte[] content = inputStream.readAllBytes();
+            writeFile(ctx, path, content);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read from input stream", e);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void touchFile(VfsContext ctx, String path) {
+
+        String fullPath = resolvePath(ctx, path);
+
+        Optional<SysFile> existing = findByPathForUpdate(ctx, fullPath);
+        if (existing.isPresent()) {
+            SysFile file = existing.get();
+            if (Boolean.TRUE.equals(file.getIsDirectory())) {
+                throw new IllegalArgumentException("Cannot touch directory: " + path);
+            }
+            // 更新时间戳（JPA 会自动更新 updatedAt）
+            fileRepository.save(file);
+        } else {
+            // 创建空文件
+            writeFile(ctx, path, new byte[0]);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void move(VfsContext ctx, String srcPath, String destPath) {
 
         String fullSrc  = resolvePath(ctx, srcPath);
         String fullDest = resolvePath(ctx, destPath);
 
-        SysFile src = findByPath(
+        // 使用悲观锁锁定源文件
+        SysFile src = findByPathForUpdate(
                 ctx,
                 fullSrc
         ).orElseThrow(() -> new IllegalArgumentException("Source not found: " + srcPath));
 
         // 目标是已存在目录则移入
-        Optional<SysFile> destOpt = findByPath(ctx, fullDest);
+        Optional<SysFile> destOpt = findByPathForUpdate(ctx, fullDest);
         if (destOpt.isPresent() && Boolean.TRUE.equals(destOpt.get().getIsDirectory())) {
             fullDest = fullDest + "/" + getName(fullSrc);
         }
@@ -343,8 +480,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             throw new IllegalArgumentException("Cannot move directory into itself: " + srcPath + " -> " + destPath);
         }
 
-        // 目标已存在
-        if (findByPath(ctx, fullDest).isPresent()) {
+        // 检查目标是否已存在（使用悲观锁）
+        if (findByPathForUpdate(ctx, fullDest).isPresent()) {
             throw new IllegalArgumentException("Destination already exists: " + destPath);
         }
 
@@ -373,7 +510,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void cp(VfsContext ctx, String srcPath, String destPath) {
+    public void copy(VfsContext ctx, String srcPath, String destPath, boolean recursive) {
 
         String fullSrc  = resolvePath(ctx, srcPath);
         String fullDest = resolvePath(ctx, destPath);
@@ -384,16 +521,20 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         ).orElseThrow(() -> new IllegalArgumentException("Source not found: " + srcPath));
 
         if (Boolean.TRUE.equals(src.getIsDirectory())) {
-            throw new IllegalArgumentException("Directory copy not supported");
+            if (!recursive) {
+                throw new IllegalArgumentException("Cannot copy directory without recursive flag. Use copy(ctx, src, dest, true)");
+            }
+            copyDirectoryRecursive(ctx, fullSrc, fullDest);
+            return;
         }
 
         // 目标是已存在目录则复制到该目录下
-        Optional<SysFile> destOpt = findByPath(ctx, fullDest);
+        Optional<SysFile> destOpt = findByPathForUpdate(ctx, fullDest);
         if (destOpt.isPresent() && Boolean.TRUE.equals(destOpt.get().getIsDirectory())) {
             fullDest = fullDest + "/" + getName(fullSrc);
         }
 
-        if (findByPath(ctx, fullDest).isPresent()) {
+        if (findByPathForUpdate(ctx, fullDest).isPresent()) {
             throw new IllegalArgumentException("Destination already exists");
         }
 
@@ -403,82 +544,219 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             ensureDirs(ctx, destParent, new HashSet<>());
         }
 
-        SysFile copy = new SysFile();
-        copy.setBizId(IDWorker.newId());
-        copy.setVirtualPath(fullDest);
-        copy.setParentPath(getParentPath(fullDest));
-        copy.setIsDirectory(false);
-        copy.setOriginalName(getName(fullDest));
-        copy.setStorageName(src.getStorageName());
-        copy.setStoragePath(src.getStoragePath());
-        copy.setUrl(src.getUrl());
-        copy.setExtension(src.getExtension());
-        copy.setContentType(src.getContentType());
-        copy.setSize(src.getSize());
-        copy.setStorageType(src.getStorageType());
-        fileRepository.save(copy);
+        // 真正复制文件内容（修复 bug）
+        try {
+            byte[] content = storageService.download(src.getStoragePath()).readAllBytes();
+            String newStoragePath = uploadContent(content, getName(fullDest));
+
+            SysFile copy = new SysFile();
+            copy.setBizId(IDWorker.newId());
+            copy.setVirtualPath(fullDest);
+            copy.setParentPath(getParentPath(fullDest));
+            copy.setIsDirectory(false);
+            copy.setOriginalName(getName(fullDest));
+            copy.setStorageName(src.getStorageName());
+            copy.setStoragePath(newStoragePath);  // 使用新的存储路径
+            copy.setUrl(storageService.getUrl(newStoragePath));
+            copy.setExtension(src.getExtension());
+            copy.setContentType(src.getContentType());
+            copy.setSize(src.getSize());
+            copy.setStorageType(src.getStorageType());
+            fileRepository.save(copy);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to copy file", e);
+        }
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void rm(VfsContext ctx, String path) {
+    /**
+     * 递归复制目录
+     */
+    private void copyDirectoryRecursive(VfsContext ctx, String srcDir, String destDir) {
 
-        String fullPath = resolvePath(ctx, path);
-        SysFile file = findByPath(
-                ctx,
-                fullPath
-        ).orElseThrow(() -> new IllegalArgumentException("Path not found: " + path));
+        // 创建目标目录
+        if (findByPath(ctx, destDir).isEmpty()) {
+            ensureDirs(ctx, destDir, new HashSet<>());
+        }
 
-        if (Boolean.TRUE.equals(file.getIsDirectory())) {
-            if (!findChildren(ctx, fullPath).isEmpty()) {
-                throw new IllegalArgumentException("Directory not empty: " + path);
+        // 获取源目录的所有子项
+        List<SysFile> children = findChildren(ctx, srcDir);
+
+        for (SysFile child : children) {
+            String childName = getName(child.getVirtualPath());
+            String destPath = destDir + "/" + childName;
+
+            if (Boolean.TRUE.equals(child.getIsDirectory())) {
+                // 递归复制子目录
+                copyDirectoryRecursive(ctx, child.getVirtualPath(), destPath);
+            } else {
+                // 复制文件
+                try {
+                    byte[] content = storageService.download(child.getStoragePath()).readAllBytes();
+                    String newStoragePath = uploadContent(content, childName);
+
+                    SysFile copy = new SysFile();
+                    copy.setBizId(IDWorker.newId());
+                    copy.setVirtualPath(destPath);
+                    copy.setParentPath(destDir);
+                    copy.setIsDirectory(false);
+                    copy.setOriginalName(childName);
+                    copy.setStorageName(child.getStorageName());
+                    copy.setStoragePath(newStoragePath);
+                    copy.setUrl(storageService.getUrl(newStoragePath));
+                    copy.setExtension(child.getExtension());
+                    copy.setContentType(child.getContentType());
+                    copy.setSize(child.getSize());
+                    copy.setStorageType(child.getStorageType());
+                    fileRepository.save(copy);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to copy file: " + child.getVirtualPath(), e);
+                }
             }
         }
-        fileRepository.delete(file);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void rmrf(VfsContext ctx, String path) {
+    public void delete(VfsContext ctx, String path, boolean recursive) {
 
-        String            fullPath = resolvePath(ctx, path);
-        Optional<SysFile> opt      = findByPath(ctx, fullPath);
-        if (opt.isEmpty()) return;
+        String fullPath = resolvePath(ctx, path);
+        Optional<SysFile> opt = findByPathForUpdate(ctx, fullPath);
+
+        if (opt.isEmpty()) {
+            if (recursive) {
+                // rm -rf 时，文件不存在不报错
+                return;
+            }
+            throw new IllegalArgumentException("Path not found: " + path);
+        }
 
         SysFile file = opt.get();
+
         if (Boolean.TRUE.equals(file.getIsDirectory())) {
-            // 删除所有子项（包括文件和子目录）
-            List<SysFile> descendants = findDescendants(ctx, fullPath + "/");
-            fileRepository.deleteAll(descendants);
+            List<SysFile> children = findChildren(ctx, fullPath);
+
+            if (!children.isEmpty() && !recursive) {
+                throw new IllegalArgumentException("Directory not empty (use recursive=true to force delete): " + path);
+            }
+
+            if (recursive) {
+                // 递归删除所有子项
+                List<SysFile> descendants = findDescendants(ctx, fullPath + "/");
+                fileRepository.deleteAll(descendants);
+            }
         }
+
         fileRepository.delete(file);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void mkdir(VfsContext ctx, String path) {
+    public void createDirectory(VfsContext ctx, String path, boolean createParents) {
 
         String fullPath = resolvePath(ctx, path);
 
         if (findByPath(ctx, fullPath).isPresent()) {
+            if (createParents) {
+                // mkdir -p 时，目录已存在不报错
+                return;
+            }
             throw new IllegalArgumentException("Path already exists: " + path);
         }
 
-        String parentPath = getParentPath(fullPath);
-        if (parentPath != null && !"/".equals(parentPath) && findByPath(ctx, parentPath).isEmpty()) {
-            throw new IllegalArgumentException("Parent directory not found");
+        if (createParents) {
+            // 递归创建父目录
+            ensureDirs(ctx, fullPath, new HashSet<>());
+        } else {
+            // 只创建当前目录，父目录必须存在
+            String parentPath = getParentPath(fullPath);
+            if (parentPath != null && !"/".equals(parentPath) && findByPath(ctx, parentPath).isEmpty()) {
+                throw new IllegalArgumentException("Parent directory not found");
+            }
+            createDirectory(ctx, fullPath);
         }
-
-        createDirectory(ctx, fullPath);
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void mkdirp(VfsContext ctx, String path) {
+    public List<VfsNode> findByName(VfsContext ctx, String basePath, String pattern, boolean recursive) {
 
-        String fullPath = resolvePath(ctx, path);
-        if (findByPath(ctx, fullPath).isPresent()) return;
-        ensureDirs(ctx, fullPath, new HashSet<>());
+        String fullBasePath = resolvePath(ctx, basePath);
+
+        Optional<SysFile> baseOpt = findByPath(ctx, fullBasePath);
+        if (baseOpt.isEmpty()) {
+            throw new IllegalArgumentException("Base path not found: " + basePath);
+        }
+
+        SysFile base = baseOpt.get();
+        if (!Boolean.TRUE.equals(base.getIsDirectory())) {
+            throw new IllegalArgumentException("Base path is not a directory: " + basePath);
+        }
+
+        List<VfsNode> results = new ArrayList<>();
+        findRecursive(ctx, fullBasePath, pattern, recursive, results);
+        return results;
+    }
+
+    private void findRecursive(VfsContext ctx, String currentPath, String pattern, boolean recursive, List<VfsNode> results) {
+
+        List<SysFile> children = findChildren(ctx, currentPath);
+
+        for (SysFile child : children) {
+            String name = getName(child.getVirtualPath());
+
+            // 检查是否匹配模式
+            if (matchPattern(name, pattern)) {
+                results.add(toNode(ctx, child, 0));
+            }
+
+            // 递归搜索子目录
+            if (recursive && Boolean.TRUE.equals(child.getIsDirectory())) {
+                findRecursive(ctx, child.getVirtualPath(), pattern, true, results);
+            }
+        }
+    }
+
+    @Override
+    public List<VfsNode> findByContent(VfsContext ctx, String basePath, String content, boolean recursive) {
+
+        String fullBasePath = resolvePath(ctx, basePath);
+
+        Optional<SysFile> baseOpt = findByPath(ctx, fullBasePath);
+        if (baseOpt.isEmpty()) {
+            throw new IllegalArgumentException("Base path not found: " + basePath);
+        }
+
+        SysFile base = baseOpt.get();
+        if (!Boolean.TRUE.equals(base.getIsDirectory())) {
+            throw new IllegalArgumentException("Base path is not a directory: " + basePath);
+        }
+
+        List<VfsNode> results = new ArrayList<>();
+        grepRecursive(ctx, fullBasePath, content, recursive, results);
+        return results;
+    }
+
+    private void grepRecursive(VfsContext ctx, String currentPath, String searchContent, boolean recursive, List<VfsNode> results) {
+
+        List<SysFile> children = findChildren(ctx, currentPath);
+
+        for (SysFile child : children) {
+            if (Boolean.TRUE.equals(child.getIsDirectory())) {
+                // 递归搜索子目录
+                if (recursive) {
+                    grepRecursive(ctx, child.getVirtualPath(), searchContent, true, results);
+                }
+            } else {
+                // 搜索文件内容
+                try {
+                    String fileContent = readFile(ctx, child.getVirtualPath());
+                    if (fileContent.contains(searchContent)) {
+                        results.add(toNode(ctx, child, 0));
+                    }
+                } catch (Exception e) {
+                    // 忽略无法读取的文件
+                }
+            }
+        }
     }
 
     @Override
@@ -534,7 +812,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     }
 
     @Override
-    public boolean isDir(VfsContext ctx, String path) {
+    public boolean isDirectory(VfsContext ctx, String path) {
 
         return findByPath(ctx, resolvePath(ctx, path)).map(f -> Boolean.TRUE.equals(f.getIsDirectory())).orElse(false);
     }

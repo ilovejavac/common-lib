@@ -6,15 +6,18 @@ import com.dev.lib.storage.domain.model.StorageType;
 import com.dev.lib.storage.serialize.FileItem;
 import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "sys_file")
+@Table(name = "sys_file",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"virtualPath"}),
+       indexes = {
+           @Index(name = "idx_parent_path", columnList = "parentPath"),
+           @Index(name = "idx_virtual_path_prefix", columnList = "virtualPath")
+       })
 @Data
 @AutoMappers({
         @AutoMapper(target = FileItem.class, reverseConvertGenerate = false),
@@ -52,5 +55,12 @@ public class SysFile extends TenantEntity {
     private String parentPath;        // 父路径: "/a/d" (加速查询)
 
     private Boolean isDirectory = false;  // 是否目录
+
+    @Version
+    private Long version;             // 乐观锁版本号
+
+    private String oldStoragePath;    // 旧存储路径（用于延迟删除）
+
+    private LocalDateTime deleteAfter; // 延迟删除时间
 
 }
