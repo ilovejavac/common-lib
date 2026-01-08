@@ -1,4 +1,4 @@
-package com.dev.lib.storage.domain.service;
+package com.dev.lib.storage.domain.service.virtual;
 
 import com.dev.lib.entity.id.IDWorker;
 import com.dev.lib.storage.config.AppStorageProperties;
@@ -7,6 +7,8 @@ import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.data.SysFileRepository;
 import com.dev.lib.storage.domain.model.VfsContext;
 import com.dev.lib.storage.domain.model.VfsNode;
+import com.dev.lib.storage.domain.service.StorageService;
+import com.dev.lib.storage.domain.service.VirtualFileSystem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
