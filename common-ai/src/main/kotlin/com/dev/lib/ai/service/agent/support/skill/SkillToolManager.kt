@@ -1,4 +1,4 @@
-package com.dev.lib.ai.service.agent.tool.skill
+package com.dev.lib.ai.service.agent.support.skill
 
 import com.dev.lib.ai.repo.AiSkillRepo
 import org.springframework.stereotype.Component

@@ -52,8 +52,8 @@ public class GrepCommand extends VfsCommandBase {
         List<VfsNode> matchedFiles = vfs.findByContent(vfsCtx, path, pattern, recursive);
 
         Pattern regex = ignoreCase
-                ? Pattern.compile(Pattern.quote(pattern), Pattern.CASE_INSENSITIVE)
-                : Pattern.compile(Pattern.quote(pattern));
+                ? Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
+                : Pattern.compile(pattern);
 
         for (VfsNode node : matchedFiles) {
             grepFile(vfsCtx, node.getPath(), regex, showLineNum, matchedFiles.size() > 1, results);

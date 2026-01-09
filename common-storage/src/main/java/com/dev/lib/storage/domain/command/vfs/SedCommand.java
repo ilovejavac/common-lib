@@ -5,13 +5,12 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * sed 命令
  * 支持：
- * - 替换：sed 's/old/new/g' file
- * - 删除行：sed '5d' file
+ * - 替换：sed 's/old/new/g' file 或 sed '5,10s/old/new/g' file
+ * - 删除行：sed '5d' file 或 sed '5,10d' file
  * - 插入行：sed '5i\content' file
  * - 追加行：sed '5a\content' file
  * - 替换行：sed '5c\content' file
@@ -48,64 +47,118 @@ public class SedCommand extends VfsCommandBase {
     }
 
     private List<String> processExpression(String expression, String[] lines) {
-        List<String> result = new ArrayList<>();
+        // 解析行号范围和命令
+        LineRange range = parseLineRange(expression);
+        String cmd = extractCommand(expression);
 
-        if (expression.startsWith("s/")) {
-            // 替换命令：s/old/new/g
-            return processSubstitute(expression, lines);
-        } else if (expression.endsWith("d")) {
-            // 删除行：5d
-            return processDelete(expression, lines);
-        } else if (expression.contains("i\\")) {
-            // 插入行：5i\content
+        if (cmd.startsWith("s/")) {
+            return processSubstitute(expression, lines, range);
+        } else if (cmd.endsWith("d")) {
+            return processDelete(expression, lines, range);
+        } else if (cmd.contains("i\\")) {
             return processInsert(expression, lines, true);
-        } else if (expression.contains("a\\")) {
-            // 追加行：5a\content
+        } else if (cmd.contains("a\\")) {
             return processInsert(expression, lines, false);
-        } else if (expression.contains("c\\")) {
-            // 替换行：5c\content
+        } else if (cmd.contains("c\\")) {
             return processChangeLine(expression, lines);
         }
 
         // 默认返回原内容
+        List<String> result = new ArrayList<>();
         for (String line : lines) {
             result.add(line);
         }
         return result;
     }
 
-    private List<String> processSubstitute(String expression, String[] lines) {
-        // 解析 s/old/new/g
-        int lastSlash = expression.lastIndexOf('/');
+    /**
+     * 解析行号范围，如 "5,10" 或 "5"
+     */
+    private LineRange parseLineRange(String expression) {
+        // 查找命令起始位置
+        int cmdStart = findCommandStart(expression);
+        if (cmdStart == 0) {
+            return new LineRange(1, -1); // 全部行
+        }
+
+        String rangeStr = expression.substring(0, cmdStart);
+        int commaIdx = rangeStr.indexOf(',');
+        if (commaIdx >= 0) {
+            int start = Integer.parseInt(rangeStr.substring(0, commaIdx).trim());
+            String endStr = rangeStr.substring(commaIdx + 1).trim();
+            int end = endStr.equals("$") ? -1 : Integer.parseInt(endStr);
+            return new LineRange(start, end);
+        }
+
+        int line = Integer.parseInt(rangeStr.trim());
+        return new LineRange(line, line);
+    }
+
+    /**
+     * 提取命令部分，如 "s/old/new/g" 或 "d"
+     */
+    private String extractCommand(String expression) {
+        int cmdStart = findCommandStart(expression);
+        return cmdStart > 0 ? expression.substring(cmdStart) : expression;
+    }
+
+    /**
+     * 查找命令起始位置（行号范围之后）
+     */
+    private int findCommandStart(String expression) {
+        for (int i = 0; i < expression.length(); i++) {
+            char c = expression.charAt(i);
+            if (c == 's' || c == 'd' || c == 'i' || c == 'a' || c == 'c') {
+                // 检查是否是命令（s 后面必须是 /，其他后面必须是 \ 或是单独字符）
+                if (c == 's' && i + 1 < expression.length() && expression.charAt(i + 1) == '/') {
+                    return i;
+                } else if (c == 'd' && i == expression.length() - 1) {
+                    return i;
+                } else if ((c == 'i' || c == 'a' || c == 'c') && i + 1 < expression.length() && expression.charAt(i + 1) == '\\') {
+                    return i;
+                } else if (c == 'd' && (i == 0 || expression.charAt(i - 1) == ',')) {
+                    // 单独的 d 命令
+                    continue;
+                } else if (c == 'd') {
+                    return i;
+                }
+            }
+        }
+        return 0;
+    }
+
+    private List<String> processSubstitute(String expression, String[] lines, LineRange range) {
+        String cmd = extractCommand(expression);
+        int lastSlash = cmd.lastIndexOf('/');
         if (lastSlash < 2) {
             return ListOf(lines);
         }
 
-        String pattern = expression.substring(2, lastSlash);
-        String replacement = expression.substring(lastSlash + 1);
-        boolean global = expression.endsWith("g");
+        String pattern = cmd.substring(2, lastSlash);
+        String replacement = cmd.substring(lastSlash + 1);
+        boolean global = (lastSlash + 1 < cmd.length()) &&
+                         (cmd.charAt(lastSlash + 1) == 'g') &&
+                         (cmd.length() == lastSlash + 2 ||
+                          cmd.charAt(lastSlash + 2) == 'I');
 
         List<String> result = new ArrayList<>();
-        for (String line : lines) {
-            String newLine;
-            if (global) {
-                newLine = line.replaceAll(pattern, replacement);
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            // 只在指定行号范围内替换
+            if (range.isInRange(i + 1, lines.length)) {
+                String newLine = global ? line.replaceAll(pattern, replacement) : line.replaceFirst(pattern, replacement);
+                result.add(newLine);
             } else {
-                newLine = line.replaceFirst(pattern, replacement);
+                result.add(line);
             }
-            result.add(newLine);
         }
         return result;
     }
 
-    private List<String> processDelete(String expression, String[] lines) {
-        // 解析 5d
-        String lineNumStr = expression.substring(0, expression.length() - 1);
-        int targetLine = Integer.parseInt(lineNumStr);
-
+    private List<String> processDelete(String expression, String[] lines, LineRange range) {
         List<String> result = new ArrayList<>();
         for (int i = 0; i < lines.length; i++) {
-            if (i + 1 != targetLine) {
+            if (!range.isInRange(i + 1, lines.length)) {
                 result.add(lines[i]);
             }
         }
@@ -113,31 +166,45 @@ public class SedCommand extends VfsCommandBase {
     }
 
     private List<String> processInsert(String expression, String[] lines, boolean before) {
-        // 解析 5i\content 或 5a\content
-        int idx = before ? expression.indexOf("i\\") : expression.indexOf("a\\");
-        String lineNumStr = expression.substring(0, idx);
-        int targetLine = Integer.parseInt(lineNumStr);
-        String newContent = expression.substring(idx + 2);
+        String cmd = extractCommand(expression);
+        int idx = before ? cmd.indexOf("i\\") : cmd.indexOf("a\\");
+        String lineNumStr = cmd.substring(0, idx);
+        int targetLine = lineNumStr.isEmpty() ? -1 : Integer.parseInt(lineNumStr);
+        String newContent = cmd.substring(idx + 2);
 
         List<String> result = new ArrayList<>();
+        boolean inserted = false;
+
         for (int i = 0; i < lines.length; i++) {
-            if (i + 1 == targetLine && before) {
-                result.add(newContent);
+            if (targetLine == -1 || i + 1 == targetLine) {
+                if (before) {
+                    result.add(newContent);
+                    inserted = true;
+                }
             }
             result.add(lines[i]);
-            if (i + 1 == targetLine && !before) {
-                result.add(newContent);
+            if (targetLine == -1 || i + 1 == targetLine) {
+                if (!before) {
+                    result.add(newContent);
+                    inserted = true;
+                }
             }
         }
+
+        // 如果目标行号超出文件行数，追加到末尾
+        if (!inserted && (targetLine == -1 || targetLine > lines.length)) {
+            result.add(newContent);
+        }
+
         return result;
     }
 
     private List<String> processChangeLine(String expression, String[] lines) {
-        // 解析 5c\content
-        int idx = expression.indexOf("c\\");
-        String lineNumStr = expression.substring(0, idx);
+        String cmd = extractCommand(expression);
+        int idx = cmd.indexOf("c\\");
+        String lineNumStr = cmd.substring(0, idx);
         int targetLine = Integer.parseInt(lineNumStr);
-        String newContent = expression.substring(idx + 2);
+        String newContent = cmd.substring(idx + 2);
 
         List<String> result = new ArrayList<>();
         for (int i = 0; i < lines.length; i++) {
@@ -156,5 +223,26 @@ public class SedCommand extends VfsCommandBase {
             list.add(s);
         }
         return list;
+    }
+
+    /**
+     * 行号范围
+     */
+    private static class LineRange {
+        final int start;
+        final int end; // -1 表示到末尾
+
+        LineRange(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        boolean isInRange(int lineNum, int totalLines) {
+            if (start == 1 && end == -1) return true; // 全部行
+            if (lineNum < start) return false;
+            if (end == -1) return lineNum >= start;
+            if (end == -2 && lineNum == totalLines) return true; // $ 表示最后一行
+            return lineNum <= end;
+        }
     }
 }

@@ -3,7 +3,7 @@ package com.dev.lib.ai.service
 import com.dev.lib.ai.repo.AiLLMRepo
 import com.dev.lib.ai.repo.AiSessionStore
 import com.dev.lib.ai.service.agent.session.SessionInterceptor
-import com.dev.lib.ai.service.agent.tool.skill.SkillToolManager
+import com.dev.lib.ai.service.agent.support.skill.SkillToolManager
 import com.dev.lib.ai.trigger.request.AgentChatRequest
 import com.dev.lib.log
 import com.dev.lib.security.util.SecurityContextHolder

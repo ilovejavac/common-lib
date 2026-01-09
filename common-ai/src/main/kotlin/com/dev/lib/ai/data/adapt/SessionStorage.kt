@@ -12,7 +12,7 @@ import com.dev.lib.ai.repo.AiSessionStore
 import com.dev.lib.ai.service.agent.AiAgent
 import com.dev.lib.ai.service.agent.AiChatSession
 import com.dev.lib.ai.service.agent.ChatSession
-import com.dev.lib.ai.service.agent.tool.skill.SkillToolManager
+import com.dev.lib.ai.service.agent.support.skill.SkillToolManager
 import com.dev.lib.ai.service.llm.LLM
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional

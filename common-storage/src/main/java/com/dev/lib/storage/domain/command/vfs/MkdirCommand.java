@@ -16,7 +16,7 @@ public class MkdirCommand extends VfsCommandBase {
     public Object execute(ExecuteContext ctx) {
         String[] args = parseArgs(ctx.getCommand());
         ParsedArgs parsed = parseArgs(args);
-        boolean createParents = parsed.hasFlag("p");
+        boolean createParents = parsed.hasFlag("r");
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("mkdir: missing operand");

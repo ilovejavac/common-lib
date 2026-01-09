@@ -30,6 +30,7 @@ public class VfsBashCommandFactory implements InitializingBean {
         registry.register("head", new HeadCommand(vfs));
         registry.register("tail", new TailCommand(vfs));
         registry.register("echo", new EchoCommand(vfs));
+        registry.register("write", new WriteCommand(vfs));
         registry.register("touch", new TouchCommand(vfs));
         registry.register("cp", new CpCommand(vfs));
         registry.register("mv", new MvCommand(vfs));

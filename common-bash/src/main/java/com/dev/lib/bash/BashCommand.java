@@ -99,17 +99,40 @@ public abstract class BashCommand {
 
             // 处理标志参数（如 -r, -f, -rf）
             if (arg.startsWith("-") && !arg.equals("-")) {
+                // 处理长选项（如 --depth 3）
+                if (arg.startsWith("--") && arg.length() > 2) {
+                    String longFlag = arg.substring(2);
+                    // 检查下一个参数是否是值
+                    if (i + 1 < args.length && !isOptionLike(args[i + 1])) {
+                        String nextArg = args[i + 1];
+                        Object value = tryParseValue(nextArg);
+                        if (value != null) {
+                            parsed.options.put(longFlag, value);
+                            i++; // 跳过值参数
+                            continue;
+                        }
+                    }
+                    // 长选项作为布尔值
+                    parsed.options.put(longFlag, true);
+                    continue;
+                }
+
+                // 处理短选项（如 -r, -f, -rf）
                 String flags = arg.substring(1);
 
-                // 检查下一个参数是否是值
-                if (i + 1 < args.length && !isOptionLike(args[i + 1])) {
+                // 检查下一个参数是否是值（仅当最后一个标志是已知的"带值标志"时）
+                char lastFlag = flags.charAt(flags.length() - 1);
+                // -n: 带数值的标志（如 head/tail -n 10）
+                // 其他标志都是布尔值
+                boolean canTakeValue = (lastFlag == 'n');
+
+                if (canTakeValue && i + 1 < args.length && !isOptionLike(args[i + 1])) {
                     String nextArg = args[i + 1];
                     Object value = tryParseValue(nextArg);
 
                     if (value != null) {
                         // 下一个参数是值，绑定到组合标志的最后一个字符
                         // 例如：-rn 10 → {r: true, n: 10}
-                        char lastFlag = flags.charAt(flags.length() - 1);
                         parsed.options.put(String.valueOf(lastFlag), value);
                         i++; // 跳过值参数
 
@@ -117,17 +140,13 @@ public abstract class BashCommand {
                         for (int j = 0; j < flags.length() - 1; j++) {
                             parsed.options.put(String.valueOf(flags.charAt(j)), true);
                         }
-                    } else {
-                        // 下一个参数不是值，所有标志都作为布尔值
-                        for (char flag : flags.toCharArray()) {
-                            parsed.options.put(String.valueOf(flag), true);
-                        }
+                        continue;
                     }
-                } else {
-                    // 下一个参数是选项或没有下一个参数，所有标志都作为布尔值
-                    for (char flag : flags.toCharArray()) {
-                        parsed.options.put(String.valueOf(flag), true);
-                    }
+                }
+
+                // 所有标志都作为布尔值
+                for (char flag : flags.toCharArray()) {
+                    parsed.options.put(String.valueOf(flag), true);
                 }
             } else {
                 // 位置参数

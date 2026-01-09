@@ -122,6 +122,67 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     }
 
     @Override
+    public byte[] readBytes(VfsContext ctx, String path, long offset, int limit) {
+
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset must be >= 0");
+        }
+
+        String fullPath = helper.resolvePath(ctx, path);
+        SysFile file = helper.findByPath(ctx, fullPath)
+                .orElseThrow(() -> new IllegalArgumentException("File not found: " + path));
+
+        if (Boolean.TRUE.equals(file.getIsDirectory())) {
+            throw new IllegalArgumentException("Cannot read directory: " + path);
+        }
+
+        try (InputStream is = openFile(ctx, path)) {
+            // 跳过 offset 字节
+            long skipped = 0;
+            while (skipped < offset) {
+                long s = is.skip(offset - skipped);
+                if (s == 0) break; // 已到达文件末尾
+                skipped += s;
+            }
+
+            if (limit == -1) {
+                return is.readAllBytes();
+            }
+
+            byte[] result = new byte[limit];
+            int totalRead = 0;
+            while (totalRead < limit) {
+                int read = is.read(result, totalRead, limit - totalRead);
+                if (read == -1) break;
+                totalRead += read;
+            }
+
+            if (totalRead < limit) {
+                byte[] trimmed = new byte[totalRead];
+                System.arraycopy(result, 0, trimmed, 0, totalRead);
+                return trimmed;
+            }
+            return result;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read bytes from file", e);
+        }
+    }
+
+    @Override
+    public long getFileSize(VfsContext ctx, String path) {
+
+        String fullPath = helper.resolvePath(ctx, path);
+        SysFile file = helper.findByPath(ctx, fullPath)
+                .orElseThrow(() -> new IllegalArgumentException("File not found: " + path));
+
+        if (Boolean.TRUE.equals(file.getIsDirectory())) {
+            throw new IllegalArgumentException("Cannot get size of directory: " + path);
+        }
+
+        return file.getSize() != null ? file.getSize() : 0;
+    }
+
+    @Override
     public int getLineCount(VfsContext ctx, String path) {
 
         try (InputStream is = openFile(ctx, path);
@@ -341,12 +402,16 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             throw new IllegalArgumentException("Cannot move directory into itself: " + srcPath + " -> " + destPath);
         }
 
+        // 标记第 393-395 行是否已经处理过目录情况
+        boolean destAlreadyHandledAsDir = destOpt.isPresent() && Boolean.TRUE.equals(destOpt.get().getIsDirectory());
+
         String destParent = getParentPath(fullDest);
         if (destParent != null && !"/".equals(destParent) && helper.findByPathForUpdate(ctx, destParent).isEmpty()) {
             helper.ensureDirs(ctx, destParent, new HashSet<>());
         }
 
-        boolean moveToDir = destPath.endsWith("/") ||
+        // 如果 dest 已经在前面作为目录处理过（393-395），这里不再重复处理
+        boolean moveToDir = (!destAlreadyHandledAsDir && destPath.endsWith("/")) ||
                 (Boolean.FALSE.equals(src.getIsDirectory()) &&
                  destOpt.isEmpty() &&
                  destParent != null &&

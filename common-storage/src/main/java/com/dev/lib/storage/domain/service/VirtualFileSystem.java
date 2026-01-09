@@ -39,6 +39,19 @@ public interface VirtualFileSystem {
     List<String> readLines(VfsContext ctx, String path, int startLine, int lineCount);
 
     /**
+     * 读取文件指定字节范围
+     * @param offset 起始字节位置（从 0 开始）
+     * @param limit 读取字节数（-1 表示读到文件末尾）
+     * @return 字节数组
+     */
+    byte[] readBytes(VfsContext ctx, String path, long offset, int limit);
+
+    /**
+     * 获取文件大小（字节）
+     */
+    long getFileSize(VfsContext ctx, String path);
+
+    /**
      * 获取文件总行数
      */
     int getLineCount(VfsContext ctx, String path);

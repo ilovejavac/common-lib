@@ -62,6 +62,8 @@ public class SysFile extends TenantEntity {
 
     private Boolean isDirectory = false;  // 是否目录
 
+    private Boolean hidden = false;       // 是否隐藏文件（以.开头）
+
     @Version
     private Long version;             // 乐观锁版本号
 

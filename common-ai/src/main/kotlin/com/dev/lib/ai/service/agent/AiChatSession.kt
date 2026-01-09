@@ -5,7 +5,7 @@ import com.dev.lib.ai.model.AceItem
 import com.dev.lib.ai.model.ChatItem
 import com.dev.lib.ai.model.ChatResponse
 import com.dev.lib.ai.model.ChatSSE
-import com.dev.lib.ai.service.agent.tool.skill.SkillToolManager
+import com.dev.lib.ai.service.agent.support.skill.SkillToolManager
 import com.dev.lib.ai.service.llm.LLM
 
 /**

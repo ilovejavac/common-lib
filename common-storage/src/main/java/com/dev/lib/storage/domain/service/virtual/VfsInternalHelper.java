@@ -97,13 +97,15 @@ public class VfsInternalHelper {
      */
     public void createDirectoryInternal(String virtualPath) {
 
+        String name = getName(virtualPath);
         SysFile dir = new SysFile();
         dir.setBizId(IDWorker.newId());
         dir.setVirtualPath(virtualPath);
         dir.setParentPath(getParentPath(virtualPath));
         dir.setIsDirectory(true);
-        dir.setOriginalName(getName(virtualPath));
-        dir.setStorageName(getName(virtualPath));
+        dir.setOriginalName(name);
+        dir.setStorageName(name);
+        dir.setHidden(name.startsWith("."));
         fileRepository.save(dir);
     }
 
@@ -133,6 +135,7 @@ public class VfsInternalHelper {
             file.setExtension(extension);
             file.setSize(size);
             file.setStorageType(storageProperties.getType());
+            file.setHidden(fileName.startsWith("."));
             fileRepository.save(file);
             return bizId;
         } catch (IOException e) {
@@ -164,12 +167,48 @@ public class VfsInternalHelper {
         return storagePath;
     }
 
+    /**
+     * 追加内容并上传新文件
+     */
+    public String appendAndUpload(String oldStoragePath, byte[] appendBytes, String fileName) throws IOException {
+
+        String storageName = IDWorker.newId();
+        int    dotIdx      = fileName.lastIndexOf('.');
+        if (dotIdx > 0) {
+            storageName += fileName.substring(dotIdx);
+        }
+
+        LocalDate now = LocalDate.now();
+        String newStoragePath = String.format(
+                "vfs/%d/%02d/%02d/%s",
+                now.getYear(),
+                now.getMonthValue(),
+                now.getDayOfMonth(),
+                storageName
+        );
+
+        try (InputStream oldInput = storageService.download(oldStoragePath)) {
+            try (SequenceInputStream sequenceInput = new SequenceInputStream(
+                    oldInput,
+                    new ByteArrayInputStream(appendBytes)
+            )) {
+                storageService.upload(sequenceInput, newStoragePath);
+            }
+        }
+
+        return newStoragePath;
+    }
+
     // ==================== 节点转换 ====================
 
     public List<VfsNode> buildNodes(VfsContext ctx, List<SysFile> files, int depth) {
 
         List<VfsNode> nodes = new ArrayList<>();
         for (SysFile file : files) {
+            // 过滤隐藏文件（除非 showHidden 为 true）
+            if (Boolean.TRUE.equals(file.getHidden()) && !ctx.isShowHidden()) {
+                continue;
+            }
             nodes.add(toNode(ctx, file, depth - 1));
         }
         return nodes;
@@ -187,7 +226,8 @@ public class VfsInternalHelper {
         node.setModifiedAt(file.getUpdatedAt());
 
         if (Boolean.TRUE.equals(file.getIsDirectory()) && remainingDepth > 0) {
-            node.setChildren(buildNodes(ctx, findChildren(ctx, file.getVirtualPath()), remainingDepth));
+            List<SysFile> children = findChildren(ctx, file.getVirtualPath());
+            node.setChildren(buildNodes(ctx, children, remainingDepth));
         }
         return node;
     }
