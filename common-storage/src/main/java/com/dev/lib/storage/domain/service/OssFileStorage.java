@@ -42,11 +42,17 @@ public class OssFileStorage implements StorageService, InitializingBean {
     @Override
     public String upload(MultipartFile file, String path) throws IOException {
 
+        return upload(file.getInputStream(), path);
+    }
+
+    @Override
+    public String upload(InputStream is, String path) throws IOException {
+
         String bucket = fileProperties.getOss().getBucket();
         ossClient.putObject(
                 bucket,
                 path,
-                file.getInputStream()
+                is
         );
         return path;
     }

@@ -3,6 +3,7 @@ package com.dev.lib.storage.domain.service;
 import com.dev.lib.storage.config.AppStorageProperties;
 import io.minio.*;
 import io.minio.messages.DeleteObject;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -59,6 +60,33 @@ public class MinioFileStorage implements StorageService, InitializingBean {
                                     -1
                             )
                             .contentType(file.getContentType())
+                            .build()
+            );
+            return path;
+        } catch (Exception e) {
+            throw new IOException(
+                    "MinIO upload failed",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public String upload(InputStream is, String path) throws IOException {
+
+        String bucket = fileProperties.getMinio().getBucket();
+        try {
+            // 读取 InputStream 到字节数组以获取大小
+            byte[] bytes = is.readAllBytes();
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(path)
+                            .stream(
+                                    new java.io.ByteArrayInputStream(bytes),
+                                    bytes.length,
+                                    -1
+                            )
                             .build()
             );
             return path;
@@ -147,6 +175,12 @@ public class MinioFileStorage implements StorageService, InitializingBean {
                 bucket,
                 path
         );
+    }
+
+    @PreDestroy
+    public void destroy() {
+        // MinioClient 使用 HTTP 连接池，会自动管理
+        // 这里无需显式清理，但保持接口一致性
     }
 
 }
