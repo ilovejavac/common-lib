@@ -16,4 +16,11 @@ public interface StorageFileRepo {
 
     List<StorageFile> findByIds(Collection<String> ids);
 
+    Collection<String> collectRemovePath(Collection<String> ids);
+
+    /**
+     * 批量删除文件记录
+     */
+    void removeAllByIds(Collection<String> ids);
+
 }

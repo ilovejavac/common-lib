@@ -8,8 +8,12 @@ import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "sys_storage_file",
@@ -61,7 +65,9 @@ public class SysFile extends TenantEntity {
     @Version
     private Long version;             // 乐观锁版本号
 
-    private String oldStoragePath;    // 旧存储路径（用于延迟删除）
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "text")
+    private List<String> oldStoragePaths;    // 旧存储路径（用于延迟删除，FIFO 顺序）
 
     private LocalDateTime deleteAfter; // 延迟删除时间
 

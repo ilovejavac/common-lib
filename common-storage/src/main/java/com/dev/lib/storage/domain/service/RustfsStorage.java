@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
 
 @Component
 @RequiredArgsConstructor
@@ -30,6 +31,15 @@ public class RustfsStorage implements StorageService, InitializingBean {
     @Override
     public void delete(String path) {
 
+    }
+
+    @Override
+    public void deleteAll(Collection<String> paths) {
+
+        if (paths == null || paths.isEmpty()) {
+            return;
+        }
+        // RustFS 批量删除实现
     }
 
     @Override

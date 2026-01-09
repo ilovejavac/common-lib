@@ -2,6 +2,7 @@ package com.dev.lib.storage.domain.service;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
+import com.aliyun.oss.model.DeleteObjectsRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.dev.lib.storage.config.AppStorageProperties;
 import jakarta.annotation.PreDestroy;
@@ -14,6 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -67,6 +70,23 @@ public class OssFileStorage implements StorageService, InitializingBean {
                 bucket,
                 path
         );
+    }
+
+    @Override
+    public void deleteAll(Collection<String> paths) {
+
+        if (paths == null || paths.isEmpty()) {
+            return;
+        }
+
+        String bucket = fileProperties.getOss().getBucket();
+
+        // 阿里云 OSS 原生批量删除 API
+        List<String> pathList = List.copyOf(paths);
+        DeleteObjectsRequest deleteRequest = new DeleteObjectsRequest(bucket);
+        deleteRequest.setKeys(pathList);
+
+        ossClient.deleteObjects(deleteRequest);
     }
 
     @Override

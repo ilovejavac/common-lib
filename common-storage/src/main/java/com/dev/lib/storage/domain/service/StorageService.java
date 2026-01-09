@@ -4,6 +4,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
 
 public interface StorageService {
 
@@ -26,6 +27,12 @@ public interface StorageService {
      * 删除文件
      */
     void delete(String path);
+
+    /**
+     * 批量删除文件
+     * 使用各存储服务的原生批量删除 API，一次网络调用删除多个文件
+     */
+    void deleteAll(Collection<String> paths);
 
     /**
      * 获取访问URL

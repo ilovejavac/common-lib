@@ -4,7 +4,14 @@
       "Skill(verification-before-completion)",
       "Bash(mvn compile:*)",
       "Bash(mvn install:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(mvn test:*)",
+      "Bash(cat:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(mvn clean test:*)",
+      "Bash(javap:*)",
+      "Bash(mvn dependency:tree:*)",
+      "Bash(mvn clean install:*)"
     ]
   }
 }

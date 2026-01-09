@@ -86,18 +86,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                     "File too large (" + file.getSize() + " bytes). Use readLines() instead.");
         }
 
-        StringBuilder sb = new StringBuilder();
-        try (InputStream is = openFile(ctx, path);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-
-            String line;
-            boolean first = true;
-            while ((line = reader.readLine()) != null) {
-                if (!first) sb.append("\n");
-                sb.append(line);
-                first = false;
-            }
-            return sb.toString();
+        try (InputStream is = openFile(ctx, path)) {
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read file", e);
         }
@@ -167,19 +157,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             }
 
             try (InputStream is = new ByteArrayInputStream(bytes)) {
-                String oldStoragePath = file.getStoragePath();
-                String newStoragePath = helper.uploadContent(is, getName(fullPath));
-
-                file.setStoragePath(newStoragePath);
-                file.setUrl(helper.getStorageService().getUrl(newStoragePath));
-                file.setSize((long) bytes.length);
-
-                if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
-                    file.setOldStoragePath(oldStoragePath);
-                    file.setTemporary(true);
-                    file.setDeleteAfter(LocalDateTime.now().plusMinutes(5));
-                }
-                helper.getFileRepository().save(file);
+                doWriteWithCOW(file, is, bytes.length, fullPath);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to write file", e);
             }
@@ -195,8 +173,28 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void writeFile(VfsContext ctx, String path, InputStream inputStream) {
+
         String fullPath = helper.resolvePath(ctx, path);
-        helper.createFile(ctx, fullPath, inputStream, -1);
+        String parentPath = getParentPath(fullPath);
+
+        if (parentPath != null && !"/".equals(parentPath) && helper.findByPath(ctx, parentPath).isEmpty()) {
+            helper.ensureDirs(ctx, parentPath, new HashSet<>());
+        }
+
+        Optional<SysFile> existing = helper.findByPathForUpdate(ctx, fullPath);
+        if (existing.isPresent()) {
+            SysFile file = existing.get();
+            if (Boolean.TRUE.equals(file.getIsDirectory())) {
+                throw new IllegalArgumentException("Cannot write to directory: " + path);
+            }
+            try {
+                doWriteWithCOW(file, inputStream, -1, fullPath);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write file", e);
+            }
+        } else {
+            helper.createFile(ctx, fullPath, inputStream, -1);
+        }
     }
 
     @Override
@@ -220,44 +218,30 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             }
 
             try {
-                // 读取原内容
-                String existingContent;
-                try (InputStream is = helper.getStorageService().download(file.getStoragePath());
-                     BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    boolean first = true;
-                    while ((line = reader.readLine()) != null) {
-                        if (!first) sb.append("\n");
-                        sb.append(line);
-                        first = false;
+                // 使用流式追加，避免大文件 OOM
+                String newStoragePath = helper.appendAndUpload(file.getStoragePath(), contentBytes, getName(fullPath));
+
+                String oldStoragePath = file.getStoragePath();
+                file.setStoragePath(newStoragePath);
+                file.setUrl(helper.getStorageService().getUrl(newStoragePath));
+                file.setSize(file.getSize() == null ? contentBytes.length : file.getSize() + contentBytes.length);
+
+                if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
+                    List<String> oldPaths = file.getOldStoragePaths();
+                    if (oldPaths == null) {
+                        oldPaths = new ArrayList<>();
                     }
-                    existingContent = sb.toString();
-                }
-
-                // 合并内容
-                if (!existingContent.isEmpty() && !existingContent.endsWith("\n")) {
-                    existingContent += "\n";
-                }
-                String newContent = existingContent + content;
-
-                // 上传新文件
-                byte[] newBytes = newContent.getBytes(StandardCharsets.UTF_8);
-                try (InputStream is = new ByteArrayInputStream(newBytes)) {
-                    String oldStoragePath = file.getStoragePath();
-                    String newStoragePath = helper.uploadContent(is, getName(fullPath));
-
-                    file.setStoragePath(newStoragePath);
-                    file.setUrl(helper.getStorageService().getUrl(newStoragePath));
-                    file.setSize((long) newBytes.length);
-
-                    if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
-                        file.setOldStoragePath(oldStoragePath);
-                        file.setTemporary(true);
-                        file.setDeleteAfter(LocalDateTime.now().plusMinutes(5));
+                    if (oldPaths.size() >= 10) {
+                        List<String> toDelete = oldPaths.subList(0, 5);
+                        helper.getStorageService().deleteAll(new ArrayList<>(toDelete));
+                        toDelete.clear();
                     }
-                    helper.getFileRepository().save(file);
+                    oldPaths.add(oldStoragePath);
+                    file.setOldStoragePaths(oldPaths);
+                    file.setDeleteAfter(LocalDateTime.now().plusMinutes(5));
                 }
+
+                helper.getFileRepository().save(file);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to append file", e);
             }
@@ -269,6 +253,45 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                 throw new RuntimeException("Failed to create file", e);
             }
         }
+    }
+
+    /**
+     * 执行带 COW 的写入操作
+     *
+     * @param file 已存在的文件记录
+     * @param contentStream 内容流
+     * @param size 内容大小
+     * @param fullPath 完整路径（用于获取文件名）
+     */
+    private void doWriteWithCOW(SysFile file, InputStream contentStream, long size, String fullPath) throws IOException {
+
+        String oldStoragePath = file.getStoragePath();
+        String newStoragePath = helper.uploadContent(contentStream, getName(fullPath));
+
+        file.setStoragePath(newStoragePath);
+        file.setUrl(helper.getStorageService().getUrl(newStoragePath));
+        file.setSize(size);
+
+        if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
+            List<String> oldPaths = file.getOldStoragePaths();
+            if (oldPaths == null) {
+                oldPaths = new ArrayList<>();
+            }
+
+            // 如果历史版本超过 10 个，删除最旧的 5 个
+            if (oldPaths.size() >= 10) {
+                List<String> toDelete = oldPaths.subList(0, 5);
+                helper.getStorageService().deleteAll(new ArrayList<>(toDelete));
+                toDelete.clear(); // subList.clear() 会从原 list 中移除
+            }
+
+            // 添加新的旧路径到末尾（FIFO）
+            oldPaths.add(oldStoragePath);
+            file.setOldStoragePaths(oldPaths);
+            file.setDeleteAfter(LocalDateTime.now().plusMinutes(5));
+        }
+
+        helper.getFileRepository().save(file);
     }
 
     @Override
@@ -319,7 +342,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         }
 
         String destParent = getParentPath(fullDest);
-        if (destParent != null && !"/".equals(destParent) && helper.findByPath(ctx, destParent).isEmpty()) {
+        if (destParent != null && !"/".equals(destParent) && helper.findByPathForUpdate(ctx, destParent).isEmpty()) {
             helper.ensureDirs(ctx, destParent, new HashSet<>());
         }
 
@@ -328,7 +351,7 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
                  destOpt.isEmpty() &&
                  destParent != null &&
                  !"/".equals(destParent) &&
-                 helper.findByPath(ctx, destParent).isPresent());
+                 helper.findByPathForUpdate(ctx, destParent).isPresent());
 
         if (moveToDir) {
             helper.ensureDirs(ctx, fullDest, new HashSet<>());
@@ -410,6 +433,16 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
 
     private void copyFileRecord(SysFile src, String destPath) {
 
+        // 复制物理文件，避免共享 storagePath 导致悬空引用
+        String newStoragePath = null;
+        if (src.getStoragePath() != null) {
+            try (InputStream is = helper.getStorageService().download(src.getStoragePath())) {
+                newStoragePath = helper.uploadContent(is, getName(destPath));
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to copy file content", e);
+            }
+        }
+
         SysFile copy = new SysFile();
         copy.setBizId(IDWorker.newId());
         copy.setVirtualPath(destPath);
@@ -417,8 +450,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         copy.setIsDirectory(false);
         copy.setOriginalName(getName(destPath));
         copy.setStorageName(src.getStorageName());
-        copy.setStoragePath(src.getStoragePath());
-        copy.setUrl(src.getUrl());
+        copy.setStoragePath(newStoragePath);
+        copy.setUrl(newStoragePath != null ? helper.getStorageService().getUrl(newStoragePath) : null);
         copy.setExtension(src.getExtension());
         copy.setContentType(src.getContentType());
         copy.setSize(src.getSize());
@@ -441,6 +474,8 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         }
 
         SysFile file = opt.get();
+        List<String> storagePathsToDelete = new ArrayList<>();
+
         if (Boolean.TRUE.equals(file.getIsDirectory())) {
             List<SysFile> children = helper.findChildren(ctx, fullPath);
             if (!children.isEmpty() && !recursive) {
@@ -448,10 +483,38 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
             }
             if (recursive) {
                 List<SysFile> descendants = helper.findDescendants(ctx, fullPath + "/");
+                // 收集所有需要删除的物理文件路径
+                for (SysFile desc : descendants) {
+                    collectStoragePaths(desc, storagePathsToDelete);
+                }
                 helper.getFileRepository().deleteAll(descendants);
             }
+        } else {
+            // 收集当前文件的物理路径
+            collectStoragePaths(file, storagePathsToDelete);
         }
+
         helper.getFileRepository().delete(file);
+
+        // 删除物理文件
+        if (!storagePathsToDelete.isEmpty()) {
+            helper.getStorageService().deleteAll(storagePathsToDelete);
+        }
+    }
+
+    /**
+     * 收集文件的所有存储路径（当前路径 + 历史版本）
+     */
+    private void collectStoragePaths(SysFile file, List<String> paths) {
+        if (Boolean.TRUE.equals(file.getIsDirectory())) {
+            return;
+        }
+        if (file.getStoragePath() != null) {
+            paths.add(file.getStoragePath());
+        }
+        if (file.getOldStoragePaths() != null) {
+            paths.addAll(file.getOldStoragePaths());
+        }
     }
 
     // ==================== 目录创建 ====================

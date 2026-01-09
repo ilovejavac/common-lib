@@ -1,8 +1,9 @@
-package com.dev.lib.storage.domain.service;
+package com.dev.lib.storage.trigger.schedule;
 
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.data.SysFileRepository;
+import com.dev.lib.storage.domain.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,7 +37,7 @@ public class VfsCleanupTask {
             LocalDateTime now = LocalDateTime.now();
 
             // 查询所有需要删除的旧文件
-            List<SysFile> filesToClean = fileRepository.loads(new SysFileRepository.Query().setTemporary(true));
+            List<SysFile> filesToClean = fileRepository.loads(new SysFileRepository.Query().setDeleteAfterLe(now));
 
             if (filesToClean.isEmpty()) {
                 return;
@@ -47,23 +48,30 @@ public class VfsCleanupTask {
             SecurityContextHolder.withSystem(() -> {
                 int successCount = 0;
                 int failCount    = 0;
+                int totalOldFiles = 0;
 
                 for (SysFile file : filesToClean) {
                     try {
-                        // 删除存储层的旧文件
-                        storageService.delete(file.getOldStoragePath());
+                        List<String> oldPaths = file.getOldStoragePaths();
+                        if (oldPaths != null && !oldPaths.isEmpty()) {
+                            // 批量删除旧存储文件
+                            storageService.deleteAll(oldPaths);
+                            totalOldFiles += oldPaths.size();
+                        }
 
-                        // 清除数据库中的标记
-                        fileRepository.delete(file);
+                        // 清空旧路径和删除时间
+                        file.setOldStoragePaths(null);
+                        file.setDeleteAfter(null);
 
                         successCount++;
                     } catch (Exception e) {
-                        log.error("Failed to delete old file: {}", file.getOldStoragePath(), e);
+                        log.error("Failed to delete old files for: {}", file.getVirtualPath(), e);
                         failCount++;
                     }
                 }
 
-                log.info("VFS cleanup task completed: {} succeeded, {} failed", successCount, failCount);
+                log.info("VFS cleanup task completed: {} files processed, {} old files deleted ({} succeeded, {} failed)",
+                        filesToClean.size(), totalOldFiles, successCount, failCount);
 
             });
 

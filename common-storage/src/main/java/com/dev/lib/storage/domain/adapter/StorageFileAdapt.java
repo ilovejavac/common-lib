@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,6 +48,30 @@ public class StorageFileAdapt implements StorageFileRepo {
     public List<StorageFile> findByIds(Collection<String> ids) {
 
         return fileRepository.findAllByBizIdIn(ids).stream().map(storageFileMapper::convert).toList();
+    }
+
+    @Override
+    public Collection<String> collectRemovePath(Collection<String> ids) {
+
+        List<SysFile>   files = fileRepository.findAllByBizIdIn(ids);
+        HashSet<String> paths = new HashSet<>();
+        for (SysFile file : files) {
+            paths.add(file.getStoragePath());
+            paths.addAll(file.getOldStoragePaths());
+        }
+
+        return paths;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void removeAllByIds(Collection<String> ids) {
+
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        // 批量删除
+        fileRepository.deleteAllByBizIdIn(ids);
     }
 
 }

@@ -21,7 +21,10 @@ public interface FileService {
 
     InputStream download(StorageFile sf) throws IOException;
 
-    void delete(StorageFile sf);
+    /**
+     * 批量删除文件
+     */
+    void deleteAll(Collection<String> ids);
 
     Map<String, FileItem> getItems(Collection<String> ids);
 

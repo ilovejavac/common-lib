@@ -2,6 +2,7 @@ package com.dev.lib.storage.domain.service;
 
 import com.dev.lib.storage.config.AppStorageProperties;
 import io.minio.*;
+import io.minio.messages.DeleteObject;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -11,6 +12,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -99,6 +103,34 @@ public class MinioFileStorage implements StorageService, InitializingBean {
         } catch (Exception e) {
             throw new RuntimeException(
                     "MinIO delete failed",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public void deleteAll(Collection<String> paths) {
+
+        if (paths == null || paths.isEmpty()) {
+            return;
+        }
+
+        String bucket = fileProperties.getMinio().getBucket();
+        try {
+            // MinIO 原生批量删除 API
+            List<DeleteObject> deleteObjects = paths.stream()
+                    .map(DeleteObject::new)
+                    .collect(Collectors.toList());
+
+            minioClient.removeObjects(
+                    RemoveObjectsArgs.builder()
+                            .bucket(bucket)
+                            .objects(deleteObjects)
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "MinIO batch delete failed",
                     e
             );
         }

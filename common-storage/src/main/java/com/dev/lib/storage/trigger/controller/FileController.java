@@ -1,4 +1,4 @@
-package com.dev.lib.storage.trigger;
+package com.dev.lib.storage.trigger.controller;
 
 import com.dev.lib.entity.log.OperateLog;
 import com.dev.lib.storage.domain.model.StorageFile;
@@ -102,13 +102,15 @@ public class FileController {
     }
 
     /**
-     * 文件删除
+     * 批量删除文件
+     * @param ids 文件 ID 列表
      */
-    @PostMapping("/{id}")
-    @OperateLog(module = "file", type = "delete", description = "删除文件")
-    public void delete(@PathVariable String id) {
+    @PostMapping
+    @OperateLog(module = "file", type = "delete", description = "批量删除文件")
+    public ServerResponse<Void> delete(@RequestBody List<String> ids) {
 
-        fileService.delete(fileService.getById(id));
+        fileService.deleteAll(ids);
+        return ServerResponse.ok();
     }
 
 }

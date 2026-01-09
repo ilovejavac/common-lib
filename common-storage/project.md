@@ -143,7 +143,88 @@ boolean exists = vfs.exists(ctx, "/file.txt");
 boolean isDir = vfs.isDirectory(ctx, "/folder");
 ```
 
+#### 3.8 Bash 命令接口
+
+VFS 提供统一的 Bash 命令执行接口，支持类 Linux 命令语法：
+
+```java
+// HTTP 接口
+POST /sys/bash/exec
+{
+  "root": "/workspace",
+  "command": "ls -d 2 /path"
+}
+```
+
+**支持的命令列表：**
+
+| 命令 | 格式 | 说明 |
+|------|------|------|
+| `ls` | `ls [-d depth] [path]` | 列出目录，depth 控制递归深度 |
+| `cat` | `cat [-n] <file>` | 读取文件，-n 显示行号 |
+| `cat` | `cat > <file> << <content>` | Heredoc 覆盖写入 |
+| `cat` | `cat >> <file> << <content>` | Heredoc 追加写入 |
+| `head` | `head [-n lines] <file>` | 读取文件前 N 行 |
+| `tail` | `tail [-n lines] <file>` | 读取文件后 N 行 |
+| `echo` | `echo <content> > <file>` | 覆盖写入 |
+| `echo` | `echo <content> >> <file>` | 追加写入 |
+| `touch` | `touch <file>` | 创建空文件 |
+| `cp` | `cp <src> <dest>` | 复制（自动检测目录递归） |
+| `mv` | `mv <src> <dest>` | 移动/重命名 |
+| `rm` | `rm [-r] <path>` | 删除（-r 递归） |
+| `mkdir` | `mkdir [-p] <dir>` | 创建目录（-p 递归） |
+| `find` | `find [-r] <basePath> -name <pattern>` | 按文件名搜索 |
+| `grep` | `grep [-r] <content> <basePath>` | 搜索文件内容 |
+
+**命令示例：**
+
+```bash
+# 列出目录（递归 2 层）
+ls -d 2 /workspace
+
+# 读取文件（显示行号）
+cat -n /test.txt
+
+# 使用 echo 写入文件
+echo "hello world" > /test.txt
+
+# 使用 echo 追加内容
+echo "new line" >> /test.txt
+
+# 使用 cat heredoc 写入
+cat > /file.txt << multi line content here
+
+# 使用 cat heredoc 追加
+cat >> /file.txt << additional content
+
+# 复制目录（自动递归）
+cp /src-folder /dest-folder
+
+# 删除目录（递归）
+rm -r /folder
+```
+
 ## 面向 LLM
+
+### 最近修改 (2026-01-09)
+
+1. **Bash 命令架构重构**：
+   - 统一 Bash 命令接口到 `common-bash` 模块
+   - 新增 `ExecuteContext` 统一上下文接口（root + command）
+   - 新增 `BashCommandRegistry` 命令注册中心
+   - 新增 `BashController` 通用命令执行控制器：`POST /sys/bash/exec`
+   - VFS 命令拆分为独立类：`LsCommand`, `CatCommand`, `EchoCommand` 等
+   - 各模块通过 `registry.register()` 注册命令
+
+2. **批量删除优化**：
+   - `StorageService` 新增 `deleteAll(Collection<String>)` 批量删除接口
+   - 各存储服务实现原生批量删除：MinIO `removeObjects()`, OSS `deleteObjects()`
+   - `FileService` 单个删除方法已移除，统一使用批量删除
+   - 文件删除接口改为：`POST /sys/files` + `["id1", "id2"]`
+
+3. **COW 旧文件累积问题修复**：
+   - `SysFile.oldStoragePath` → `oldStoragePaths` (Set<String>)
+   - 多次写入累积旧路径，清理任务批量删除
 
 ### 核心架构
 
@@ -185,9 +266,10 @@ boolean isDir = vfs.isDirectory(ctx, "/folder");
 
 ### TODO
 
-- [ ] 单元测试：`echo`, `cat heredoc`, `appendFile` 功能验证
-- [ ] 集成测试：完整命令流程测试（write → read → append → read）
-- [ ] 文档更新：更新 API 示例和命令格式说明
+所有测试已完成：
+- [x] 单元测试：`echo`, `cat heredoc`, `appendFile` 功能验证
+- [x] 集成测试：完整命令流程测试（write → read → append → read）
+- [x] 文档更新：更新 API 示例和命令格式说明
 
 ### 最近修改 (2025-01-08)
 

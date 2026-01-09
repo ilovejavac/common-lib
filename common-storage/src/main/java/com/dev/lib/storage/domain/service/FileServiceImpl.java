@@ -8,14 +8,16 @@ import com.dev.lib.storage.domain.model.StorageFileToFileItemMapper;
 import com.dev.lib.storage.serialize.FileItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,7 +65,6 @@ public class FileServiceImpl implements FileService {
                 storageName
         );
 
-
         // 上传文件
         storage.upload(
                 file,
@@ -96,12 +97,24 @@ public class FileServiceImpl implements FileService {
         return storage.download(file.getStoragePath());
     }
 
-    public void delete(StorageFile sf) {
+    @Override
+    public void deleteAll(Collection<String> ids) {
 
-        StorageFile file = repo.findByBizId(sf.getBizId());
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
 
-        storage.delete(file.getStoragePath());
-        repo.remove(file.getBizId());
+        // 收集所有存储路径
+        Collection<String> storagePaths = repo.collectRemovePath(ids);
+        if (storagePaths.isEmpty()) {
+            return;
+        }
+
+        // 批量删除存储文件
+        storage.deleteAll(storagePaths);
+
+        // 批量删除数据库记录
+        repo.removeAllByIds(ids);
     }
 
     private void validateFile(MultipartFile file) {

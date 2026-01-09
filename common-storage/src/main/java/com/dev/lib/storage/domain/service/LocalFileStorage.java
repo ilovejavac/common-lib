@@ -1,12 +1,17 @@
 package com.dev.lib.storage.domain.service;
 
 import com.dev.lib.storage.config.AppStorageProperties;
+import com.dev.lib.util.parallel.ParallelExecutor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -49,6 +54,24 @@ public class LocalFileStorage implements StorageService {
         String basePath = fileProperties.getLocal().getPath();
         File   file     = new File(basePath, path);
         file.delete();
+    }
+
+    @Override
+    public void deleteAll(Collection<String> paths) {
+
+        if (paths == null || paths.isEmpty()) {
+            return;
+        }
+
+        String basePath = fileProperties.getLocal().getPath();
+
+        // 批量删除：一次性收集所有文件并删除
+        ParallelExecutor.with(paths).apply(path -> {
+            File file = new File(basePath, path);
+            if (file.exists()) {
+                file.delete();
+            }
+        });
     }
 
     @Override
