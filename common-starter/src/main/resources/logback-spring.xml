@@ -246,9 +246,6 @@
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="FILE"/>
-            <appender-ref ref="ERROR_FILE"/>
-            <appender-ref ref="JSON_FILE"/>
         </root>
     </springProfile>
 
@@ -341,9 +338,6 @@
     <springProfile name="!dev &amp; !test &amp; !prod">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_FILE"/>
-            <appender-ref ref="ASYNC_ERROR_FILE"/>
-            <appender-ref ref="ASYNC_JSON_FILE"/>
         </root>
     </springProfile>
 

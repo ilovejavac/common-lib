@@ -1,25 +1,30 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
+import com.dev.lib.storage.domain.model.VfsNode;
 import com.dev.lib.storage.domain.service.VirtualFileSystem;
+
+import java.util.List;
 
 /**
  * ls 命令
  * 支持: -a 显示隐藏文件, -R/-r 递归, -d 只显示目录本身, --depth n 递归深度
  */
-public class LsCommand extends VfsCommandBase {
+public class LsCommand extends VfsCommandBase<List<VfsNode>> {
 
     public LsCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
-    public Object execute(ExecuteContext ctx) {
-        String[] args = parseArgs(ctx.getCommand());
+    public List<VfsNode> execute(ExecuteContext ctx) {
+
+        String[]   args   = parseArgs(ctx.getCommand());
         ParsedArgs parsed = parseArgs(args);
 
         String path = parsed.getString(0);
-        if (path == null) path = "/";
+        if (path == null) path = "";
 
         // -a: 显示隐藏文件
         boolean showHidden = parsed.hasFlag("a");
@@ -43,4 +48,5 @@ public class LsCommand extends VfsCommandBase {
 
         return vfs.listDirectory(vfsCtx, path, depth);
     }
+
 }

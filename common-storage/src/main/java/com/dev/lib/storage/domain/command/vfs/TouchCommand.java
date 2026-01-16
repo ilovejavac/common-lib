@@ -9,12 +9,14 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
 public class TouchCommand extends VfsCommandBase {
 
     public TouchCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
     public Object execute(ExecuteContext ctx) {
-        String[] args = parseArgs(ctx.getCommand());
+
+        String[]   args   = parseArgs(ctx.getCommand());
         ParsedArgs parsed = parseArgs(args);
 
         if (parsed.positionalCount() == 0) {
@@ -28,4 +30,5 @@ public class TouchCommand extends VfsCommandBase {
 
         return null;
     }
+
 }

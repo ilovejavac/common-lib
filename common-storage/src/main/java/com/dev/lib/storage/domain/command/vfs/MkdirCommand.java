@@ -9,14 +9,16 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
 public class MkdirCommand extends VfsCommandBase {
 
     public MkdirCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
     public Object execute(ExecuteContext ctx) {
-        String[] args = parseArgs(ctx.getCommand());
-        ParsedArgs parsed = parseArgs(args);
-        boolean createParents = parsed.hasFlag("r");
+
+        String[]   args          = parseArgs(ctx.getCommand());
+        ParsedArgs parsed        = parseArgs(args);
+        boolean    createParents = parsed.hasFlag("r");
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("mkdir: missing operand");
@@ -29,4 +31,5 @@ public class MkdirCommand extends VfsCommandBase {
 
         return null;
     }
+
 }

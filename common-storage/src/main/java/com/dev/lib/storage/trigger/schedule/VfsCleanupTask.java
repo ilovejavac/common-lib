@@ -46,8 +46,8 @@ public class VfsCleanupTask {
             log.info("VFS cleanup task: found {} old files to delete", filesToClean.size());
 
             SecurityContextHolder.withSystem(() -> {
-                int successCount = 0;
-                int failCount    = 0;
+                int successCount  = 0;
+                int failCount     = 0;
                 int totalOldFiles = 0;
 
                 for (SysFile file : filesToClean) {
@@ -70,8 +70,10 @@ public class VfsCleanupTask {
                     }
                 }
 
-                log.info("VFS cleanup task completed: {} files processed, {} old files deleted ({} succeeded, {} failed)",
-                        filesToClean.size(), totalOldFiles, successCount, failCount);
+                log.info(
+                        "VFS cleanup task completed: {} files processed, {} old files deleted ({} succeeded, {} failed)",
+                        filesToClean.size(), totalOldFiles, successCount, failCount
+                );
 
             });
 

@@ -3,6 +3,8 @@ package com.dev.lib.web.model;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -39,6 +41,8 @@ public class QueryRequest<T> {
     /**
      * 查询条件
      */
+    @NotNull
+    @Valid
     private T query;
 
     /**
@@ -68,6 +72,7 @@ public class QueryRequest<T> {
     @AllArgsConstructor
     public static class Order {
 
+        @NotBlank
         private String property;
 
         private Sort.Direction direction;
@@ -83,10 +88,7 @@ public class QueryRequest<T> {
      */
     public Pageable toPageable(Set<String> allowFields) {
 
-        return toPageable(
-                allowFields,
-                Sort.unsorted()
-        );
+        return toPageable(allowFields, Sort.by(Sort.Order.desc("id")));
     }
 
     /**

@@ -3,7 +3,6 @@ package com.dev.lib.storage.data;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepository;
 import lombok.Data;
-import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;

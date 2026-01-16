@@ -9,7 +9,9 @@ import java.util.regex.Pattern;
  */
 public final class VfsPathUtils {
 
-    private VfsPathUtils() {}
+    private VfsPathUtils() {
+
+    }
 
     /**
      * 解析路径，合并 root 和 path
@@ -20,11 +22,14 @@ public final class VfsPathUtils {
         if (path == null) path = "";
 
         root = normalizePath(root);
-        path = normalizePath(path);
 
+        // 空 path 直接返回 root
         if (path.isEmpty()) {
             return root.isEmpty() ? "/" : root;
         }
+
+        path = normalizePath(path);
+
         if (root.isEmpty()) {
             return path.startsWith("/") ? path : "/" + path;
         }
@@ -74,10 +79,17 @@ public final class VfsPathUtils {
 
     /**
      * 检查 child 是否是 parent 的子路径（或相同）
+     *
+     * @param parent 父路径
+     * @param child  子路径
+     * @return 如果 child 是 parent 的子路径或两者相同，返回 true
      */
     public static boolean isSubPath(String parent, String child) {
 
         if (parent == null || child == null) return false;
+        // 规范化空路径为根路径
+        if (parent.isEmpty()) parent = "/";
+        if (child.isEmpty()) child = "/";
         if (parent.equals(child)) return true;
         String prefix = parent.endsWith("/") ? parent : parent + "/";
         return child.startsWith(prefix);
@@ -133,4 +145,5 @@ public final class VfsPathUtils {
         int dotIdx = fileName.lastIndexOf('.');
         return dotIdx > 0 ? fileName.substring(dotIdx + 1).toLowerCase() : "";
     }
+
 }

@@ -1,0 +1,156 @@
+version: "3.8"
+
+services:
+  minio:
+    image: bitnami/minio:2025.4.8
+    restart: always
+    environment:
+      - MINIO_BROWSER=on
+      - MINIO_ROOT_USER=root
+      - MINIO_ROOT_PASSWORD=1qazXDR%
+    ports:
+      - '19000:9000'
+      - '19001:9001'
+    volumes:
+      - ./data/minio:/bitnami/minio/data
+    networks:
+      - geoai-infra
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  pgsql:
+    image: postgis/postgis:18-3.6
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 1qazXDR%
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./data/pgsql:/var/lib/postgresql
+    networks:
+      - geoai-infra
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    ports:
+      - "18080:8080"
+    environment:
+      - DJANGO_DB=default
+      - POSTGRE_NAME=label-studio
+      - POSTGRE_USER=root
+      - POSTGRE_PASSWORD=1qazXDR%
+      - POSTGRE_HOST=pgsql
+      - POSTGRE_PORT=5432
+      - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
+      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/data
+    volumes:
+      - ./data/labelStudio:/label-studio/data
+    networks:
+      - geoai-infra
+    depends_on:
+      - pgsql
+
+  opensearch:
+    image: opensearchproject/opensearch:3.4.0
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Ge1qazXDR%oai
+      - plugins.security.disabled=true  # 关闭安全插件
+    ports:
+      - "19200:9200"
+      - "19600:9600"
+    volumes:
+      - ./data/opensearch:/usr/share/opensearch/data
+    networks:
+      - geoai-infra
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+  rabbit:
+    image: bitnami/rabbitmq:4.1
+    container_name: rabbit
+    restart: always
+    environment:
+      - RABBITMQ_MANAGEMENT_ALLOW_WEB_ACCESS=true
+      - RABBITMQ_USERNAME=root
+      - RABBITMQ_PASSWORD=1qazXDR%
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    volumes:
+      - ./data/rabbitmq:/bitnami/rabbitmq/mnesia
+    networks:
+      - geoai-infra
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+
+  redis:
+    image: bitnami/redis:8.2
+    container_name: redis
+    restart: always
+    ports:
+      - "16379:6379"
+    environment:
+      - REDIS_PASSWORD=1qazXDR%
+    volumes:
+      - ./data/redis:/bitnami/redis/data
+      - ./config/redis.conf:/bitnami/redis/etc/redis.conf
+    networks:
+      - geoai-infra
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+#  embedding:
+#    image: ghcr.io/huggingface/text-embeddings-inference:latest
+#    container_name: embedding
+#    restart: unless-stopped
+#    command: --model-id BAAI/bge-large-zh-v1.5
+#    ports:
+#      - "9080:80"
+#    volumes:
+#      - ./data/embedding:/data
+#    networks:
+#      - geoai-infra
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 2G
+#
+#  rerank:
+#    image: ghcr.io/huggingface/text-embeddings-inference:latest
+#    container_name: rerank
+#    restart: unless-stopped
+#    command: --model-id BAAI/bge-reranker-large
+#    ports:
+#      - "9081:80"
+#    volumes:
+#      - ./data/rerank:/data
+#    networks:
+#      - geoai-infra
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 2G
+# ocr
+
+networks:
+  geoai-infra:
+    name: geoai-infra
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.33.0/24

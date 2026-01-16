@@ -16,20 +16,23 @@ import java.util.List;
 public class CatCommand extends VfsCommandBase {
 
     public CatCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
     public Object execute(ExecuteContext ctx) {
+
         String[] args = parseArgs(ctx.getCommand());
         return cat(toVfsContext(ctx), args);
     }
 
     private Object cat(VfsContext ctx, String[] args) {
-        ParsedArgs parsed = parseArgs(args);
-        boolean showLineNumbers = parsed.hasFlag("n");
-        Integer startLine = parsed.getInt("s", 1);
-        Integer lineCount = parsed.getInt("c", -1);
+
+        ParsedArgs parsed          = parseArgs(args);
+        boolean    showLineNumbers = parsed.hasFlag("n");
+        Integer    startLine       = parsed.getInt("s", 1);
+        Integer    lineCount       = parsed.getInt("c", -1);
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("cat: missing file operand");
@@ -41,8 +44,8 @@ public class CatCommand extends VfsCommandBase {
             String path = parsed.getString(i);
 
             if (startLine > 1 || lineCount != -1) {
-                List<String> lines = vfs.readLines(ctx, path, startLine, lineCount);
-                int lineNum = startLine;
+                List<String> lines   = vfs.readLines(ctx, path, startLine, lineCount);
+                int          lineNum = startLine;
                 for (String line : lines) {
                     if (showLineNumbers) {
                         result.append(String.format("%6d\t%s\n", lineNum++, line));
@@ -55,7 +58,7 @@ public class CatCommand extends VfsCommandBase {
                      BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
                     String line;
-                    int lineNum = 1;
+                    int    lineNum = 1;
                     while ((line = reader.readLine()) != null) {
                         if (showLineNumbers) {
                             result.append(String.format("%6d\t%s\n", lineNum++, line));
@@ -71,4 +74,5 @@ public class CatCommand extends VfsCommandBase {
 
         return result.toString();
     }
+
 }

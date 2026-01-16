@@ -8,10 +8,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Collection;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -78,6 +78,66 @@ public class LocalFileStorage implements StorageService {
     public String getUrl(String path) {
 
         return fileProperties.getLocal().getUrlPrefix() + "/" + path;
+    }
+
+    @Override
+    public String copy(String sourcePath, String targetPath) throws IOException {
+
+        File sourceFile = resolveSafePath(sourcePath);
+        File targetFile = resolveSafePath(targetPath);
+
+        if (!targetFile.getParentFile().exists()) {
+            targetFile.getParentFile().mkdirs();
+        }
+
+        Files.copy(
+                sourceFile.toPath(),
+                targetFile.toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+        );
+        return targetPath;
+    }
+
+    @Override
+    public String append(String path, String content) throws IOException {
+
+        File file = resolveSafePath(path);
+
+        try (FileWriter fw = new FileWriter(file, true)) {
+            fw.write(content);
+        }
+        return path;
+    }
+
+    @Override
+    public String replaceLines(String path, LineTransformer transformer) throws IOException {
+
+        File sourceFile = resolveSafePath(path);
+        File tempFile   = new File(sourceFile.getParentFile(), sourceFile.getName() + ".tmp." + System.nanoTime());
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(sourceFile, StandardCharsets.UTF_8));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile, StandardCharsets.UTF_8))) {
+
+            String line;
+            int    lineNum = 0;
+            while ((line = reader.readLine()) != null) {
+                lineNum++;
+                String transformed = transformer.transform(lineNum, line);
+                if (transformed != null) {
+                    writer.write(transformed);
+                    writer.newLine();
+                }
+            }
+        }
+
+        // 原子替换
+        Files.move(
+                tempFile.toPath(),
+                sourceFile.toPath(),
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
+        );
+        return path;
     }
 
     private File resolveSafePath(String path) throws IOException {

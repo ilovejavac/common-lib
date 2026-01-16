@@ -6,14 +6,14 @@ import java.util.*;
  * Bash 命令抽象基类
  * 负责命令参数解析，子类负责具体执行
  */
-public abstract class BashCommand {
+public abstract class BashCommand<T extends Object> {
 
     /**
      * 执行命令
      * @param ctx 执行上下文
      * @return 执行结果
      */
-    public abstract Object execute(ExecuteContext ctx);
+    public abstract T execute(ExecuteContext ctx);
 
     /**
      * 解析命令行字符串为 token 数组

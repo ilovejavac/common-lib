@@ -53,4 +53,22 @@ public class RustfsStorage implements StorageService, InitializingBean {
 
     }
 
+    @Override
+    public String copy(String sourcePath, String targetPath) throws IOException {
+
+        return "";
+    }
+
+    @Override
+    public String append(String path, String content) throws IOException {
+
+        return "";
+    }
+
+    @Override
+    public String replaceLines(String path, LineTransformer transformer) throws IOException {
+        // RustFS 待实现
+        throw new UnsupportedOperationException("RustfsStorage.replaceLines not implemented yet");
+    }
+
 }

@@ -44,8 +44,8 @@ spring:
 
 server:
   tomcat:
-    max-connections: 8192
-    accept-count: 200
+    max-connections: 10000
+    accept-count: 1000
     max-http-form-post-size: 20MB
     max-swallow-size: 20MB
   http2:

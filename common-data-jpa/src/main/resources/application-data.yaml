@@ -6,16 +6,7 @@ spring:
   datasource:
     hikari:
       maximum-pool-size: 30
-      connection-timeout: 10000
-      validation-timeout: 3000
-      max-lifetime: 1800000
-      idle-timeout:   600000
-      keepalive-time: 120000
-      leak-detection-threshold: 30000
-      auto-commit: true
       pool-name: HikariPool-${spring.application.name}
-      initialization-fail-timeout: 30000
-      minimum-idle: 7
   jpa:
     open-in-view: false
     show-sql: false

@@ -20,25 +20,27 @@ import java.util.regex.Pattern;
 public class GrepCommand extends VfsCommandBase {
 
     public GrepCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
     public Object execute(ExecuteContext ctx) {
-        String[] args = parseArgs(ctx.getCommand());
+
+        String[]   args   = parseArgs(ctx.getCommand());
         ParsedArgs parsed = parseArgs(args);
 
-        boolean recursive = parsed.hasFlag("r");
-        boolean filesOnly = parsed.hasFlag("l");
+        boolean recursive   = parsed.hasFlag("r");
+        boolean filesOnly   = parsed.hasFlag("l");
         boolean showLineNum = parsed.hasFlag("n");
-        boolean ignoreCase = parsed.hasFlag("i");
+        boolean ignoreCase  = parsed.hasFlag("i");
 
         if (parsed.positionalCount() < 2) {
             throw new IllegalArgumentException("grep: missing operand");
         }
 
         String pattern = parsed.getString(0);
-        String path = parsed.getString(1);
+        String path    = parsed.getString(1);
 
         VfsContext vfsCtx = toVfsContext(ctx);
 
@@ -48,12 +50,12 @@ public class GrepCommand extends VfsCommandBase {
         }
 
         // 默认模式：返回匹配行
-        List<String> results = new ArrayList<>();
+        List<String>  results      = new ArrayList<>();
         List<VfsNode> matchedFiles = vfs.findByContent(vfsCtx, path, pattern, recursive);
 
         Pattern regex = ignoreCase
-                ? Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
-                : Pattern.compile(pattern);
+                        ? Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
+                        : Pattern.compile(pattern);
 
         for (VfsNode node : matchedFiles) {
             grepFile(vfsCtx, node.getPath(), regex, showLineNum, matchedFiles.size() > 1, results);
@@ -64,11 +66,12 @@ public class GrepCommand extends VfsCommandBase {
 
     private void grepFile(VfsContext ctx, String path, Pattern pattern,
                           boolean showLineNum, boolean showFileName, List<String> results) {
+
         try (InputStream is = vfs.openFile(ctx, path);
              BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
             String line;
-            int lineNum = 0;
+            int    lineNum = 0;
             while ((line = reader.readLine()) != null) {
                 lineNum++;
                 if (pattern.matcher(line).find()) {
@@ -86,4 +89,5 @@ public class GrepCommand extends VfsCommandBase {
         } catch (Exception ignored) {
         }
     }
+
 }

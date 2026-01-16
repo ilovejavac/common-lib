@@ -9,15 +9,17 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
 public class RmCommand extends VfsCommandBase {
 
     public RmCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
     public Object execute(ExecuteContext ctx) {
-        String[] args = parseArgs(ctx.getCommand());
-        ParsedArgs parsed = parseArgs(args);
-        boolean recursive = parsed.hasFlag("r");
-        boolean force = parsed.hasFlag("f");
+
+        String[]   args      = parseArgs(ctx.getCommand());
+        ParsedArgs parsed    = parseArgs(args);
+        boolean    recursive = parsed.hasFlag("r");
+        boolean    force     = parsed.hasFlag("f");
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("rm: missing operand");
@@ -37,4 +39,5 @@ public class RmCommand extends VfsCommandBase {
 
         return null;
     }
+
 }

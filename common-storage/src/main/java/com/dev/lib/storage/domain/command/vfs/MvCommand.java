@@ -9,12 +9,14 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
 public class MvCommand extends VfsCommandBase {
 
     public MvCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
     public Object execute(ExecuteContext ctx) {
-        String[] args = parseArgs(ctx.getCommand());
+
+        String[]   args   = parseArgs(ctx.getCommand());
         ParsedArgs parsed = parseArgs(args);
 
         if (parsed.positionalCount() < 2) {
@@ -22,7 +24,7 @@ public class MvCommand extends VfsCommandBase {
         }
 
         if (parsed.positionalCount() == 2) {
-            String src = parsed.getString(0);
+            String src  = parsed.getString(0);
             String dest = parsed.getString(1);
             vfs.move(toVfsContext(ctx), src, dest);
         } else {
@@ -35,4 +37,5 @@ public class MvCommand extends VfsCommandBase {
 
         return null;
     }
+
 }

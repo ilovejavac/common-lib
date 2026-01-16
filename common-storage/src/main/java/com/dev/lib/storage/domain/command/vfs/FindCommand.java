@@ -10,19 +10,21 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
 public class FindCommand extends VfsCommandBase {
 
     public FindCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
     public Object execute(ExecuteContext ctx) {
+
         String[] args = parseArgs(ctx.getCommand());
 
         if (args.length == 0) {
             throw new IllegalArgumentException("find: missing path");
         }
 
-        String basePath = args[0];
-        String pattern = "*";
+        String  basePath  = args[0];
+        String  pattern   = "*";
         boolean recursive = true;
 
         for (int i = 1; i < args.length; i++) {
@@ -36,4 +38,5 @@ public class FindCommand extends VfsCommandBase {
 
         return vfs.findByName(toVfsContext(ctx), basePath, pattern, recursive);
     }
+
 }

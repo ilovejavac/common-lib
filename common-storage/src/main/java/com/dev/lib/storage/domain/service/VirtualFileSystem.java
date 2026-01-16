@@ -32,6 +32,7 @@ public interface VirtualFileSystem {
 
     /**
      * 读取文件指定行范围（避免 OOM）
+     *
      * @param startLine 起始行号（从 1 开始）
      * @param lineCount 读取行数（-1 表示读到文件末尾）
      * @return 每行内容的列表
@@ -40,8 +41,9 @@ public interface VirtualFileSystem {
 
     /**
      * 读取文件指定字节范围
+     *
      * @param offset 起始字节位置（从 0 开始）
-     * @param limit 读取字节数（-1 表示读到文件末尾）
+     * @param limit  读取字节数（-1 表示读到文件末尾）
      * @return 字节数组
      */
     byte[] readBytes(VfsContext ctx, String path, long offset, int limit);
@@ -90,6 +92,7 @@ public interface VirtualFileSystem {
 
     /**
      * 复制文件或目录
+     *
      * @param recursive 是否递归复制目录
      */
     void copy(VfsContext ctx, String srcPath, String destPath, boolean recursive);
@@ -101,6 +104,7 @@ public interface VirtualFileSystem {
 
     /**
      * 删除文件或目录
+     *
      * @param recursive 是否递归删除
      */
     void delete(VfsContext ctx, String path, boolean recursive);
@@ -109,6 +113,7 @@ public interface VirtualFileSystem {
 
     /**
      * 创建目录
+     *
      * @param createParents 是否创建父目录
      */
     void createDirectory(VfsContext ctx, String path, boolean createParents);
@@ -117,14 +122,16 @@ public interface VirtualFileSystem {
 
     /**
      * 按文件名模式搜索
-     * @param pattern 文件名模式（支持通配符 * 和 ?）
+     *
+     * @param pattern   文件名模式（支持通配符 * 和 ?）
      * @param recursive 是否递归搜索
      */
     List<VfsNode> findByName(VfsContext ctx, String basePath, String pattern, boolean recursive);
 
     /**
      * 搜索文件内容
-     * @param content 要搜索的内容
+     *
+     * @param content   要搜索的内容
      * @param recursive 是否递归搜索
      */
     List<VfsNode> findByContent(VfsContext ctx, String basePath, String content, boolean recursive);
@@ -133,18 +140,37 @@ public interface VirtualFileSystem {
 
     /**
      * 上传并解压 ZIP 文件
+     *
      * @return 创建的文件 ID 列表
      */
     List<String> uploadZip(VfsContext ctx, String path, InputStream zipStream);
 
     /**
      * 批量上传文件到虚拟文件系统
-     * @param ctx 虚拟文件系统上下文
-     * @param targetPath 目标路径
-     * @param files 文件数组
+     *
+     * @param ctx           虚拟文件系统上下文
+     * @param targetPath    目标路径
+     * @param files         文件数组
      * @param relativePaths 相对路径数组（对应每个文件的相对路径，如 "folder/sub/file.txt"）
      * @return 创建的文件 ID 列表
      */
     List<String> uploadFiles(VfsContext ctx, String targetPath, MultipartFile[] files, String[] relativePaths);
+
+    // ==================== 内部接口（供 Command 使用）====================
+
+    /**
+     * 获取虚拟路径对应的物理存储路径
+     *
+     * @param virtualPath 虚拟文件路径
+     * @return 物理存储路径，文件不存在时返回 null
+     */
+    String getStoragePath(VfsContext ctx, String virtualPath);
+
+    /**
+     * 获取存储服务实例
+     *
+     * @return StorageService 实例
+     */
+    StorageService getStorageService();
 
 }

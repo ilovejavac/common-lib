@@ -9,11 +9,13 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
 public class EchoCommand extends VfsCommandBase {
 
     public EchoCommand(VirtualFileSystem vfs) {
+
         super(vfs);
     }
 
     @Override
     public Object execute(ExecuteContext ctx) {
+
         String[] args = parseArgs(ctx.getCommand());
 
         // 标准 echo 无参数输出空行
@@ -21,10 +23,10 @@ public class EchoCommand extends VfsCommandBase {
             return "\n";
         }
 
-        boolean append = false;
-        boolean noNewline = false;
-        String filePath = null;
-        StringBuilder content = new StringBuilder();
+        boolean       append    = false;
+        boolean       noNewline = false;
+        String        filePath  = null;
+        StringBuilder content   = new StringBuilder();
 
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -63,4 +65,5 @@ public class EchoCommand extends VfsCommandBase {
 
         return finalContent;
     }
+
 }
