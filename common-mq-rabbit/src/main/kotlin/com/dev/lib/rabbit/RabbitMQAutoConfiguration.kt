@@ -1,5 +1,6 @@
 package com.dev.lib.rabbit
 
+import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
 import com.dev.lib.mq.MQ
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.boot.autoconfigure.AutoConfiguration

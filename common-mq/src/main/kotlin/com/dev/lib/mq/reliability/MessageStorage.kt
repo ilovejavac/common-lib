@@ -4,11 +4,11 @@ import com.dev.lib.mq.MessageExtend
 
 interface MessageStorage {
 
-    suspend fun save(message: MessageExtend<*>)
+    fun saveBlocking(message: MessageExtend<*>)
 
-    suspend fun markAsConsumed(messageId: String)
+    fun markAsConsumedBlocking(messageId: String)
 
-    suspend fun getPendingMessages(limit: Int = 100): List<MessageExtend<*>>
+    fun getPendingMessagesBlocking(limit: Int = 100): List<MessageExtend<*>>
 
-    suspend fun delete(messageId: String)
+    fun deleteBlocking(messageId: String)
 }

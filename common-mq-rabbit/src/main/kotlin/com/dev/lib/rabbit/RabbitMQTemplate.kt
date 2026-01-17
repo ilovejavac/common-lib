@@ -1,5 +1,6 @@
 package com.dev.lib.rabbit
 
+import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
 import com.dev.lib.mq.AckCallback
 import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
@@ -13,9 +14,7 @@ import org.springframework.amqp.core.MessagePostProcessor
 import org.springframework.amqp.rabbit.connection.CorrelationData
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter
-import org.springframework.stereotype.Component
 
-@Component
 class RabbitMQTemplate(
     private val template: RabbitTemplate,
     private val messageStorage: LocalTaskMessageStorage?

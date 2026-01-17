@@ -28,9 +28,13 @@
         </dependency>
 
         <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-data-jpa</artifactId>
-            <optional>true</optional>
+            <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-coroutines-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-coroutines-jdk8</artifactId>
         </dependency>
     </dependencies>
 
