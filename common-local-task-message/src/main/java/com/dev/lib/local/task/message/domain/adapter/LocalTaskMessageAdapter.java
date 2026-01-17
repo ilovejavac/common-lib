@@ -31,32 +31,43 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
 
     @Override
     public void publish(TaskMessageEntityCommand cmd) {
-
-        publisher.publishEvent(new TaskMessageEntityCommand.Event(
-                this,
-                cmd
-        ));
+        publisher.publishEvent(new TaskMessageEntityCommand.Event(this, cmd));
     }
 
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveMessage(TaskMessageEntityCommand cmd) {
-
-        LocalTaskMessagePo po = repository.save(commandToLocalTaskMessagePoMapper.convert(cmd));
+        LocalTaskMessagePo po = commandToLocalTaskMessagePoMapper.convert(cmd);
+        po.setStatus(LocalTaskStatus.PENDING);
+        po.setRetryCount(0);
+        repository.save(po);
         po.setHouseNumber(po.getId().hashCode() % 10);
+        repository.flush();
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateTaskStatusToSuccess(String taskId) {
-
-        repository.loadById(taskId).ifPresent(it -> it.setStatus(LocalTaskStatus.SUCCESS));
+        repository.loadById(taskId).ifPresent(it -> {
+            it.setStatus(LocalTaskStatus.SUCCESS);
+            it.setProcessedAt(java.time.LocalDateTime.now());
+        });
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateTaskStatusToFailed(String taskId) {
+        repository.loadById(taskId).ifPresent(it -> {
+            it.setStatus(LocalTaskStatus.FAILED);
+            it.setProcessedAt(java.time.LocalDateTime.now());
+        });
+    }
 
-        repository.loadById(taskId).ifPresent(it -> it.setStatus(LocalTaskStatus.FAILED));
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTaskStatusToProcessing(String taskId) {
+        repository.loadById(taskId).ifPresent(it -> {
+            it.setStatus(LocalTaskStatus.PROCESSING);
+        });
     }
 
     @Override
@@ -66,27 +77,28 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
             String taskId,
             Integer limit
     ) {
+        Long lastId = null;
+        if (taskId != null && !taskId.isEmpty()) {
+            Optional<LocalTaskMessagePo> loadTask = repository.loadById(taskId);
+            if (loadTask.isPresent()) {
+                lastId = loadTask.get().getId();
+            }
+        }
 
-        Optional<LocalTaskMessagePo> loadtask = repository.loadById(taskId);
-        return loadtask.map(localTaskMessagePo -> repository.loadsByHouseNumber(
-                                houseNumbers,
-                                localTaskMessagePo.getId(),
-                                limit
-                        )
-                        .stream().map(taskMessageEntityCommandMapper::convert).toList())
-                .orElseGet(ArrayList::new);
+        List<LocalTaskMessagePo> pos = repository.loadsByHouseNumber(houseNumbers, lastId, limit);
+        return pos.stream()
+                .map(taskMessageEntityCommandMapper::convert)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public String selectMinIdByHouseNumber(List<Integer> houseNumbers) {
-
-        return repository.loadsByHouseNumber(houseNumbers, null, 2)
+        return repository.loadsByHouseNumber(houseNumbers, null, 1)
                 .stream()
                 .findFirst()
-                .map(taskMessageEntityCommandMapper::convert)
-                .map(TaskMessageEntityCommand::getTaskId)
-                .orElse("-1");
+                .map(LocalTaskMessagePo::getTaskId)
+                .orElse("");
     }
 
 }

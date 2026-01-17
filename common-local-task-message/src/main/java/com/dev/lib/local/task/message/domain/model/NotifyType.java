@@ -7,5 +7,6 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum NotifyType {
     RABBIT,
-    HTTP
+    HTTP,
+    MQ
 }

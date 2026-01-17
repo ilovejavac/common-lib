@@ -8,4 +8,6 @@ public interface ILocalTaskMessagePort {
 
     String notify2rabbit(TaskMessageEntityCommand cmd);
 
+    String notify2mq(TaskMessageEntityCommand cmd);
+
 }

@@ -18,6 +18,8 @@ public interface TaskMessageRepository extends BaseRepository<LocalTaskMessagePo
 
         private Long idGe;
 
+        private String taskId;
+
     }
 
     default Optional<LocalTaskMessagePo> loadById(String id) {

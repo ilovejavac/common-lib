@@ -5,7 +5,6 @@ import com.dev.lib.local.task.message.domain.adapter.ILocalTaskMessagePort;
 import com.dev.lib.local.task.message.domain.model.NotifyType;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
 import com.dev.lib.local.task.message.domain.service.ITaskNotifyService;
-import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
@@ -18,8 +17,7 @@ import java.util.function.Function;
 @RequiredArgsConstructor
 public class TaskNotifyService implements ITaskNotifyService, InitializingBean {
 
-    @Resource
-    private ILocalTaskMessagePort messageEvent;
+    private final ILocalTaskMessagePort messagePort;
 
     private final Map<NotifyType, Function<TaskMessageEntityCommand, String>> notifyStrategy =
             new EnumMap<>(NotifyType.class);
@@ -38,14 +36,9 @@ public class TaskNotifyService implements ITaskNotifyService, InitializingBean {
     @Override
     public void afterPropertiesSet() {
 
-        notifyStrategy.put(
-                NotifyType.HTTP,
-                messageEvent::notify2http
-        );
-        notifyStrategy.put(
-                NotifyType.RABBIT,
-                messageEvent::notify2rabbit
-        );
+        notifyStrategy.put(NotifyType.HTTP, messagePort::notify2http);
+        notifyStrategy.put(NotifyType.RABBIT, messagePort::notify2rabbit);
+        notifyStrategy.put(NotifyType.MQ, messagePort::notify2mq);
     }
 
 }

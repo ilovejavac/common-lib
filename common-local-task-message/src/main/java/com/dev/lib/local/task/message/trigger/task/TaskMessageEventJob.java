@@ -71,9 +71,13 @@ public class TaskMessageEventJob implements InitializingBean {
                     return;
                 }
 
-                // 发布事件
+                // 发布事件进行异步处理
                 for (TaskMessageEntityCommand cmd : cmdList) {
-                    notifyService.notify(cmd);
+                    try {
+                        notifyService.notify(cmd);
+                    } catch (Exception e) {
+                        log.error("处理任务 [{}] 失败: {}", cmd.getTaskId(), e.getMessage(), e);
+                    }
                 }
 
                 // 更新 lastId

@@ -3,10 +3,13 @@ package com.dev.lib.local.task.message.domain.adapter;
 import com.alibaba.fastjson2.JSON;
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.local.task.message.domain.model.entity.TaskMessageEntityCommand;
+import com.dev.lib.mq.MQ;
+import com.dev.lib.mq.MessageExtend;
 import com.dev.lib.util.http.GenerichHttpGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -30,15 +33,15 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
                                     "没有配置 http"
                             ));
 
-            GenerichHttpGateway http = GenerichHttpGateway.resolve(config);
-
+            // TODO: 实现 HTTP 调用
+            // GenerichHttpGateway http = GenerichHttpGateway.resolve(config);
+            // String result = http.execute();
             adapt.updateTaskStatusToSuccess(cmd.getTaskId());
+            return "success";
         } catch (Exception e) {
             adapt.updateTaskStatusToFailed(cmd.getTaskId());
-
+            throw e;
         }
-
-        return "";
     }
 
     @Override
@@ -58,11 +61,33 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
                     JSON.toJSONString(config.getPayload())
             );
             adapt.updateTaskStatusToSuccess(cmd.getTaskId());
+            return "success";
         } catch (Exception e) {
             adapt.updateTaskStatusToFailed(cmd.getTaskId());
+            throw e;
         }
+    }
 
-        return "";
+    @Override
+    public String notify2mq(TaskMessageEntityCommand cmd) {
+
+        TaskMessageEntityCommand.NotifyConfig.Mq config =
+                Optional.ofNullable(cmd.getNotifyConfig()).map(TaskMessageEntityCommand.NotifyConfig::getMq)
+                        .orElseThrow(() -> new BizException(
+                                103003,
+                                "没有配置 mq"
+                        ));
+
+        try {
+            MessageExtend<Object> message = MessageExtend.Companion.of(config.getPayload());
+            config.getPayload().forEach((k, v) -> message.set(k, String.valueOf(v)));
+            MQ.INSTANCE.publish(config.getDestination(), message);
+            adapt.updateTaskStatusToSuccess(cmd.getTaskId());
+            return "success";
+        } catch (Exception e) {
+            adapt.updateTaskStatusToFailed(cmd.getTaskId());
+            throw e;
+        }
     }
 
 }

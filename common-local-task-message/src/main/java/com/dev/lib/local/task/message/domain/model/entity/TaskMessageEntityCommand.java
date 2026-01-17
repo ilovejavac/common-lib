@@ -60,9 +60,20 @@ public class TaskMessageEntityCommand implements Serializable {
 
         }
 
+        @Data
+        public static class Mq {
+
+            private String destination;
+
+            private Map<String, Object> payload;
+
+        }
+
         private Rabbit rabbit;
 
         private Http http;
+
+        private Mq mq;
 
     }
 
@@ -77,6 +88,8 @@ public class TaskMessageEntityCommand implements Serializable {
     private String taskType;          // 任务类型（区分处理器）
 
     private String businessId;        // 业务ID（幂等 key）
+
+    private int retryCount = 0;           // 已重试次数
 
     private int maxRetry = 3;             // 最大重试次数
 

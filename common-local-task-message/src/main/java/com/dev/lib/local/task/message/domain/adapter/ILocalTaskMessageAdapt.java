@@ -12,6 +12,8 @@ public interface ILocalTaskMessageAdapt {
 
     void updateTaskStatusToFailed(String taskId);
 
+    void updateTaskStatusToProcessing(String taskId);
+
     List<TaskMessageEntityCommand> selectByHouseNumber(List<Integer> houseNumbers, String taskId, Integer limit);
 
     String selectMinIdByHouseNumber(List<Integer> houseNumbers);

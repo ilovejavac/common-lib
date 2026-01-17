@@ -40,6 +40,7 @@
         <module>common-data-jpa-tenant</module>
         <module>common-util</module>
         <module>common-bash</module>
+        <module>common-mq</module>
     </modules>
 
     <properties>
@@ -438,6 +439,11 @@
             <dependency>
                 <groupId>com.dev.lib</groupId>
                 <artifactId>common-bash</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-mq</artifactId>
                 <version>${lib.version}</version>
             </dependency>
         </dependencies>
