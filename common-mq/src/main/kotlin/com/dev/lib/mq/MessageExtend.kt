@@ -24,53 +24,30 @@ data class MessageExtend<T>(
     private val _headers: MutableMap<String, String> = mutableMapOf()
     val headers: Map<String, String> get() = _headers
 
-    operator fun set(headerKey: String, headerValue: String) {
-        _headers[headerKey] = headerValue
+    operator fun set(key: String, value: String) {
+        _headers[key] = value
     }
 
-    operator fun get(headerKey: String): String? {
-        return _headers[headerKey]
-    }
+    operator fun get(key: String): String? = _headers[key]
 
-    fun persistent(persistent: Boolean): MessageExtend<T> {
-        this.persistent = persistent
-        return this
-    }
+    fun persistent(persistent: Boolean): MessageExtend<T> = apply { this.persistent = persistent }
 
-    fun ttl(millis: Long): MessageExtend<T> {
-        this.ttl = millis
-        return this
-    }
+    fun ttl(millis: Long): MessageExtend<T> = apply { this.ttl = millis }
 
-    fun delay(millis: Long): MessageExtend<T> {
-        this.delay = millis
-        return this
-    }
+    fun delay(millis: Long): MessageExtend<T> = apply { this.delay = millis }
 
-    fun priority(level: Int): MessageExtend<T> {
-        this.priority = level
-        return this
-    }
+    fun priority(level: Int): MessageExtend<T> = apply { this.priority = level }
 
-    fun sharding(key: String): MessageExtend<T> {
-        this.shardingKey = key
-        return this
-    }
+    fun sharding(key: String): MessageExtend<T> = apply { this.shardingKey = key }
 
-    fun deadLetter(queue: String): MessageExtend<T> {
-        this.deadLetter = queue
-        return this
-    }
+    fun deadLetter(queue: String): MessageExtend<T> = apply { this.deadLetter = queue }
 
-    fun retry(times: Int, delayMillis: Long = 1000): MessageExtend<T> {
+    fun retry(times: Int, delayMillis: Long = 1000): MessageExtend<T> = apply {
         this.retry = times
         this.retryDelay = delayMillis
-        return this
     }
 
     companion object {
-        fun <T> of(body: T): MessageExtend<T> {
-            return MessageExtend(body)
-        }
+        fun <T> of(body: T): MessageExtend<T> = MessageExtend(body)
     }
 }

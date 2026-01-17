@@ -32,18 +32,7 @@ class RabbitMQTemplate(
     }
 
     override fun <T> send(destination: String, message: MessageExtend<T>) {
-        val correlationData = CorrelationData(message.id.toString())
-
-        if (reliabilityConfig.enableStorage && messageStorage != null) {
-            correlationData.future.whenComplete { _, throwable ->
-                if (throwable != null) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        messageStorage.saveAsPending(message, destination)
-                    }
-                }
-            }
-        }
-
+        val correlationData = createCorrelationData(message, destination)
         template.convertAndSend(destination, message.key, message, createPostProcessor(message), correlationData)
     }
 
@@ -57,20 +46,33 @@ class RabbitMQTemplate(
             if (throwable == null) {
                 ack.onSuccess(message)
             } else {
-                if (reliabilityConfig.enableStorage && messageStorage != null) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        messageStorage.saveAsPending(message, destination)
-                    }
-                }
+                savePendingIfNeeded(message, destination)
                 ack.onFailure(message, throwable)
             }
         }
-
         template.convertAndSend(destination, message.key, message, createPostProcessor(message), correlationData)
     }
 
     override fun <T> convertAndSend(destination: String, message: MessageExtend<T>) {
         template.convertAndSend(destination, message.key, message, createPostProcessor(message))
+    }
+
+    private fun <T> createCorrelationData(message: MessageExtend<T>, destination: String): CorrelationData {
+        val correlationData = CorrelationData(message.id.toString())
+        correlationData.future.whenComplete { _, throwable ->
+            if (throwable != null) {
+                savePendingIfNeeded(message, destination)
+            }
+        }
+        return correlationData
+    }
+
+    private fun <T> savePendingIfNeeded(message: MessageExtend<T>, destination: String) {
+        if (reliabilityConfig.enableStorage && messageStorage != null) {
+            CoroutineScope(Dispatchers.IO).launch {
+                messageStorage.saveAsPending(message, destination)
+            }
+        }
     }
 
     private fun <T> createPostProcessor(message: MessageExtend<T>): MessagePostProcessor {

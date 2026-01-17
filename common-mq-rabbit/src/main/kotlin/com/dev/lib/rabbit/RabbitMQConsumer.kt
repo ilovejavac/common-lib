@@ -6,9 +6,6 @@ import com.dev.lib.mq.consumer.MQConsumer
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.rabbitmq.client.Channel
-import org.springframework.amqp.rabbit.annotation.RabbitListener
-import org.springframework.amqp.support.AmqpHeaders
-import org.springframework.messaging.handler.annotation.Header
 import org.springframework.stereotype.Component
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -26,8 +23,6 @@ class RabbitMQConsumer : MQConsumer {
         concurrency: Int,
         handler: (T) -> AckAction
     ) {
-        // 动态注册 listener 实现较复杂，这里提供模板方法
-        // 使用者在实际使用时使用 @RabbitListener 注解 + RabbitMQHandlerHelper
     }
 }
 
@@ -47,35 +42,55 @@ object RabbitMQHandlerHelper {
         val msgId = message.id.toString()
         val currentRetry = retryCountCache.get(msgId) { AtomicInteger(0) }!!
 
-        try {
-            val action = handler(message)
-            when (action) {
-                AckAction.ACK -> {
-                    channel?.basicAck(deliveryTag ?: 0, false)
-                    retryCountCache.invalidate(msgId)
-                }
-                AckAction.NACK -> {
-                    if (currentRetry.get() < message.retry) {
-                        currentRetry.incrementAndGet()
-                        channel?.basicNack(deliveryTag ?: 0, false, true)
-                    } else {
-                        channel?.basicReject(deliveryTag ?: 0, false)
-                        retryCountCache.invalidate(msgId)
-                    }
-                }
-                AckAction.REJECT -> {
-                    channel?.basicReject(deliveryTag ?: 0, false)
-                    retryCountCache.invalidate(msgId)
-                }
-            }
+        val action = try {
+            handler(message)
         } catch (e: Exception) {
-            if (currentRetry.get() < message.retry) {
-                currentRetry.incrementAndGet()
-                channel?.basicNack(deliveryTag ?: 0, false, true)
-            } else {
+            handleRetryOrReject(message, channel, deliveryTag, currentRetry, msgId)
+            return
+        }
+
+        when (action) {
+            AckAction.ACK -> {
+                channel?.basicAck(deliveryTag ?: 0, false)
+                retryCountCache.invalidate(msgId)
+            }
+            AckAction.NACK -> handleNack(message, channel, deliveryTag, currentRetry, msgId)
+            AckAction.REJECT -> {
                 channel?.basicReject(deliveryTag ?: 0, false)
                 retryCountCache.invalidate(msgId)
             }
+        }
+    }
+
+    private fun <T> handleRetryOrReject(
+        message: MessageExtend<T>,
+        channel: Channel?,
+        deliveryTag: Long?,
+        currentRetry: AtomicInteger,
+        msgId: String
+    ) {
+        if (currentRetry.get() < message.retry) {
+            currentRetry.incrementAndGet()
+            channel?.basicNack(deliveryTag ?: 0, false, true)
+        } else {
+            channel?.basicReject(deliveryTag ?: 0, false)
+            retryCountCache.invalidate(msgId)
+        }
+    }
+
+    private fun <T> handleNack(
+        message: MessageExtend<T>,
+        channel: Channel?,
+        deliveryTag: Long?,
+        currentRetry: AtomicInteger,
+        msgId: String
+    ) {
+        if (currentRetry.get() < message.retry) {
+            currentRetry.incrementAndGet()
+            channel?.basicNack(deliveryTag ?: 0, false, true)
+        } else {
+            channel?.basicReject(deliveryTag ?: 0, false)
+            retryCountCache.invalidate(msgId)
         }
     }
 

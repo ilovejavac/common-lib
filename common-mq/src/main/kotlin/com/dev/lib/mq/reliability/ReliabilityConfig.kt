@@ -9,8 +9,7 @@ data class ReliabilityConfig(
     val storage: MessageStorage? = null
 ) {
 
-    val enableStorage: Boolean
-        get() = storage != null
+    val enableStorage: Boolean get() = storage != null
 
     companion object {
         val DEFAULT = ReliabilityConfig()

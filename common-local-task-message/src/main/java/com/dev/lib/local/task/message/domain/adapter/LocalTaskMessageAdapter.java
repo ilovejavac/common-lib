@@ -1,7 +1,6 @@
 package com.dev.lib.local.task.message.domain.adapter;
 
 import com.dev.lib.entity.id.IDWorker;
-import com.dev.lib.local.task.message.data.LocalTaskMessagePo;
 import com.dev.lib.local.task.message.data.LocalTaskMessagePoToTaskMessageEntityCommandMapper;
 import com.dev.lib.local.task.message.data.LocalTaskStatus;
 import com.dev.lib.local.task.message.data.TaskMessageRepository;
@@ -13,7 +12,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,11 +21,8 @@ import java.util.Optional;
 public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTaskMessageAdapt {
 
     private final ApplicationEventPublisher publisher;
-
     private final TaskMessageRepository repository;
-
     private final TaskMessageEntityCommandToLocalTaskMessagePoMapper commandToLocalTaskMessagePoMapper;
-
     private final LocalTaskMessagePoToTaskMessageEntityCommandMapper taskMessageEntityCommandMapper;
 
     @Override
@@ -38,7 +33,7 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveMessage(TaskMessageEntityCommand cmd) {
-        LocalTaskMessagePo po = commandToLocalTaskMessagePoMapper.convert(cmd);
+        var po = commandToLocalTaskMessagePoMapper.convert(cmd);
         po.setId(IDWorker.nextID());
         po.setHouseNumber(Long.hashCode(po.getId()) % 10);
         po.setStatus(LocalTaskStatus.PENDING);
@@ -49,25 +44,24 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateTaskStatusToSuccess(String taskId) {
-        repository.loadById(taskId).ifPresent(it -> {
-            it.setStatus(LocalTaskStatus.SUCCESS);
-            it.setProcessedAt(java.time.LocalDateTime.now());
-        });
+        updateStatus(taskId, LocalTaskStatus.SUCCESS);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateTaskStatusToFailed(String taskId) {
-        repository.loadById(taskId).ifPresent(it -> {
-            it.setStatus(LocalTaskStatus.FAILED);
-            it.setProcessedAt(java.time.LocalDateTime.now());
-        });
+        updateStatus(taskId, LocalTaskStatus.FAILED);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void updateTaskStatusToProcessing(String taskId) {
+        repository.loadById(taskId).ifPresent(it -> it.setStatus(LocalTaskStatus.PROCESSING));
+    }
+
+    private void updateStatus(String taskId, LocalTaskStatus status) {
         repository.loadById(taskId).ifPresent(it -> {
-            it.setStatus(LocalTaskStatus.PROCESSING);
+            it.setStatus(status);
+            it.setProcessedAt(java.time.LocalDateTime.now());
         });
     }
 
@@ -78,16 +72,13 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
             String taskId,
             Integer limit
     ) {
-        Long lastId = null;
-        if (taskId != null && !taskId.isEmpty()) {
-            Optional<LocalTaskMessagePo> loadTask = repository.loadById(taskId);
-            if (loadTask.isPresent()) {
-                lastId = loadTask.get().getId();
-            }
-        }
+        Long lastId = Optional.ofNullable(taskId)
+                .filter(id -> !id.isEmpty())
+                .flatMap(repository::loadById)
+                .map(po -> po.getId())
+                .orElse(null);
 
-        List<LocalTaskMessagePo> pos = repository.loadsByHouseNumber(houseNumbers, lastId, limit);
-        return pos.stream()
+        return repository.loadsByHouseNumber(houseNumbers, lastId, limit).stream()
                 .map(taskMessageEntityCommandMapper::convert)
                 .toList();
     }
@@ -98,8 +89,7 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
         return repository.loadsByHouseNumber(houseNumbers, null, 1)
                 .stream()
                 .findFirst()
-                .map(LocalTaskMessagePo::getTaskId)
+                .map(po -> po.getTaskId())
                 .orElse("");
     }
-
 }
