@@ -6,9 +6,11 @@ data class ReliabilityConfig(
     val maxRetries: Int = 3,
     val retryInterval: Long = 1000,
     val enableDeadLetter: Boolean = true,
-    val enableStorage: Boolean = false,
     val storage: MessageStorage? = null
 ) {
+
+    val enableStorage: Boolean
+        get() = storage != null
 
     companion object {
         val DEFAULT = ReliabilityConfig()

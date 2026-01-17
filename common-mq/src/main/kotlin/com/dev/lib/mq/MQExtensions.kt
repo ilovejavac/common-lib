@@ -10,5 +10,5 @@ object MQExtensions {
 
     fun <T> nack(): AckAction = NACK
 
-    fun <T> retry(): AckAction = REJECT
+    fun <T> reject(): AckAction = REJECT
 }

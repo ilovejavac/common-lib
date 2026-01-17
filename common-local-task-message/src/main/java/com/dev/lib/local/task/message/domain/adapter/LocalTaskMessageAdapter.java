@@ -1,5 +1,6 @@
 package com.dev.lib.local.task.message.domain.adapter;
 
+import com.dev.lib.entity.id.IDWorker;
 import com.dev.lib.local.task.message.data.LocalTaskMessagePo;
 import com.dev.lib.local.task.message.data.LocalTaskMessagePoToTaskMessageEntityCommandMapper;
 import com.dev.lib.local.task.message.data.LocalTaskStatus;
@@ -38,11 +39,11 @@ public class LocalTaskMessageAdapter implements ILocalTaskMessageEvent, ILocalTa
     @Transactional(rollbackFor = Exception.class)
     public void saveMessage(TaskMessageEntityCommand cmd) {
         LocalTaskMessagePo po = commandToLocalTaskMessagePoMapper.convert(cmd);
+        po.setId(IDWorker.nextID());
+        po.setHouseNumber(Long.hashCode(po.getId()) % 10);
         po.setStatus(LocalTaskStatus.PENDING);
         po.setRetryCount(0);
         repository.save(po);
-        po.setHouseNumber(po.getId().hashCode() % 10);
-        repository.flush();
     }
 
     @Override
