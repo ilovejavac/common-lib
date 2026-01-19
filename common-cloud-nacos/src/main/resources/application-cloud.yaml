@@ -29,7 +29,7 @@ dubbo:
     address: nacos://${app.cloud.username}:${app.cloud.password}@${app.cloud.host}:${app.cloud.port}
     parameters:
       namespace: ${app.cloud.namespace}
-      group: dubbo
+      group: ${app.cloud.group}
     use-as-config-center: true
     use-as-metadata-center: true
   scan:

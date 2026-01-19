@@ -19,6 +19,7 @@ spring:
 #      force: true
   config:
     import:
+      - optional:classpath:application-mq.yaml
       - optional:classpath:application-cloud.yaml
       - optional:classpath:application-data.yaml
       - optional:classpath:application-cache.yaml

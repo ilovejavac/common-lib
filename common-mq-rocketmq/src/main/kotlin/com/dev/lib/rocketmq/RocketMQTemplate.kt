@@ -2,9 +2,10 @@ package com.dev.lib.rocketmq
 
 import com.dev.lib.CoroutineScopeHolder
 import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
-import com.dev.lib.mq.AbstractMQTemplate
 import com.dev.lib.mq.AckCallback
+import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
+import com.dev.lib.mq.reliability.ReliabilityConfig
 import org.apache.rocketmq.client.producer.SendCallback
 import org.apache.rocketmq.client.producer.SendResult
 import org.apache.rocketmq.spring.core.RocketMQTemplate
@@ -15,7 +16,13 @@ import org.springframework.messaging.support.MessageBuilder
 class RocketMQTemplate(
     private val template: RocketMQTemplate,
     private val messageStorage: LocalTaskMessageStorage?
-) : AbstractMQTemplate() {
+) : MQTemplate {
+
+    private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
+
+    override fun setReliabilityConfig(config: ReliabilityConfig) {
+        this.reliabilityConfig = config
+    }
 
     override fun <T> send(destination: String, message: MessageExtend<T>) {
         try {
@@ -55,15 +62,11 @@ class RocketMQTemplate(
     private fun <T> buildMessage(message: MessageExtend<T>): Message<MessageExtend<T>> {
         val builder = MessageBuilder.withPayload(message)
 
-        // 自定义 headers
         message.headers.forEach { (k, v) -> builder.setHeader(k, v) }
 
-        // RocketMQ 原生 headers
         message.key.takeIf { it.isNotEmpty() }?.let { builder.setHeader(RocketMQHeaders.KEYS, it) }
 
-        // 延迟消息：delayLevel 1-18 或 5.0+ 支持毫秒
         message.delay?.let { delay ->
-            // 延迟级别映射：1=1s, 2=5s, 3=10s, 4=30s, 5=1m, 6=2m, 7=3m, 8=4m, 9=5m, 10=6m, 11=7m, 12=8m, 13=9m, 14=10m, 15=20m, 16=30m, 17=1h, 18=2h
             val delayLevel = when {
                 delay < 1000 -> 1
                 delay < 5000 -> 2
@@ -78,7 +81,7 @@ class RocketMQTemplate(
                 delay < 420000 -> 11
                 delay < 480000 -> 12
                 delay < 540000 -> 13
-                delay < 600000 -> 14
+                delay < 60000 -> 14
                 delay < 1200000 -> 15
                 delay < 1800000 -> 16
                 delay < 3600000 -> 17
@@ -87,19 +90,10 @@ class RocketMQTemplate(
             builder.setHeader(RocketMQHeaders.DELAY, delayLevel)
         }
 
-        // 分区顺序消息（自定义 header，消费端用 MessageListenerOrderly）
         message.shardingKey?.let { builder.setHeader("SHARDING_KEY", it) }
-
-        // 优先级（自定义，需要消费端配合）
         message.priority?.let { builder.setHeader("PRIORITY", it) }
-
-        // TTL
         message.ttl?.let { builder.setHeader("TTL_MS", it) }
-
-        // 死信队列
         message.deadLetter?.let { builder.setHeader("DLQ_TOPIC", it) }
-
-        // 重试配置
         builder.setHeader("RETRY", message.retry)
         builder.setHeader("RETRY_DELAY_MS", message.retryDelay)
 

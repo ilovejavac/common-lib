@@ -2,18 +2,33 @@ package com.dev.lib.rabbit
 
 import com.dev.lib.CoroutineScopeHolder
 import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
-import com.dev.lib.mq.AbstractMQTemplate
 import com.dev.lib.mq.AckCallback
+import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
+import com.dev.lib.mq.reliability.ReliabilityConfig
+import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
 import org.springframework.amqp.core.MessageDeliveryMode
 import org.springframework.amqp.core.MessagePostProcessor
 import org.springframework.amqp.rabbit.connection.CorrelationData
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 class RabbitMQTemplate(
     private val template: RabbitTemplate,
     private val messageStorage: LocalTaskMessageStorage?
-) : AbstractMQTemplate() {
+) : MQTemplate {
+
+    private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
+    private val retryCountCache: Cache<String, AtomicInteger> = Caffeine.newBuilder()
+        .expireAfterWrite(1, TimeUnit.HOURS)
+        .maximumSize(100_000)
+        .build()
+
+    override fun setReliabilityConfig(config: ReliabilityConfig) {
+        this.reliabilityConfig = config
+    }
 
     override fun <T> send(destination: String, message: MessageExtend<T>) {
         val correlationData = createCorrelationData(message, destination)

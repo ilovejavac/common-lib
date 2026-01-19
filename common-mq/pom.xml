@@ -11,7 +11,6 @@
 
     <artifactId>common-mq</artifactId>
 
-
     <dependencies>
         <dependency>
             <groupId>com.dev.lib</groupId>
