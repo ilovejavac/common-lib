@@ -1,0 +1,9 @@
+spring:
+  rocketmq:
+    name-server: localhost:9876
+    producer:
+      group: default-producer-group
+      send-message-timeout: 3000
+      retry-times-when-send-failed: 2
+    consumer:
+      group: default-consumer-group
