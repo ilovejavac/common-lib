@@ -1,6 +1,7 @@
 package com.dev.lib.kafka
 
 import com.dev.lib.mq.AckAction
+import com.dev.lib.mq.MQ
 import com.dev.lib.mq.MessageExtend
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.kafka.support.Acknowledgment
@@ -19,10 +20,10 @@ private val retryCountCache: Cache<String, AtomicInteger> = Caffeine.newBuilder(
     .build()
 
 /**
- * 带重试的消息处理（MessageExtend 类型）
+ * Kafka 带重试的消息处理
  */
-@JvmName("consumeKafkaWithExtend")
-fun <T> consumeKafka(
+@JvmName("consumeKafka")
+fun <T> MQ.consume(
     record: ConsumerRecord<String, Any>,
     acknowledgment: Acknowledgment?,
     handler: (MessageExtend<T>) -> AckAction
@@ -67,10 +68,10 @@ fun <T> consumeKafka(
 }
 
 /**
- * 不带重试的消息处理（普通类型）
+ * Kafka 不带重试的消息处理
  */
 @JvmName("consumeKafkaSimple")
-fun <T> consumeKafka(
+fun <T> MQ.consume(
     record: ConsumerRecord<String, Any>,
     acknowledgment: Acknowledgment?,
     handler: (T) -> AckAction
@@ -86,10 +87,7 @@ fun <T> consumeKafka(
     applyAck(action, acknowledgment)
 }
 
-/**
- * 根据 AckAction 执行对应的 ACK 操作
- */
-fun applyAck(action: AckAction, acknowledgment: Acknowledgment?) {
+private fun applyAck(action: AckAction, acknowledgment: Acknowledgment?) {
     when (action) {
         AckAction.ACK -> acknowledgment?.acknowledge()
         AckAction.NACK -> acknowledgment?.acknowledge()

@@ -16,23 +16,14 @@ object MQ {
 
     // ========== 发送消息 ==========
 
-    /**
-     * 发送消息
-     */
     fun <T> send(destination: String, message: MessageExtend<T>) {
         template?.send(destination, message) ?: error("MQTemplate not initialized, call MQ.init() first")
     }
 
-    /**
-     * 发送消息（简写，支持 lambda 配置）
-     */
     fun <T> send(destination: String, body: T, block: MessageExtend<T>.() -> Unit = {}) {
         send(destination, MessageExtend(body).apply(block))
     }
 
-    /**
-     * 异步发送消息
-     */
     fun <T> sendAsync(
         destination: String,
         message: MessageExtend<T>,
@@ -41,9 +32,6 @@ object MQ {
         template?.sendAsync(destination, message, ack) ?: error("MQTemplate not initialized, call MQ.init() first")
     }
 
-    /**
-     * 异步发送消息（简写）
-     */
     fun <T> sendAsync(
         destination: String,
         body: T,
@@ -58,4 +46,17 @@ object MQ {
     fun ack(): AckAction = AckAction.ACK
     fun nack(): AckAction = AckAction.NACK
     fun reject(): AckAction = AckAction.REJECT
+
+    // ========== 消费扩展点（各模块通过扩展函数实现）==========
+
+    /**
+     * 消费消息扩展点
+     * 各 MQ 模块通过扩展函数实现具体逻辑
+     *
+     * 例如 RabbitMQ:
+     * fun <T> MQ.consume(message: MessageExtend<T>, channel: Channel, deliveryTag: Long, handler: (MessageExtend<T>) -> AckAction)
+     *
+     * 例如 RocketMQ:
+     * fun <T> MQ.consume(message: MessageExtend<T>, handler: (MessageExtend<T>) -> AckAction)
+     */
 }

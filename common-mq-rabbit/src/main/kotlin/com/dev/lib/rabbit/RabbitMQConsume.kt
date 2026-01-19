@@ -1,6 +1,7 @@
 package com.dev.lib.rabbit
 
 import com.dev.lib.mq.AckAction
+import com.dev.lib.mq.MQ
 import com.dev.lib.mq.MessageExtend
 import com.rabbitmq.client.Channel
 import com.github.benmanes.caffeine.cache.Cache
@@ -18,10 +19,14 @@ private val retryCountCache: Cache<String, AtomicInteger> = Caffeine.newBuilder(
     .build()
 
 /**
- * 带重试的消息处理（MessageExtend 类型）
+ * RabbitMQ 带重试的消息处理
+ * @param message 消息内容
+ * @param channel RabbitMQ Channel
+ * @param deliveryTag 消息投递标签
+ * @param handler 业务处理函数，返回 AckAction
  */
-@JvmName("consumeRabbitWithExtend")
-fun <T> consumeRabbit(
+@JvmName("consumeRabbit")
+fun <T> MQ.consume(
     message: MessageExtend<T>,
     channel: Channel?,
     deliveryTag: Long?,
@@ -55,10 +60,10 @@ fun <T> consumeRabbit(
 }
 
 /**
- * 不带重试的消息处理（普通类型）
+ * RabbitMQ 不带重试的消息处理
  */
 @JvmName("consumeRabbitSimple")
-fun <T> consumeRabbit(
+fun <T> MQ.consume(
     message: T,
     channel: Channel?,
     deliveryTag: Long?,
@@ -70,18 +75,6 @@ fun <T> consumeRabbit(
         AckAction.REJECT
     }
     applyAck(action, channel, deliveryTag)
-}
-
-/**
- * 根据 AckAction 执行对应的 ACK 操作
- */
-fun applyAck(action: AckAction, channel: Channel?, deliveryTag: Long?) {
-    if (channel == null || deliveryTag == null) return
-    when (action) {
-        AckAction.ACK -> channel.basicAck(deliveryTag, false)
-        AckAction.NACK -> channel.basicNack(deliveryTag, false, true)
-        AckAction.REJECT -> channel.basicReject(deliveryTag, false)
-    }
 }
 
 private fun <T> handleRetryOrReject(
@@ -109,5 +102,14 @@ private fun <T> handleNack(
     } else {
         applyAck(AckAction.REJECT, channel, deliveryTag)
         retryCountCache.invalidate(msgId)
+    }
+}
+
+private fun applyAck(action: AckAction, channel: Channel?, deliveryTag: Long?) {
+    if (channel == null || deliveryTag == null) return
+    when (action) {
+        AckAction.ACK -> channel.basicAck(deliveryTag, false)
+        AckAction.NACK -> channel.basicNack(deliveryTag, false, true)
+        AckAction.REJECT -> channel.basicReject(deliveryTag, false)
     }
 }

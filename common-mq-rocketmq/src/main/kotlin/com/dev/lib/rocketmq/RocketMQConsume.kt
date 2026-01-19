@@ -1,6 +1,7 @@
 package com.dev.lib.rocketmq
 
 import com.dev.lib.mq.AckAction
+import com.dev.lib.mq.MQ
 import com.dev.lib.mq.MessageExtend
 import org.apache.rocketmq.spring.core.RocketMQLocalTransactionState
 import com.github.benmanes.caffeine.cache.Cache
@@ -18,10 +19,11 @@ private val retryCountCache: Cache<String, AtomicInteger> = Caffeine.newBuilder(
     .build()
 
 /**
- * 带重试的消息处理（MessageExtend 类型）
+ * RocketMQ 带重试的消息处理
+ * @return RocketMQ 事务状态
  */
-@JvmName("consumeRocketWithExtend")
-fun <T> consumeRocket(
+@JvmName("consumeRocket")
+fun <T> MQ.consume(
     message: MessageExtend<T>,
     handler: (MessageExtend<T>) -> AckAction
 ): RocketMQLocalTransactionState {
@@ -64,10 +66,11 @@ fun <T> consumeRocket(
 }
 
 /**
- * 不带重试的消息处理（普通类型）
+ * RocketMQ 不带重试的消息处理
+ * @return RocketMQ 事务状态
  */
 @JvmName("consumeRocketSimple")
-fun <T> consumeRocket(
+fun <T> MQ.consume(
     message: T,
     handler: (T) -> AckAction
 ): RocketMQLocalTransactionState {
@@ -79,10 +82,7 @@ fun <T> consumeRocket(
     return toTransactionState(action)
 }
 
-/**
- * 将 AckAction 转换为 RocketMQ 事务状态
- */
-fun toTransactionState(action: AckAction): RocketMQLocalTransactionState {
+private fun toTransactionState(action: AckAction): RocketMQLocalTransactionState {
     return when (action) {
         AckAction.ACK -> RocketMQLocalTransactionState.COMMIT
         AckAction.NACK -> RocketMQLocalTransactionState.ROLLBACK
