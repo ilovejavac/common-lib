@@ -81,7 +81,7 @@ public class LocalTaskMessagePortAdapt implements ILocalTaskMessagePort {
         try {
             MessageExtend<Object> message = MessageExtend.Companion.of(config.getPayload());
             config.getPayload().forEach((k, v) -> message.set(k, String.valueOf(v)));
-            MQ.INSTANCE.publish(config.getDestination(), message);
+            MQ.INSTANCE.send(config.getDestination(), message);
             adapt.updateTaskStatusToSuccess(cmd.getTaskId());
             return "success";
         } catch (Exception e) {
