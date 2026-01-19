@@ -33,4 +33,10 @@ object MQ {
     fun <T> convertAndSend(destination: String, message: MessageExtend<T>) {
         template?.convertAndSend(destination, message) ?: error("MQTemplate not initialized, call MQ.init() first")
     }
+
+    fun ack(): AckAction = AckAction.ACK
+
+    fun nack(): AckAction = AckAction.NACK
+
+    fun reject(): AckAction = AckAction.REJECT
 }

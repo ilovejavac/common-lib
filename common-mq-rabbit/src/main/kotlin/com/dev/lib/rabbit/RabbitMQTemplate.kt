@@ -1,34 +1,19 @@
 package com.dev.lib.rabbit
 
+import com.dev.lib.CoroutineScopeHolder
 import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
+import com.dev.lib.mq.AbstractMQTemplate
 import com.dev.lib.mq.AckCallback
-import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
-import com.dev.lib.mq.reliability.ReliabilityConfig
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.launch
 import org.springframework.amqp.core.MessageDeliveryMode
 import org.springframework.amqp.core.MessagePostProcessor
 import org.springframework.amqp.rabbit.connection.CorrelationData
 import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter
 
 class RabbitMQTemplate(
     private val template: RabbitTemplate,
     private val messageStorage: LocalTaskMessageStorage?
-) : MQTemplate {
-
-    private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
-
-    init {
-        template.messageConverter = Jackson2JsonMessageConverter()
-    }
-
-    override fun setReliabilityConfig(config: ReliabilityConfig) {
-        this.reliabilityConfig = config
-    }
+) : AbstractMQTemplate() {
 
     override fun <T> send(destination: String, message: MessageExtend<T>) {
         val correlationData = createCorrelationData(message, destination)
@@ -57,7 +42,7 @@ class RabbitMQTemplate(
     }
 
     private fun <T> createCorrelationData(message: MessageExtend<T>, destination: String): CorrelationData {
-        val correlationData = CorrelationData(message.id.toString())
+        val correlationData = CorrelationData(message.id)
         correlationData.future.whenComplete { _, throwable ->
             if (throwable != null) {
                 savePendingIfNeeded(message, destination)
@@ -67,8 +52,8 @@ class RabbitMQTemplate(
     }
 
     private fun <T> savePendingIfNeeded(message: MessageExtend<T>, destination: String) {
-        if (reliabilityConfig.enableStorage && messageStorage != null) {
-            CoroutineScope(Dispatchers.IO).launch {
+        if (messageStorage != null) {
+            CoroutineScopeHolder.launch {
                 messageStorage.saveAsPending(message, destination)
             }
         }

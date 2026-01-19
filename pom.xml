@@ -14,7 +14,7 @@
 
     <groupId>com.dev.lib</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.3.37</version>
+    <version>1.3.38</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -29,7 +29,7 @@
         <module>common-excel</module>
         <module>common-ai</module>
         <module>common-security-sa</module>
-        <module>common-mq-rabbit</module>
+
         <module>common-data-mongo</module>
         <module>common-data-search</module>
         <module>common-cloud-consul</module>
@@ -41,6 +41,9 @@
         <module>common-util</module>
         <module>common-bash</module>
         <module>common-mq</module>
+        <module>common-mq-rabbit</module>
+        <module>common-mq-kafka</module>
+        <module>common-mq-rocketmq</module>
     </modules>
 
     <properties>
@@ -76,7 +79,7 @@
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
 
-        <lib.version>1.3.37</lib.version>
+        <lib.version>1.3.38</lib.version>
         <skipTests>true</skipTests>
     </properties>
 
@@ -419,6 +422,16 @@
             <dependency>
                 <groupId>com.dev.lib</groupId>
                 <artifactId>common-mq-rabbit</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-mq-rocketmq</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-mq-kafka</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>

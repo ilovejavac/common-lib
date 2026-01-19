@@ -9,7 +9,7 @@
         <version>1.3.38</version>
     </parent>
 
-    <artifactId>common-mq-rabbit</artifactId>
+    <artifactId>common-mq-rocketmq</artifactId>
 
     <dependencies>
         <dependency>
@@ -18,8 +18,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-amqp</artifactId>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+            <version>2.3.1</version>
         </dependency>
 
         <dependency>
