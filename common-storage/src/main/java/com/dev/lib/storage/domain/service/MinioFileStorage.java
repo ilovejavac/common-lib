@@ -2,6 +2,7 @@ package com.dev.lib.storage.domain.service;
 
 import com.dev.lib.storage.config.AppStorageProperties;
 import io.minio.*;
+import io.minio.http.Method;
 import io.minio.messages.DeleteObject;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,18 +53,21 @@ public class MinioFileStorage implements StorageService, InitializingBean {
     @Override
     public String upload(MultipartFile file, String path) throws IOException {
 
-        String bucket = fileProperties.getMinio().getBucket();
+        String bucket      = fileProperties.getMinio().getBucket();
+        String contentType = file.getContentType();
+
+        // 如果是 null 或 application/octet-stream，手动设置
+        if (contentType == null || "application/octet-stream".equals(contentType)) {
+            contentType = getContentTypeByExtension(path);
+        }
+
         try {
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(bucket)
                             .object(path)
-                            .stream(
-                                    file.getInputStream(),
-                                    file.getSize(),
-                                    -1
-                            )
-                            .contentType(file.getContentType())
+                            .stream(file.getInputStream(), file.getSize(), -1)
+                            .contentType(contentType)
                             .build()
             );
             return path;
@@ -74,6 +77,18 @@ public class MinioFileStorage implements StorageService, InitializingBean {
                     e
             );
         }
+    }
+
+    private String getContentTypeByExtension(String path) {
+
+        String ext = path.substring(path.lastIndexOf(".") + 1).toLowerCase();
+        return switch (ext) {
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "gif" -> "image/gif";
+            case "webp" -> "image/webp";
+            default -> "application/octet-stream";
+        };
     }
 
     @Override
@@ -178,9 +193,8 @@ public class MinioFileStorage implements StorageService, InitializingBean {
                     io.minio.GetPresignedObjectUrlArgs.builder()
                             .bucket(bucket)
                             .object(path)
-                            .method(io.minio.http.Method.GET)
+                            .method(Method.GET)
                             .expiry(expireSeconds, java.util.concurrent.TimeUnit.SECONDS)
-                            .extraQueryParams(Map.of("response-content-disposition", "inline"))
                             .build()
             );
         } catch (Exception e) {
