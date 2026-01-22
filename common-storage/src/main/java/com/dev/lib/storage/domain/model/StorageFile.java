@@ -23,8 +23,6 @@ public class StorageFile {
 
     private String storagePath;     // 存储路径
 
-    private String url;             // 访问URL
-
     private String extension;       // 扩展名
 
     private String contentType;     // MIME类型

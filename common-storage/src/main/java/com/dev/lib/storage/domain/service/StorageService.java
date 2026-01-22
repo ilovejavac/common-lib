@@ -52,9 +52,15 @@ public interface StorageService {
     void deleteAll(Collection<String> paths);
 
     /**
-     * 获取访问URL
+     * 获取临时访问URL（带签名）
+     *
+     * @param path         文件路径
+     * @param expireSeconds 过期时间（秒）
+     * @return 预签名URL
      */
-    String getUrl(String path);
+    default String getPresignedUrl(String path, int expireSeconds) {
+        throw new UnsupportedOperationException("getPresignedUrl not implemented");
+    }
 
     /**
      * 复制文件（存储服务原生实现）

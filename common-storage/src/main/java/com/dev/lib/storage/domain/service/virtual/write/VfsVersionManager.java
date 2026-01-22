@@ -60,7 +60,6 @@ public class VfsVersionManager {
             file.setOriginalName(fileName);
             file.setStorageName(fileName);
             file.setStoragePath(storagePath);
-            file.setUrl(storageService.getUrl(storagePath));
             file.setExtension(extension);
             file.setSize(size);
             file.setStorageType(storageService.getStorageProperties().getType());
@@ -109,7 +108,6 @@ public class VfsVersionManager {
     private void updateFileWithVersioning(SysFile file, String newStoragePath, long newSize, String oldStoragePath) {
 
         file.setStoragePath(newStoragePath);
-        file.setUrl(storageService.getUrl(newStoragePath));
         file.setSize(newSize);
 
         if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
@@ -163,7 +161,6 @@ public class VfsVersionManager {
             copy.setOriginalName(pathResolver.getName(destPath));
             copy.setStorageName(src.getStorageName());
             copy.setStoragePath(newStoragePath);
-            copy.setUrl(newStoragePath != null ? storageService.getUrl(newStoragePath) : null);
             copy.setExtension(src.getExtension());
             copy.setContentType(src.getContentType());
             copy.setSize(src.getSize());

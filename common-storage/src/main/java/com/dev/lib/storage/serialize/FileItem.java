@@ -13,8 +13,6 @@ public class FileItem {
 
     private String originalName;    // 原始文件名
 
-    private String url;             // 访问URL
-
     private String extension;       // 扩展名
 
     private String contentType;     // MIME类型

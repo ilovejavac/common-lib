@@ -19,6 +19,14 @@ public interface FileService {
 
     StorageFile getById(String id);
 
+    /**
+     * 生成临时访问URL（7天有效）
+     *
+     * @param id 文件ID
+     * @return 预签名URL
+     */
+    String getPresignedUrl(String id);
+
     InputStream download(StorageFile sf) throws IOException;
 
     /**

@@ -36,8 +36,6 @@ public class SysFile extends TenantEntity {
 
     private String storagePath;     // 存储路径
 
-    private String url;             // 访问URL
-
     @Column(length = 20)
     private String extension;       // 扩展名
 

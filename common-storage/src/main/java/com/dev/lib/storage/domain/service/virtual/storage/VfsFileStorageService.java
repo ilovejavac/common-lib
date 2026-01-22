@@ -118,16 +118,6 @@ public class VfsFileStorageService {
         return paths;
     }
 
-    // ==================== URL 获取 ====================
-
-    /**
-     * 获取文件访问 URL
-     */
-    public String getUrl(String storagePath) {
-
-        return storageService.getUrl(storagePath);
-    }
-
     /**
      * 生成存储路径（用于复制操作）
      */

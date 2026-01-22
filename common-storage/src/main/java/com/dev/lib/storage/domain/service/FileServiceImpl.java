@@ -41,7 +41,6 @@ public class FileServiceImpl implements FileService {
         StorageFile sf = new StorageFile();
         sf.setStorageName(storageName);
         sf.setStoragePath(storagePath);
-        sf.setUrl(storage.getUrl(storagePath));
         sf.setStorageType(fileProperties.getType());
         sf.setCategory(category);
 
@@ -74,7 +73,6 @@ public class FileServiceImpl implements FileService {
         sf.setOriginalName(file.getOriginalFilename());
         sf.setStorageName(storageName);
         sf.setStoragePath(storagePath);
-        sf.setUrl(storage.getUrl(storagePath));
         sf.setExtension(extension);
         sf.setContentType(file.getContentType());
         sf.setSize(file.getSize());
@@ -88,6 +86,14 @@ public class FileServiceImpl implements FileService {
     public StorageFile getById(String id) {
 
         return repo.findByBizId(id);
+    }
+
+    @Override
+    public String getPresignedUrl(String id) {
+
+        StorageFile file = repo.findByBizId(id);
+        int         expire7Days = 7 * 24 * 60 * 60;
+        return storage.getPresignedUrl(file.getStoragePath(), expire7Days);
     }
 
     public InputStream download(StorageFile sf) throws IOException {

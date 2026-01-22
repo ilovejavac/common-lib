@@ -75,12 +75,6 @@ public class LocalFileStorage implements StorageService {
     }
 
     @Override
-    public String getUrl(String path) {
-
-        return fileProperties.getLocal().getUrlPrefix() + "/" + path;
-    }
-
-    @Override
     public String copy(String sourcePath, String targetPath) throws IOException {
 
         File sourceFile = resolveSafePath(sourcePath);

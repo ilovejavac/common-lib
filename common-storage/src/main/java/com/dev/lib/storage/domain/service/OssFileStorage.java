@@ -98,16 +98,17 @@ public class OssFileStorage implements StorageService, InitializingBean {
     }
 
     @Override
-    public String getUrl(String path) {
+    public String getPresignedUrl(String path, int expireSeconds) {
 
-        String bucket   = fileProperties.getOss().getBucket();
-        String endpoint = fileProperties.getOss().getEndpoint();
-        return String.format(
-                "https://%s.%s/%s",
-                bucket,
-                endpoint,
-                path
+        String bucket = fileProperties.getOss().getBucket();
+        java.util.Date expiration = new java.util.Date(
+                System.currentTimeMillis() + expireSeconds * 1000L
         );
+        return ossClient.generatePresignedUrl(
+                bucket,
+                path,
+                expiration
+        ).toString();
     }
 
     @PreDestroy

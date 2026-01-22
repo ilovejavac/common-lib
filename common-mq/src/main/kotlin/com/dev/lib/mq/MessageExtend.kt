@@ -9,7 +9,7 @@ data class MessageExtend<T>(
 ) : Serializable {
 
     var key: String = ""
-    val id = IDWorker.newId()
+    lateinit var id: String
     val producerAt = LocalDateTime.now()
 
     var persistent: Boolean = true
@@ -34,6 +34,8 @@ data class MessageExtend<T>(
 
     fun ttl(millis: Long): MessageExtend<T> = apply { this.ttl = millis }
 
+    fun key(routingKeyEnum: Enum<*>): MessageExtend<T> = apply { this.key = routingKeyEnum.toString() }
+
     fun delay(millis: Long): MessageExtend<T> = apply { this.delay = millis }
 
     fun priority(level: Int): MessageExtend<T> = apply { this.priority = level }
@@ -48,6 +50,8 @@ data class MessageExtend<T>(
     }
 
     companion object {
-        fun <T> of(body: T): MessageExtend<T> = MessageExtend(body)
+        fun <T> of(body: T): MessageExtend<T> = MessageExtend(body).apply {
+            id = IDWorker.newId()
+        }
     }
 }

@@ -2,18 +2,15 @@ package com.dev.lib.storage.trigger.controller;
 
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.service.FileService;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 文件接口
@@ -23,9 +20,7 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 public class FileController {
 
-    private final FileService       fileService;
-
-    private final VirtualFileSystem vfs;
+    private final FileService fileService;
 
 //    /**
 //     * 文件上传（支持多文件、文件夹结构保留）
@@ -95,6 +90,19 @@ public class FileController {
                                 .build().toString()
                 )
                 .body(new InputStreamResource(is));
+    }
+
+    /**
+     * 获取临时访问地址（7天有效）
+     * 浏览器缓存响应 6 天
+     */
+    @GetMapping("/{id}/url")
+    public ResponseEntity<String> getPresignedUrl(@PathVariable String id) {
+
+        String url = fileService.getPresignedUrl(id);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(6, TimeUnit.DAYS).mustRevalidate())
+                .body(url);
     }
 
 //    /**

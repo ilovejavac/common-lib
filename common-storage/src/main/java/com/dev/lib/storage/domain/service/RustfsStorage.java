@@ -43,12 +43,6 @@ public class RustfsStorage implements StorageService, InitializingBean {
     }
 
     @Override
-    public String getUrl(String path) {
-
-        return "";
-    }
-
-    @Override
     public void afterPropertiesSet() throws Exception {
 
     }

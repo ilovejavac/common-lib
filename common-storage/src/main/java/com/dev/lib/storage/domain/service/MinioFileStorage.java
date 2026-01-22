@@ -168,16 +168,20 @@ public class MinioFileStorage implements StorageService, InitializingBean {
     }
 
     @Override
-    public String getUrl(String path) {
+    public String getPresignedUrl(String path, int expireSeconds) {
 
-        String endpoint = fileProperties.getMinio().getEndpoint();
-        String bucket   = fileProperties.getMinio().getBucket();
-        return String.format(
-                "%s/%s/%s",
-                endpoint,
-                bucket,
-                path
-        );
+        String bucket = fileProperties.getMinio().getBucket();
+        try {
+            return minioClient.getPresignedObjectUrl(
+                    io.minio.GetPresignedObjectUrlArgs.builder()
+                            .bucket(bucket)
+                            .object(path)
+                            .expiry(expireSeconds, java.util.concurrent.TimeUnit.SECONDS)
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("MinIO getPresignedUrl failed", e);
+        }
     }
 
     @PreDestroy

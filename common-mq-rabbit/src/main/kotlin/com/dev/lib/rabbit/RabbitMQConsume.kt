@@ -62,7 +62,7 @@ fun <T> MQ.consume(
 /**
  * RabbitMQ 不带重试的消息处理
  */
-@JvmName("consumeRabbitSimple")
+@JvmName("consume")
 fun <T> MQ.consume(
     message: T,
     channel: Channel?,
