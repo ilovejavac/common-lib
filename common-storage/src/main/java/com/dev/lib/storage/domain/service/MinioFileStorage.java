@@ -174,16 +174,15 @@ public class MinioFileStorage implements StorageService, InitializingBean {
 
         String bucket = fileProperties.getMinio().getBucket();
         try {
-            String url = minioClient.getPresignedObjectUrl(
+            return minioClient.getPresignedObjectUrl(
                     io.minio.GetPresignedObjectUrlArgs.builder()
                             .bucket(bucket)
                             .object(path)
                             .method(io.minio.http.Method.GET)
                             .expiry(expireSeconds, java.util.concurrent.TimeUnit.SECONDS)
+                            .extraQueryParams(Map.of("response-content-disposition", "inline"))
                             .build()
             );
-            // 添加响应头参数，让浏览器直接显示而不是下载
-            return url + "&response-content-disposition=inline";
         } catch (Exception e) {
             throw new RuntimeException("MinIO getPresignedUrl failed", e);
         }

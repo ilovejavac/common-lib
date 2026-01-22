@@ -4,6 +4,7 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.AppendObjectRequest;
 import com.aliyun.oss.model.DeleteObjectsRequest;
+import com.aliyun.oss.model.GeneratePresignedUrlRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.dev.lib.storage.config.AppStorageProperties;
@@ -104,13 +105,13 @@ public class OssFileStorage implements StorageService, InitializingBean {
         java.util.Date expiration = new java.util.Date(
                 System.currentTimeMillis() + expireSeconds * 1000L
         );
-        String url = ossClient.generatePresignedUrl(
-                bucket,
-                path,
-                expiration
-        ).toString();
+        GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(bucket, path);
+        request.setExpiration(expiration);
+        request.setMethod(com.aliyun.oss.HttpMethod.GET);
         // 添加响应头参数，让浏览器直接显示而不是下载
-        return url + "&response-content-disposition=inline";
+        request.getResponseHeaders().setContentDisposition("inline");
+
+        return ossClient.generatePresignedUrl(request).toString();
     }
 
     @PreDestroy
