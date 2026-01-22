@@ -14,7 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -172,7 +174,7 @@ public class MinioFileStorage implements StorageService, InitializingBean {
 
         String bucket = fileProperties.getMinio().getBucket();
         try {
-            return minioClient.getPresignedObjectUrl(
+            String url = minioClient.getPresignedObjectUrl(
                     io.minio.GetPresignedObjectUrlArgs.builder()
                             .bucket(bucket)
                             .object(path)
@@ -180,6 +182,8 @@ public class MinioFileStorage implements StorageService, InitializingBean {
                             .expiry(expireSeconds, java.util.concurrent.TimeUnit.SECONDS)
                             .build()
             );
+            // 添加响应头参数，让浏览器直接显示而不是下载
+            return url + "&response-content-disposition=inline";
         } catch (Exception e) {
             throw new RuntimeException("MinIO getPresignedUrl failed", e);
         }

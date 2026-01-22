@@ -104,11 +104,13 @@ public class OssFileStorage implements StorageService, InitializingBean {
         java.util.Date expiration = new java.util.Date(
                 System.currentTimeMillis() + expireSeconds * 1000L
         );
-        return ossClient.generatePresignedUrl(
+        String url = ossClient.generatePresignedUrl(
                 bucket,
                 path,
                 expiration
         ).toString();
+        // 添加响应头参数，让浏览器直接显示而不是下载
+        return url + "&response-content-disposition=inline";
     }
 
     @PreDestroy
