@@ -53,42 +53,19 @@ public class MinioFileStorage implements StorageService, InitializingBean {
     @Override
     public String upload(MultipartFile file, String path) throws IOException {
 
-        String bucket      = fileProperties.getMinio().getBucket();
-        String contentType = file.getContentType();
-
-        // 如果是 null 或 application/octet-stream，手动设置
-        if (contentType == null || "application/octet-stream".equals(contentType)) {
-            contentType = getContentTypeByExtension(path);
-        }
-
+        String bucket = fileProperties.getMinio().getBucket();
         try {
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(bucket)
                             .object(path)
                             .stream(file.getInputStream(), file.getSize(), -1)
-                            .contentType(contentType)
                             .build()
             );
             return path;
         } catch (Exception e) {
-            throw new IOException(
-                    "MinIO upload failed",
-                    e
-            );
+            throw new IOException("MinIO upload failed", e);
         }
-    }
-
-    private String getContentTypeByExtension(String path) {
-
-        String ext = path.substring(path.lastIndexOf(".") + 1).toLowerCase();
-        return switch (ext) {
-            case "jpg", "jpeg" -> "image/jpeg";
-            case "png" -> "image/png";
-            case "gif" -> "image/gif";
-            case "webp" -> "image/webp";
-            default -> "application/octet-stream";
-        };
     }
 
     @Override
