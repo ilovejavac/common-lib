@@ -176,6 +176,7 @@ public class MinioFileStorage implements StorageService, InitializingBean {
                     io.minio.GetPresignedObjectUrlArgs.builder()
                             .bucket(bucket)
                             .object(path)
+                            .method(io.minio.http.Method.GET)
                             .expiry(expireSeconds, java.util.concurrent.TimeUnit.SECONDS)
                             .build()
             );
