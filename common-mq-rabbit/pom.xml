@@ -26,6 +26,10 @@
             <groupId>com.dev.lib</groupId>
             <artifactId>common-mq</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-mq</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

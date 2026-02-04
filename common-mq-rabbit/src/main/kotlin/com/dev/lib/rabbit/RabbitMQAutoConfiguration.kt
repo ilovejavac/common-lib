@@ -1,6 +1,6 @@
 package com.dev.lib.rabbit
 
-import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
+import com.dev.lib.local.task.message.poller.core.PollerTaskSubmitter
 import com.dev.lib.mq.MQ
 import org.springframework.amqp.core.AcknowledgeMode
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory
@@ -34,21 +34,21 @@ class RabbitMQAutoConfiguration {
     @ConditionalOnMissingBean
     fun mqTemplateInitializer(
         template: RabbitTemplate,
-        messageStorage: LocalTaskMessageStorage?,
+        taskSubmitter: PollerTaskSubmitter,
         messageConverter: MessageConverter
     ): MQTemplateInitializer {
-        return MQTemplateInitializer(template, messageStorage, messageConverter)
+        return MQTemplateInitializer(template, taskSubmitter, messageConverter)
     }
 }
 
 class MQTemplateInitializer(
     template: RabbitTemplate,
-    messageStorage: LocalTaskMessageStorage?,
+    taskSubmitter: PollerTaskSubmitter,
     messageConverter: MessageConverter
 ) {
     init {
         template.messageConverter = messageConverter
-        MQ.init(RabbitMQTemplate(template, messageStorage))
+        MQ.init(RabbitMQTemplate(template, taskSubmitter))
     }
 }
 

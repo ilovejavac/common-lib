@@ -1,7 +1,7 @@
 package com.dev.lib.rabbit
 
 import com.dev.lib.CoroutineScopeHolder
-import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
+import com.dev.lib.local.task.message.poller.core.PollerTaskSubmitter
 import com.dev.lib.mq.AckCallback
 import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
@@ -13,7 +13,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate
 
 class RabbitMQTemplate(
     private val template: RabbitTemplate,
-    private val messageStorage: LocalTaskMessageStorage?
+    private val taskSubmitter: PollerTaskSubmitter
 ) : MQTemplate {
 
     private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
@@ -59,10 +59,15 @@ class RabbitMQTemplate(
     }
 
     private fun <T> savePendingIfNeeded(message: MessageExtend<T>, destination: String) {
-        if (messageStorage != null) {
-            CoroutineScopeHolder.launch {
-                messageStorage.saveAsPending(message, destination)
-            }
+        CoroutineScopeHolder.launch {
+            val payload = mapOf(
+                "destination" to destination,
+                "body" to message.body,
+                "routingKey" to message.key,
+                "headers" to message.headers,
+                "persistent" to message.persistent
+            )
+            taskSubmitter.submit("RABBIT_RETRY", message.id, payload)
         }
     }
 
