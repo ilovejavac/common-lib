@@ -74,10 +74,32 @@ public class VfsUploadService {
         return fileIds;
     }
 
+    // ==================== 单文件上传 ====================
+
+    /**
+     * 上传单个文件
+     *
+     * @param ctx        VFS 上下文
+     * @param path       目标文件路径
+     * @param inputStream 文件输入流
+     * @param size       文件大小（字节）
+     * @return 创建的文件 bizId
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public String uploadFile(VfsContext ctx, String path, InputStream inputStream, long size) {
+
+        String fullPath = pathResolver.resolve(ctx, path);
+
+        ensureParentDirectoryExists(ctx, fullPath, new HashSet<>());
+        validateFileNotExists(fullPath);
+
+        return versionManager.createFileWithVersioning(ctx, fullPath, inputStream, size);
+    }
+
     // ==================== 多文件上传 ====================
 
     /**
-     * 上传多个文件
+     * 上传多个文件（基于 MultipartFile）
      *
      * @param ctx          VFS 上下文
      * @param targetPath   目标路径

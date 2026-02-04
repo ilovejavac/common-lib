@@ -156,6 +156,17 @@ public interface VirtualFileSystem {
      */
     List<String> uploadFiles(VfsContext ctx, String targetPath, MultipartFile[] files, String[] relativePaths);
 
+    /**
+     * 上传文件到虚拟文件系统
+     *
+     * @param ctx        虚拟文件系统上下文
+     * @param path       目标文件路径
+     * @param inputStream 文件输入流
+     * @param size       文件大小（字节）
+     * @return 创建的文件 ID
+     */
+    String uploadFile(VfsContext ctx, String path, InputStream inputStream, long size);
+
     // ==================== 内部接口（供 Command 使用）====================
 
     /**

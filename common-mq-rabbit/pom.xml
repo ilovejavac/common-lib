@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.dev.lib</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.3.38</version>
+        <version>1.3.40</version>
     </parent>
 
     <artifactId>common-mq-rabbit</artifactId>
@@ -22,10 +22,6 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-mq</artifactId>
-        </dependency>
         <dependency>
             <groupId>com.dev.lib</groupId>
             <artifactId>common-mq</artifactId>

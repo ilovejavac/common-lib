@@ -1,6 +1,8 @@
 package com.dev.lib.storage.data;
 
+import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.jpa.entity.BaseRepository;
 import lombok.Data;
 
@@ -16,9 +18,10 @@ public interface SysFileRepository extends BaseRepository<SysFile> {
     @Data
     class Query extends DslQuery<SysFile> {
 
-        private Boolean temporary;
-
         private LocalDateTime deleteAfterLe;
+
+        @Condition(field = "temporary", operator = LogicalOperator.OR)
+        private Boolean orTemporary;
 
         private Collection<String> bizIdIn;
 

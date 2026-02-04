@@ -149,28 +149,35 @@ public class PredicateAssembler {
         if (items.isEmpty()) return null;
         if (items.size() == 1) return items.getFirst().expression;
 
-        List<List<ExpressionItem>> andGroups    = new ArrayList<>();
-        List<ExpressionItem>       currentGroup = new ArrayList<>();
+        List<List<Predicate>> andGroups    = new ArrayList<>();
+        List<Predicate>        currentGroup = new ArrayList<>();
 
         for (ExpressionItem item : items) {
-            currentGroup.add(item);
             if (item.operator == LogicalOperator.OR) {
-                andGroups.add(new ArrayList<>(currentGroup));
-                currentGroup.clear();
+                // 遇到 OR，先保存当前 group（不包括 OR 条件本身）
+                if (!currentGroup.isEmpty()) {
+                    andGroups.add(new ArrayList<>(currentGroup));
+                    currentGroup.clear();
+                }
+                // OR 条件单独成一组
+                andGroups.add(List.of(item.expression));
+            } else {
+                // AND 条件加入当前组
+                currentGroup.add(item.expression);
             }
         }
 
+        // 处理最后一个 group
         if (!currentGroup.isEmpty()) {
             andGroups.add(currentGroup);
         }
 
+        // 每个 group 内部用 AND 连接，group 之间用 OR 连接
         List<Predicate> groupPredicates = new ArrayList<>();
-        for (List<ExpressionItem> group : andGroups) {
-            if (group.isEmpty()) continue;
-
+        for (List<Predicate> group : andGroups) {
             BooleanBuilder andBuilder = new BooleanBuilder();
-            for (ExpressionItem item : group) {
-                andBuilder.and(item.expression);
+            for (Predicate pred : group) {
+                andBuilder.and(pred);
             }
             if (andBuilder.getValue() != null) {
                 groupPredicates.add(andBuilder.getValue());

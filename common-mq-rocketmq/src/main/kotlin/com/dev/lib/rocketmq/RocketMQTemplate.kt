@@ -1,7 +1,7 @@
 package com.dev.lib.rocketmq
 
 import com.dev.lib.CoroutineScopeHolder
-import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
+import com.dev.lib.local.task.message.poller.core.PollerEngineRegistry
 import com.dev.lib.mq.AckCallback
 import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
@@ -15,7 +15,7 @@ import org.springframework.messaging.support.MessageBuilder
 
 class RocketMQTemplate(
     private val template: RocketMQTemplate,
-    private val messageStorage: LocalTaskMessageStorage?
+    private val pollerRegistry: PollerEngineRegistry?
 ) : MQTemplate {
 
     private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
@@ -101,9 +101,15 @@ class RocketMQTemplate(
     }
 
     private fun <T> savePendingIfNeeded(message: MessageExtend<T>, destination: String) {
-        if (messageStorage != null) {
+        if (pollerRegistry != null) {
             CoroutineScopeHolder.launch {
-                messageStorage.saveAsPending(message, destination)
+                val payload = mapOf(
+                    "destination" to destination,
+                    "key" to message.key,
+                    "body" to message.body,
+                    "headers" to message.headers
+                )
+                pollerRegistry.submit("ROCKET_RETRY", message.id, payload)
             }
         }
     }

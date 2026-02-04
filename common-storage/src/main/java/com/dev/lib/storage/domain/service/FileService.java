@@ -36,4 +36,12 @@ public interface FileService {
 
     Map<String, FileItem> getItems(Collection<String> ids);
 
+    /**
+     * 批量获取文件预签名URL（7天有效）
+     *
+     * @param ids 文件ID集合
+     * @return 文件ID -> 预签名URL 映射
+     */
+    Map<String, String> getPresignedUrls(Collection<String> ids);
+
 }

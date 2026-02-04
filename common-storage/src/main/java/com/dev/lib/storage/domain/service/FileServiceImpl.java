@@ -6,6 +6,7 @@ import com.dev.lib.storage.domain.adapter.StorageFileRepo;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageFileToFileItemMapper;
 import com.dev.lib.storage.serialize.FileItem;
+import com.dev.lib.util.parallel.ParallelExecutor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -14,10 +15,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,6 +32,13 @@ public class FileServiceImpl implements FileService {
     private final StorageService storage;
 
     private final StorageFileRepo repo;
+
+    /**
+     * 预签名 URL 缓存（6天有效期）
+     */
+    private final ConcurrentHashMap<String, CachedUrl> urlCache = new ConcurrentHashMap<>();
+
+    private static final int CACHE_EXPIRE_DAYS = 6;
 
     @Override
     public StorageFile upload(InputStream is, String category) throws IOException {
@@ -91,9 +101,21 @@ public class FileServiceImpl implements FileService {
     @Override
     public String getPresignedUrl(String id) {
 
-        StorageFile file = repo.findByBizId(id);
-        int         expire7Days = 7 * 24 * 60 * 60;
-        return storage.getPresignedUrl(file.getStoragePath(), expire7Days);
+        // 检查缓存
+        CachedUrl cached = urlCache.get(id);
+        if (cached != null && cached.expireTime.isAfter(LocalDateTime.now())) {
+            return cached.url;
+        }
+
+        // 生成新的预签名 URL
+        StorageFile file      = repo.findByBizId(id);
+        int         expireSec = 6 * 24 * 60 * 60;
+        String      url       = storage.getPresignedUrl(file.getStoragePath(), expireSec);
+
+        // 缓存 6 天
+        urlCache.put(id, new CachedUrl(url, LocalDateTime.now().plusDays(CACHE_EXPIRE_DAYS)));
+
+        return url;
     }
 
     public InputStream download(StorageFile sf) throws IOException {
@@ -182,5 +204,24 @@ public class FileServiceImpl implements FileService {
                 mapper::convert
         ));
     }
+
+    @Override
+    public Map<String, String> getPresignedUrls(Collection<String> ids) {
+
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, String> result = new ConcurrentHashMap<>();
+        ParallelExecutor.with(ids).apply(id -> {
+            result.put(id, getPresignedUrl(id));
+        });
+        return result;
+    }
+
+    /**
+     * 缓存的 URL
+     */
+    private record CachedUrl(String url, LocalDateTime expireTime) {}
 
 }

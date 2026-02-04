@@ -2,6 +2,7 @@ package com.dev.lib.storage.trigger.controller;
 
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.service.FileService;
+import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
@@ -10,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -103,6 +106,15 @@ public class FileController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(6, TimeUnit.DAYS).mustRevalidate())
                 .body(url);
+    }
+
+    /**
+     * 批量获取文件预签名URL（6天有效）
+     */
+    @PostMapping("/urls")
+    public ServerResponse<Map<String, String>> getPresignedUrls(@RequestBody Collection<String> ids) {
+
+        return ServerResponse.success(fileService.getPresignedUrls(ids));
     }
 
 //    /**

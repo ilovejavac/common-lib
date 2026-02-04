@@ -25,6 +25,7 @@ public class RedisDistributedLock implements InitializingBean {
 
     private static final String LOCK_PREFIX = "lock:";
     private static final long DEFAULT_WAIT_TIME = 3L;
+    private static final long DEFAULT_LEASE_TIME = 30L;
 
     private static RedisDistributedLock instance;
 
@@ -45,7 +46,7 @@ public class RedisDistributedLock implements InitializingBean {
 
         private final String key;
         private long waitTime = DEFAULT_WAIT_TIME;
-        private long leaseTime = -1;
+        private long leaseTime = DEFAULT_LEASE_TIME;
         private TimeUnit timeUnit = TimeUnit.SECONDS;
 
         LockBuilder(String key) {

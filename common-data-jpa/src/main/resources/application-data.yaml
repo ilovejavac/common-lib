@@ -12,6 +12,8 @@ spring:
     show-sql: false
     properties:
       hibernate:
+        check_constraints: false
+        check_nullability: false
         type:
           preferred_java_type_jdbc_code_for_enum: 24
         default_batch_fetch_size: 128

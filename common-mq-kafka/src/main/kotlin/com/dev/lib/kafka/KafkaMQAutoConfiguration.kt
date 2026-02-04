@@ -1,6 +1,6 @@
 package com.dev.lib.kafka
 
-import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
+import com.dev.lib.local.task.message.poller.core.PollerEngineRegistry
 import com.dev.lib.mq.MQ
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -60,17 +60,17 @@ class KafkaMQAutoConfiguration {
     @ConditionalOnMissingBean
     fun mqTemplateInitializer(
         template: KafkaTemplate<String, Any>,
-        messageStorage: LocalTaskMessageStorage?
+        pollerRegistry: PollerEngineRegistry?
     ): MQTemplateInitializer {
-        return MQTemplateInitializer(template, messageStorage)
+        return MQTemplateInitializer(template, pollerRegistry)
     }
 }
 
 class MQTemplateInitializer(
     template: KafkaTemplate<String, Any>,
-    messageStorage: LocalTaskMessageStorage?
+    pollerRegistry: PollerEngineRegistry?
 ) {
     init {
-        MQ.init(KafkaMQTemplate(template, messageStorage))
+        MQ.init(KafkaMQTemplate(template, pollerRegistry))
     }
 }

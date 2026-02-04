@@ -1,7 +1,7 @@
 package com.dev.lib.kafka
 
 import com.dev.lib.CoroutineScopeHolder
-import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
+import com.dev.lib.local.task.message.poller.core.PollerEngineRegistry
 import com.dev.lib.mq.AckCallback
 import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture
 
 class KafkaMQTemplate(
     private val template: KafkaTemplate<String, Any>,
-    private val messageStorage: LocalTaskMessageStorage?
+    private val pollerRegistry: PollerEngineRegistry?
 ) : MQTemplate {
 
     private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
@@ -68,9 +68,15 @@ class KafkaMQTemplate(
     }
 
     private fun <T> savePendingIfNeeded(message: MessageExtend<T>, destination: String) {
-        if (messageStorage != null) {
+        if (pollerRegistry != null) {
             CoroutineScopeHolder.launch {
-                messageStorage.saveAsPending(message, destination)
+                val payload = mapOf(
+                    "destination" to destination,
+                    "key" to message.key,
+                    "body" to message.body,
+                    "headers" to message.headers
+                )
+                pollerRegistry.submit("KAFKA_RETRY", message.id, payload)
             }
         }
     }

@@ -175,6 +175,12 @@ public class VirtualFileSystemImpl implements VirtualFileSystem {
         return uploadService.uploadFiles(ctx, targetPath, files, relativePaths);
     }
 
+    @Override
+    public String uploadFile(VfsContext ctx, String path, InputStream inputStream, long size) {
+
+        return uploadService.uploadFile(ctx, path, inputStream, size);
+    }
+
     // ==================== 工具方法 ====================
 
     @Override

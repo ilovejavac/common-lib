@@ -1,6 +1,6 @@
 package com.dev.lib.rocketmq
 
-import com.dev.lib.local.task.message.storage.LocalTaskMessageStorage
+import com.dev.lib.local.task.message.poller.core.PollerEngineRegistry
 import com.dev.lib.mq.MQ
 import org.apache.rocketmq.spring.core.RocketMQTemplate
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -14,17 +14,17 @@ class RocketMQAutoConfiguration {
     @ConditionalOnMissingBean
     fun mqTemplateInitializer(
         template: RocketMQTemplate,
-        messageStorage: LocalTaskMessageStorage?
+        pollerRegistry: PollerEngineRegistry?
     ): MQTemplateInitializer {
-        return MQTemplateInitializer(template, messageStorage)
+        return MQTemplateInitializer(template, pollerRegistry)
     }
 }
 
 class MQTemplateInitializer(
     template: RocketMQTemplate,
-    messageStorage: LocalTaskMessageStorage?
+    pollerRegistry: PollerEngineRegistry?
 ) {
     init {
-        MQ.init(RocketMQTemplate(template, messageStorage))
+        MQ.init(RocketMQTemplate(template, pollerRegistry))
     }
 }
