@@ -1,0 +1,323 @@
+package com.dev.lib.storage;
+
+import com.dev.lib.storage.domain.service.ChainStorageService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.stereotype.Component;
+
+import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.util.Collection;
+
+/**
+ * 存储 API - 链式调用入口
+ *
+ * <p>参考 RedisCache 和 RedisDistributedLock 的设计模式，提供流式 API</p>
+ *
+ * <p>使用示例：</p>
+ * <pre>{@code
+ * // 获取路径
+ * String path = Storage.bucket("my-bucket").object("file.txt").path();
+ *
+ * // 读取文件内容
+ * String content = Storage.bucket("my-bucket").object("file.txt").read();
+ *
+ * // 获取文件流
+ * InputStream stream = Storage.bucket("my-bucket").object("file.txt").stream();
+ *
+ * // 上传 MultipartFile
+ * Storage.bucket("my-bucket").object("path/to/file.txt").upload(file);
+ *
+ * // 上传字节数组
+ * Storage.bucket("my-bucket").object("data.bin").upload(bytes);
+ *
+ * // 上传输入流
+ * Storage.bucket("my-bucket").object("stream.bin").upload(inputStream);
+ *
+ * // 下载文件
+ * InputStream is = Storage.bucket("my-bucket").object("path/to/file.txt").download();
+ *
+ * // 获取预签名 URL
+ * String url = Storage.bucket("my-bucket").object("path/to/file.txt").presignedUrl(3600);
+ *
+ * // 删除文件
+ * Storage.bucket("my-bucket").object("path/to/file.txt").delete();
+ *
+ * // 复制文件
+ * Storage.bucket("my-bucket").object("source.txt").copy("target.txt");
+ *
+ * // 追加内容
+ * Storage.bucket("my-bucket").object("log.txt").append("new line\n");
+ *
+ * // 按行替换
+ * Storage.bucket("my-bucket").object("data.txt").replaceLines((lineNum, line) -> ...);
+ *
+ * // 批量删除
+ * Storage.batch("my-bucket").deleteAll(List.of("file1.txt", "file2.txt"));
+ * }</pre>
+ */
+@Slf4j
+@Component
+@ConditionalOnBean(ChainStorageService.class)
+@RequiredArgsConstructor
+public class Storage implements InitializingBean {
+
+    private final ChainStorageService chainStorageService;
+
+    private static Storage instance;
+
+    @Override
+    public void afterPropertiesSet() {
+        instance = this;
+    }
+
+    /**
+     * 入口方法 - 指定桶名称
+     *
+     * @param bucketName 桶名称
+     * @return BucketBuilder
+     */
+    public static BucketBuilder bucket(String bucketName) {
+        return new BucketBuilder(bucketName);
+    }
+
+    /**
+     * 批量操作入口
+     *
+     * @param bucketName 桶名称
+     * @return BatchBuilder
+     */
+    public static BatchBuilder batch(String bucketName) {
+        return new BatchBuilder(bucketName);
+    }
+
+    /**
+     * 桶构建器
+     */
+    public static class BucketBuilder {
+
+        private final String bucketName;
+
+        BucketBuilder(String bucketName) {
+            if (bucketName == null || bucketName.isBlank()) {
+                throw new IllegalArgumentException("bucketName must not be empty");
+            }
+            this.bucketName = bucketName;
+        }
+
+        /**
+         * 指定对象键（文件路径）
+         *
+         * @param objectKey 对象键
+         * @return ObjectBuilder
+         */
+        public ObjectBuilder object(String objectKey) {
+            // 去掉开头的斜杠
+            if (objectKey.startsWith("/")) {
+                objectKey = objectKey.substring(1);
+            }
+            return new ObjectBuilder(bucketName, objectKey);
+        }
+    }
+
+    /**
+     * 对象构建器 - 支持链式调用
+     */
+    public static class ObjectBuilder {
+
+        private final String bucketName;
+        private final String objectKey;
+
+        ObjectBuilder(String bucketName, String objectKey) {
+            if (objectKey == null || objectKey.isBlank()) {
+                throw new IllegalArgumentException("objectKey must not be empty");
+            }
+            this.bucketName = bucketName;
+            this.objectKey = objectKey;
+        }
+
+        // ========== 便捷方法 ==========
+
+        /**
+         * 获取完整路径
+         *
+         * @return bucketName/objectKey
+         */
+        public String path() {
+            return bucketName + "/" + objectKey;
+        }
+
+        /**
+         * 读取文件内容为字符串（UTF-8）
+         *
+         * @return 文件内容
+         * @throws java.io.IOException 读取失败
+         */
+        public String read() throws java.io.IOException {
+            return read(java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        /**
+         * 读取文件内容为字符串
+         *
+         * @param charset 字符集
+         * @return 文件内容
+         * @throws java.io.IOException 读取失败
+         */
+        public String read(Charset charset) throws java.io.IOException {
+            try (InputStream is = download()) {
+                return new String(is.readAllBytes(), charset);
+            }
+        }
+
+        /**
+         * 获取文件流进行下载
+         *
+         * @return 输入流
+         * @throws java.io.IOException 下载失败
+         */
+        public InputStream stream() throws java.io.IOException {
+            return download();
+        }
+
+        // ========== 上传操作 ==========
+
+        /**
+         * 上传 MultipartFile
+         *
+         * @param file MultipartFile 文件
+         * @return 对象键
+         * @throws java.io.IOException 上传失败
+         */
+        public String upload(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
+            log.debug("Uploading file to bucket: {}, key: {}", bucketName, objectKey);
+            return instance.chainStorageService.upload(bucketName, objectKey, file);
+        }
+
+        /**
+         * 上传输入流
+         *
+         * @param inputStream 输入流
+         * @return 对象键
+         * @throws java.io.IOException 上传失败
+         */
+        public String upload(InputStream inputStream) throws java.io.IOException {
+            log.debug("Uploading stream to bucket: {}, key: {}", bucketName, objectKey);
+            return instance.chainStorageService.upload(bucketName, objectKey, inputStream);
+        }
+
+        /**
+         * 上传字节数组
+         *
+         * @param bytes 字节数组
+         * @return 对象键
+         * @throws java.io.IOException 上传失败
+         */
+        public String upload(byte[] bytes) throws java.io.IOException {
+            log.debug("Uploading bytes to bucket: {}, key: {}, size: {}", bucketName, objectKey, bytes.length);
+            return instance.chainStorageService.upload(bucketName, objectKey, new java.io.ByteArrayInputStream(bytes));
+        }
+
+        // ========== 下载操作 ==========
+
+        /**
+         * 下载文件
+         *
+         * @return 输入流
+         * @throws java.io.IOException 下载失败
+         */
+        public InputStream download() throws java.io.IOException {
+            log.debug("Downloading file from bucket: {}, key: {}", bucketName, objectKey);
+            return instance.chainStorageService.download(bucketName, objectKey);
+        }
+
+        // ========== 其他操作 ==========
+
+        /**
+         * 删除文件
+         */
+        public void delete() {
+            log.debug("Deleting file in bucket: {}, key: {}", bucketName, objectKey);
+            instance.chainStorageService.delete(bucketName, objectKey);
+        }
+
+        /**
+         * 获取预签名 URL
+         *
+         * @param expireSeconds 过期时间（秒）
+         * @return 预签名 URL
+         */
+        public String presignedUrl(int expireSeconds) {
+            log.debug("Generating presigned URL for bucket: {}, key: {}, expire: {}s", bucketName, objectKey, expireSeconds);
+            return instance.chainStorageService.getPresignedUrl(bucketName, objectKey, expireSeconds);
+        }
+
+        /**
+         * 复制文件到目标路径
+         *
+         * @param targetObjectKey 目标对象键
+         * @return 目标对象键
+         * @throws java.io.IOException 复制失败
+         */
+        public String copy(String targetObjectKey) throws java.io.IOException {
+            log.debug("Copying file from bucket: {}, key: {} to target: {}", bucketName, objectKey, targetObjectKey);
+            return instance.chainStorageService.copy(bucketName, objectKey, targetObjectKey);
+        }
+
+        /**
+         * 追加内容到文件
+         *
+         * @param content 追加的内容
+         * @return 对象键
+         * @throws java.io.IOException 追加失败
+         */
+        public String append(String content) throws java.io.IOException {
+            log.debug("Appending content to bucket: {}, key: {}", bucketName, objectKey);
+            return instance.chainStorageService.append(bucketName, objectKey, content);
+        }
+
+        /**
+         * 按行替换文件内容
+         *
+         * @param transformer 行转换器
+         * @return 对象键
+         * @throws java.io.IOException 替换失败
+         */
+        public String replaceLines(com.dev.lib.storage.domain.service.StorageService.LineTransformer transformer) throws java.io.IOException {
+            log.debug("Replacing lines in bucket: {}, key: {}", bucketName, objectKey);
+            return instance.chainStorageService.replaceLines(bucketName, objectKey, transformer);
+        }
+    }
+
+    /**
+     * 批量操作构建器
+     */
+    public static class BatchBuilder {
+
+        private final String bucketName;
+
+        BatchBuilder(String bucketName) {
+            if (bucketName == null || bucketName.isBlank()) {
+                throw new IllegalArgumentException("bucketName must not be empty");
+            }
+            this.bucketName = bucketName;
+        }
+
+        /**
+         * 批量删除文件
+         *
+         * @param objectKeys 对象键集合
+         */
+        public void deleteAll(Collection<String> objectKeys) {
+            if (objectKeys == null || objectKeys.isEmpty()) {
+                return;
+            }
+            log.debug("Batch deleting {} files in bucket: {}", objectKeys.size(), bucketName);
+            for (String objectKey : objectKeys) {
+                instance.chainStorageService.delete(bucketName, objectKey);
+            }
+        }
+    }
+}
