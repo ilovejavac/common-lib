@@ -1,6 +1,7 @@
 package com.dev.lib.local.task.message.config;
 
 import com.dev.lib.local.task.message.domain.adapter.poller.LocalTaskPollerStorage;
+import com.dev.lib.local.task.message.poller.core.DurationParser;
 import com.dev.lib.local.task.message.poller.core.PollerEngine;
 import com.dev.lib.local.task.message.poller.core.PollerEngineBuilder;
 import com.dev.lib.local.task.message.poller.core.PollerEngineRegistry;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
 import java.util.List;
 
 @ComponentScan
@@ -111,23 +113,49 @@ public class LocalTaskMessageAutoConfig {
                 TaskType annotation = executor.getClass().getAnnotation(TaskType.class);
                 if (annotation != null) {
                     String taskType = annotation.value();
+
+                    // 如果注解中 disabled=true，则跳过注册
+                    if (!annotation.enabled()) {
+                        log.info("PollerTaskExecutor disabled for taskType: {}, skipping registration", taskType);
+                        continue;
+                    }
+
+                    // 从注解读取配置（优先级高于配置文件）
+                    int houseNumberCount = annotation.houseNumberCount();
+                    Duration pollInterval = parseDuration(annotation.pollInterval(), Duration.ofSeconds(10));
+                    int fetchLimit = annotation.fetchLimit();
+                    int maxRetry = annotation.maxRetry();
+                    Duration baseDelay = parseDuration(annotation.baseDelay(), Duration.ofSeconds(1));
+                    Duration maxDelay = parseDuration(annotation.maxDelay(), Duration.ofMinutes(5));
+                    var backoffStrategy = annotation.backoffStrategy();
+                    int timeoutMinutes = annotation.timeoutMinutes();
+
                     PollerEngine engine = PollerEngineBuilder.builder()
                             .taskType(taskType)
-                            .houseNumbers(5)  // 默认 5 个门牌号
-                            .pollInterval(properties.getGlobal().getPollInterval())
-                            .fetchLimit(128)
-                            .maxRetry(properties.getGlobal().getMaxRetry())
-                            .baseDelay(properties.getGlobal().getBaseDelay())
-                            .maxDelay(properties.getGlobal().getMaxDelay())
-                            .backoffStrategy(properties.getGlobal().getBackoffStrategy())
+                            .houseNumbers(houseNumberCount)
+                            .pollInterval(pollInterval)
+                            .fetchLimit(fetchLimit)
+                            .maxRetry(maxRetry)
+                            .baseDelay(baseDelay)
+                            .maxDelay(maxDelay)
+                            .backoffStrategy(backoffStrategy)
+                            .timeoutMinutes(timeoutMinutes)
                             .executor(executor)
                             .storage(storage)
                             .build();
 
                     registry.register(engine);
-                    log.info("Auto-registered PollerEngine for taskType: {} (default config)", taskType);
+                    log.info("Auto-registered PollerEngine for taskType: {} (annotation config: houseNumberCount={}, pollInterval={}, fetchLimit={})",
+                            taskType, houseNumberCount, pollInterval, fetchLimit);
                 }
             }
+        }
+
+        /**
+         * 解析 Duration 字符串，解析失败时返回默认值
+         */
+        private Duration parseDuration(String text, Duration defaultValue) {
+            return DurationParser.parseOrDefault(text, defaultValue);
         }
 
         private PollerTaskExecutor findExecutor(String taskType) {

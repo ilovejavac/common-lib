@@ -57,11 +57,16 @@ public class PollerConfig {
      */
     private BackoffStrategy backoffStrategy = BackoffStrategy.LINEAR;
 
+    /**
+     * 任务超时时间（分钟）
+     */
+    private int timeoutMinutes = 5;
+
     public PollerConfig() {
     }
 
     public PollerConfig(String taskType, boolean enabled, List<Integer> houseNumbers, Duration pollInterval,
-                        int fetchLimit, int maxRetry, Duration baseDelay, Duration maxDelay, BackoffStrategy backoffStrategy) {
+                        int fetchLimit, int maxRetry, Duration baseDelay, Duration maxDelay, BackoffStrategy backoffStrategy, int timeoutMinutes) {
         this.taskType = taskType;
         this.enabled = enabled;
         this.houseNumbers = houseNumbers;
@@ -71,6 +76,7 @@ public class PollerConfig {
         this.baseDelay = baseDelay;
         this.maxDelay = maxDelay;
         this.backoffStrategy = backoffStrategy;
+        this.timeoutMinutes = timeoutMinutes;
     }
 
     // 手动添加 builder 方法
@@ -88,6 +94,7 @@ public class PollerConfig {
         private Duration baseDelay = Duration.ofSeconds(1);
         private Duration maxDelay = Duration.ofMinutes(5);
         private BackoffStrategy backoffStrategy = BackoffStrategy.LINEAR;
+        private int timeoutMinutes = 5;
 
         public PollerConfigBuilder taskType(String taskType) {
             this.taskType = taskType;
@@ -134,10 +141,15 @@ public class PollerConfig {
             return this;
         }
 
+        public PollerConfigBuilder timeoutMinutes(int timeoutMinutes) {
+            this.timeoutMinutes = timeoutMinutes;
+            return this;
+        }
+
         public PollerConfig build() {
             return new PollerConfig(
                 taskType, enabled, houseNumbers, pollInterval,
-                fetchLimit, maxRetry, baseDelay, maxDelay, backoffStrategy
+                fetchLimit, maxRetry, baseDelay, maxDelay, backoffStrategy, timeoutMinutes
             );
         }
     }
@@ -177,6 +189,10 @@ public class PollerConfig {
 
     public BackoffStrategy getBackoffStrategy() {
         return backoffStrategy;
+    }
+
+    public int getTimeoutMinutes() {
+        return timeoutMinutes;
     }
 
 }

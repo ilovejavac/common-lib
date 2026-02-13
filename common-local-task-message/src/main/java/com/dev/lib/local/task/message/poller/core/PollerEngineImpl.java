@@ -35,6 +35,7 @@ public class PollerEngineImpl implements PollerEngine {
     private ExecutorService virtualExecutor;
 
     public PollerEngineImpl(PollerConfig config, PollerStorage storage, PollerTaskExecutor executor) {
+
         this.config = config;
         this.storage = storage;
         this.executor = executor;
@@ -58,13 +59,12 @@ public class PollerEngineImpl implements PollerEngine {
         int houseNumber = calculateHouseNumber(businessId);
 
         // 构建任务上下文
-        PollerContext context = new PollerContext(
-                taskId,
-                config.getTaskType(),
-                payload,
-                0,
-                null
-        );
+        PollerContext context = new PollerContext();
+        context.setId(taskId);
+        context.setTaskType(config.getTaskType());
+        context.setPayload(payload);
+        context.setRetryCount(0);
+        context.setTimeoutMinutes(config.getTimeoutMinutes());
 
         // 持久化任务
         storage.save(context, houseNumber);
@@ -205,6 +205,7 @@ public class PollerEngineImpl implements PollerEngine {
             // 根据执行结果更新状态
             if (result.isSuccess()) {
                 storage.updateToSuccess(taskId);
+                executor.onSuccess(task);
                 log.info(
                         "Task completed successfully: taskId={}, taskType={}",
                         taskId, task.getTaskType()
@@ -214,6 +215,7 @@ public class PollerEngineImpl implements PollerEngine {
                 if (!result.isRetryable() || task.getRetryCount() + 1 >= config.getMaxRetry()) {
                     // 不可重试或达到最大重试次数
                     storage.updateToFailed(task.getId(), result.getErrorMessage(), null);
+                    executor.onFailure(task, result.getErrorMessage());
                     log.warn("Task failed (no retry): taskId={}, error={}", taskId, result.getErrorMessage());
                 } else {
                     // 可重试
@@ -227,6 +229,7 @@ public class PollerEngineImpl implements PollerEngine {
                     taskId, task.getTaskType(), task.getRetryCount(), e
             );
 
+            executor.onFailure(task, e.getMessage());
             handleFailure(task, e);
         }
     }
@@ -263,7 +266,9 @@ public class PollerEngineImpl implements PollerEngine {
 
         if (newRetryCount >= config.getMaxRetry()) {
             // 达到最大重试次数，不再重试
-            storage.updateToFailed(task.getId(), "Max retry exceeded: " + e.getMessage(), null);
+            String errorMessage = "Max retry exceeded: " + e.getMessage();
+            storage.updateToFailed(task.getId(), errorMessage, null);
+            executor.onFailure(task, errorMessage);
             log.warn("Task failed after {} retries: taskId={}", newRetryCount, task.getId());
         } else {
             // 计算下次重试时间

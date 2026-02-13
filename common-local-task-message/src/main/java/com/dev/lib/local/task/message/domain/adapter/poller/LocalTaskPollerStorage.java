@@ -7,6 +7,7 @@ import com.dev.lib.local.task.message.poller.core.PollerContext;
 import com.dev.lib.local.task.message.poller.core.PollerStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,16 +27,22 @@ public class LocalTaskPollerStorage implements PollerStorage {
 
     private final TaskMessageRepository repository;
 
+    @Value("${spring.application.name:unknown}")
+    private String serviceName;
+
     @Override
     public void save(PollerContext task, int houseNumber) {
         LocalTaskMessagePo po = new LocalTaskMessagePo();
         po.setTaskId(task.getId());
         po.setTaskType(task.getTaskType());
+        po.setTaskName(task.getTaskName());
+        po.setServiceName(serviceName);
         po.setPayload(task.getPayload());
         po.setHouseNumber(houseNumber);
         po.setStatus(LocalTaskStatus.PENDING);
         po.setRetryCount(0);
         po.setNextRetryTime(LocalDateTime.now());
+        po.setTimeoutMinutes(task.getTimeoutMinutes() != null ? task.getTimeoutMinutes() : 5);
 
         repository.save(po);
     }
@@ -68,21 +75,9 @@ public class LocalTaskPollerStorage implements PollerStorage {
     @Transactional(rollbackFor = Exception.class)
     public boolean updateToProcessing(String taskId) {
         return repository.loadByTaskId(taskId)
-                .filter(po -> {
-                    // CAS：只允许 PENDING 或超时的 PROCESSING 状态更新
-                    if (po.getStatus() == LocalTaskStatus.PENDING) {
-                        return true;
-                    }
-                    // 超时的 PROCESSING 任务也可以重新处理
-                    if (po.getStatus() == LocalTaskStatus.PROCESSING && po.getProcessedAt() != null) {
-                        LocalDateTime timeoutTime = po.getProcessedAt().plusMinutes(po.getTimeoutMinutes());
-                        return LocalDateTime.now().isAfter(timeoutTime);
-                    }
-                    return false;
-                })
                 .map(po -> {
                     po.setStatus(LocalTaskStatus.PROCESSING);
-                    po.setProcessedAt(LocalDateTime.now());  // 记录开始处理时间
+                    po.setProcessedAt(LocalDateTime.now());
                     return true;
                 })
                 .orElse(false);

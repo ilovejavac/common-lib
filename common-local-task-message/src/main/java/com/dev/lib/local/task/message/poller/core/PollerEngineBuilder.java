@@ -33,6 +33,7 @@ public class PollerEngineBuilder {
                 .baseDelay(config.getBaseDelay())
                 .maxDelay(config.getMaxDelay())
                 .backoffStrategy(config.getBackoffStrategy())
+                .timeoutMinutes(config.getTimeoutMinutes())
                 .build();
         return this;
     }
@@ -53,6 +54,7 @@ public class PollerEngineBuilder {
                 .baseDelay(config.getBaseDelay())
                 .maxDelay(config.getMaxDelay())
                 .backoffStrategy(config.getBackoffStrategy())
+                .timeoutMinutes(config.getTimeoutMinutes())
                 .build();
         return this;
     }
@@ -70,6 +72,7 @@ public class PollerEngineBuilder {
                 .baseDelay(config.getBaseDelay())
                 .maxDelay(config.getMaxDelay())
                 .backoffStrategy(config.getBackoffStrategy())
+                .timeoutMinutes(config.getTimeoutMinutes())
                 .build();
         return this;
     }
@@ -87,6 +90,7 @@ public class PollerEngineBuilder {
                 .baseDelay(config.getBaseDelay())
                 .maxDelay(config.getMaxDelay())
                 .backoffStrategy(config.getBackoffStrategy())
+                .timeoutMinutes(config.getTimeoutMinutes())
                 .build();
         return this;
     }
@@ -121,6 +125,7 @@ public class PollerEngineBuilder {
                 .baseDelay(delay)
                 .maxDelay(config.getMaxDelay())
                 .backoffStrategy(config.getBackoffStrategy())
+                .timeoutMinutes(config.getTimeoutMinutes())
                 .build();
         return this;
     }
@@ -138,6 +143,7 @@ public class PollerEngineBuilder {
                 .baseDelay(config.getBaseDelay())
                 .maxDelay(delay)
                 .backoffStrategy(config.getBackoffStrategy())
+                .timeoutMinutes(config.getTimeoutMinutes())
                 .build();
         return this;
     }
@@ -155,6 +161,25 @@ public class PollerEngineBuilder {
                 .baseDelay(config.getBaseDelay())
                 .maxDelay(config.getMaxDelay())
                 .backoffStrategy(config.getBackoffStrategy())
+                .timeoutMinutes(config.getTimeoutMinutes())
+                .build();
+        return this;
+    }
+
+    /**
+     * 设置任务超时时间（分钟）
+     */
+    public PollerEngineBuilder timeoutMinutes(int timeoutMinutes) {
+        config = PollerConfig.builder()
+                .taskType(config.getTaskType())
+                .houseNumbers(config.getHouseNumbers())
+                .pollInterval(config.getPollInterval())
+                .fetchLimit(config.getFetchLimit())
+                .maxRetry(config.getMaxRetry())
+                .baseDelay(config.getBaseDelay())
+                .maxDelay(config.getMaxDelay())
+                .backoffStrategy(config.getBackoffStrategy())
+                .timeoutMinutes(timeoutMinutes)
                 .build();
         return this;
     }

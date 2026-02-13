@@ -28,14 +28,21 @@ public class LocalTaskMessagePo extends JpaEntity {
     /**
      * 任务名称（可选，用于描述）
      */
+    @Column(length = 100)
     private String taskName;
+
+    /**
+     * 服务名称（应用名，用于标识任务来源）
+     */
+    @Column(length = 100)
+    private String serviceName;
 
     /**
      * 任务状态
      */
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
-    private LocalTaskStatus status = LocalTaskStatus.PENDING;
+    private LocalTaskStatus status;
 
     /**
      * 任务类型（决定使用哪个 Processor 处理）
@@ -96,110 +103,5 @@ public class LocalTaskMessagePo extends JpaEntity {
      * 默认 5 分钟，超过此时间未完成的任务会被重置为 PENDING
      */
     private int timeoutMinutes = 5;
-
-    // 手动添加 getter/setter 方法（Lombok 不工作）
-    public String getTaskId() {
-        return taskId;
-    }
-
-    public void setTaskId(String taskId) {
-        this.taskId = taskId;
-    }
-
-    public String getTaskName() {
-        return taskName;
-    }
-
-    public void setTaskName(String taskName) {
-        this.taskName = taskName;
-    }
-
-    public LocalTaskStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(LocalTaskStatus status) {
-        this.status = status;
-    }
-
-    public String getTaskType() {
-        return taskType;
-    }
-
-    public void setTaskType(String taskType) {
-        this.taskType = taskType;
-    }
-
-    public String getBusinessId() {
-        return businessId;
-    }
-
-    public void setBusinessId(String businessId) {
-        this.businessId = businessId;
-    }
-
-    public Map<String, Object> getPayload() {
-        return payload;
-    }
-
-    public void setPayload(Map<String, Object> payload) {
-        this.payload = payload;
-    }
-
-    public int getRetryCount() {
-        return retryCount;
-    }
-
-    public void setRetryCount(int retryCount) {
-        this.retryCount = retryCount;
-    }
-
-    public int getMaxRetry() {
-        return maxRetry;
-    }
-
-    public void setMaxRetry(int maxRetry) {
-        this.maxRetry = maxRetry;
-    }
-
-    public LocalDateTime getNextRetryTime() {
-        return nextRetryTime;
-    }
-
-    public void setNextRetryTime(LocalDateTime nextRetryTime) {
-        this.nextRetryTime = nextRetryTime;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
-    public LocalDateTime getProcessedAt() {
-        return processedAt;
-    }
-
-    public void setProcessedAt(LocalDateTime processedAt) {
-        this.processedAt = processedAt;
-    }
-
-    public Integer getHouseNumber() {
-        return houseNumber;
-    }
-
-    public void setHouseNumber(Integer houseNumber) {
-        this.houseNumber = houseNumber;
-    }
-
-    public int getTimeoutMinutes() {
-        return timeoutMinutes;
-    }
-
-    public void setTimeoutMinutes(int timeoutMinutes) {
-        this.timeoutMinutes = timeoutMinutes;
-    }
 
 }
