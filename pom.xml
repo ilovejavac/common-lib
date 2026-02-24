@@ -29,6 +29,7 @@
         <module>common-excel</module>
         <module>common-ai</module>
         <module>common-security-sa</module>
+        <module>common-web-notify</module>
 
         <module>common-data-mongo</module>
         <module>common-data-search</module>
@@ -407,6 +408,11 @@
             <dependency>
                 <groupId>com.dev.lib</groupId>
                 <artifactId>common-security-sa</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dev.lib</groupId>
+                <artifactId>common-web-notify</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
