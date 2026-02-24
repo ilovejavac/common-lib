@@ -91,8 +91,8 @@ public class PollerEngineImpl implements PollerEngine {
                     Thread.ofVirtual().factory()
             );
 
-            // 启动调度任务
-            scheduler.scheduleWithFixedDelay(
+            // 启动调度任务（严格按固定频率执行，不受任务执行时间影响）
+            scheduler.scheduleAtFixedRate(
                     this::poll,
                     0,
                     config.getPollInterval().toMillis(),
