@@ -27,14 +27,17 @@ import java.util.Collection;
  * // 获取文件流
  * InputStream stream = Storage.bucket("my-bucket").object("file.txt").stream();
  *
- * // 上传 MultipartFile
- * Storage.bucket("my-bucket").object("path/to/file.txt").upload(file);
+ * // 写入字符串（覆盖/新建）
+ * Storage.bucket("my-bucket").object("data.json").write("{\"key\": \"value\"}");
  *
- * // 上传字节数组
- * Storage.bucket("my-bucket").object("data.bin").upload(bytes);
+ * // 写入字节数组（覆盖/新建）
+ * Storage.bucket("my-bucket").object("data.bin").write(bytes);
  *
- * // 上传输入流
- * Storage.bucket("my-bucket").object("stream.bin").upload(inputStream);
+ * // 写入输入流（覆盖/新建）
+ * Storage.bucket("my-bucket").object("stream.bin").write(inputStream);
+ *
+ * // 写入 MultipartFile（覆盖/新建）
+ * Storage.bucket("my-bucket").object("upload.txt").write(multipartFile);
  *
  * // 下载文件
  * InputStream is = Storage.bucket("my-bucket").object("path/to/file.txt").download();
@@ -48,8 +51,11 @@ import java.util.Collection;
  * // 复制文件
  * Storage.bucket("my-bucket").object("source.txt").copy("target.txt");
  *
- * // 追加内容
+ * // 追加字符串
  * Storage.bucket("my-bucket").object("log.txt").append("new line\n");
+ *
+ * // 追加字节数组
+ * Storage.bucket("my-bucket").object("log.bin").append(bytes);
  *
  * // 按行替换
  * Storage.bucket("my-bucket").object("data.txt").replaceLines((lineNum, line) -> ...);
@@ -182,42 +188,78 @@ public class Storage implements InitializingBean {
             return download();
         }
 
-        // ========== 上传操作 ==========
+        // ========== 写入操作 ==========
 
         /**
-         * 上传 MultipartFile
+         * 写入 MultipartFile（覆盖/新建）
          *
          * @param file MultipartFile 文件
          * @return 对象键
-         * @throws java.io.IOException 上传失败
+         * @throws java.io.IOException 写入失败
          */
-        public String upload(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
-            log.debug("Uploading file to bucket: {}, key: {}", bucketName, objectKey);
+        public String write(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
+            log.debug("Writing file to bucket: {}, key: {}", bucketName, objectKey);
             return instance.chainStorageService.upload(bucketName, objectKey, file);
         }
 
         /**
-         * 上传输入流
+         * 写入输入流（覆盖/新建）
          *
          * @param inputStream 输入流
          * @return 对象键
-         * @throws java.io.IOException 上传失败
+         * @throws java.io.IOException 写入失败
          */
-        public String upload(InputStream inputStream) throws java.io.IOException {
-            log.debug("Uploading stream to bucket: {}, key: {}", bucketName, objectKey);
+        public String write(InputStream inputStream) throws java.io.IOException {
+            log.debug("Writing stream to bucket: {}, key: {}", bucketName, objectKey);
             return instance.chainStorageService.upload(bucketName, objectKey, inputStream);
         }
 
         /**
-         * 上传字节数组
+         * 写入字符串（覆盖/新建）
+         *
+         * @param content 字符串内容
+         * @return 对象键
+         * @throws java.io.IOException 写入失败
+         */
+        public String write(String content) throws java.io.IOException {
+            log.debug("Writing string to bucket: {}, key: {}", bucketName, objectKey);
+            return instance.chainStorageService.write(bucketName, objectKey, content);
+        }
+
+        /**
+         * 写入字节数组（覆盖/新建）
          *
          * @param bytes 字节数组
          * @return 对象键
-         * @throws java.io.IOException 上传失败
+         * @throws java.io.IOException 写入失败
          */
-        public String upload(byte[] bytes) throws java.io.IOException {
-            log.debug("Uploading bytes to bucket: {}, key: {}, size: {}", bucketName, objectKey, bytes.length);
-            return instance.chainStorageService.upload(bucketName, objectKey, new java.io.ByteArrayInputStream(bytes));
+        public String write(byte[] bytes) throws java.io.IOException {
+            log.debug("Writing bytes to bucket: {}, key: {}, size: {}", bucketName, objectKey, bytes.length);
+            return instance.chainStorageService.writeBytes(bucketName, objectKey, bytes);
+        }
+
+        /**
+         * 追加字符串到文件
+         *
+         * @param content 追加的内容
+         * @return 对象键
+         * @throws java.io.IOException 追加失败
+         */
+        public String append(String content) throws java.io.IOException {
+            log.debug("Appending content to bucket: {}, key: {}", bucketName, objectKey);
+            return instance.chainStorageService.append(bucketName, objectKey, content);
+        }
+
+        /**
+         * 追加字节数组到文件
+         *
+         * @param bytes 追加的字节数组
+         * @return 对象键
+         * @throws java.io.IOException 追加失败
+         */
+        public String append(byte[] bytes) throws java.io.IOException {
+            log.debug("Appending bytes to bucket: {}, key: {}, size: {}", bucketName, objectKey, bytes.length);
+            return instance.chainStorageService.appendBytes(bucketName, objectKey, bytes);
         }
 
         // ========== 下载操作 ==========
@@ -264,18 +306,6 @@ public class Storage implements InitializingBean {
         public String copy(String targetObjectKey) throws java.io.IOException {
             log.debug("Copying file from bucket: {}, key: {} to target: {}", bucketName, objectKey, targetObjectKey);
             return instance.chainStorageService.copy(bucketName, objectKey, targetObjectKey);
-        }
-
-        /**
-         * 追加内容到文件
-         *
-         * @param content 追加的内容
-         * @return 对象键
-         * @throws java.io.IOException 追加失败
-         */
-        public String append(String content) throws java.io.IOException {
-            log.debug("Appending content to bucket: {}, key: {}", bucketName, objectKey);
-            return instance.chainStorageService.append(bucketName, objectKey, content);
         }
 
         /**

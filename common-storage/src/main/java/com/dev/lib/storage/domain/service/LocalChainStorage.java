@@ -104,6 +104,31 @@ public class LocalChainStorage implements ChainStorageService, InitializingBean 
     }
 
     @Override
+    public String appendBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
+        Path filePath = resolvePath(bucketName, objectKey);
+        Files.createDirectories(filePath.getParent());
+        Files.write(filePath, bytes, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        return objectKey;
+    }
+
+    @Override
+    public String write(String bucketName, String objectKey, String content) throws IOException {
+        Path filePath = resolvePath(bucketName, objectKey);
+        Files.createDirectories(filePath.getParent());
+        Files.writeString(filePath, content, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        return objectKey;
+    }
+
+    @Override
+    public String writeBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
+        Path filePath = resolvePath(bucketName, objectKey);
+        Files.createDirectories(filePath.getParent());
+        Files.write(filePath, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        return objectKey;
+    }
+
+    @Override
     public String replaceLines(String bucketName, String objectKey, StorageService.LineTransformer transformer) throws IOException {
         Path filePath = resolvePath(bucketName, objectKey);
         Path tempPath = Files.createTempFile("local-replace-", ".txt");

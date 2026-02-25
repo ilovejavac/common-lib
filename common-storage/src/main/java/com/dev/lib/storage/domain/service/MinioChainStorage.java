@@ -161,7 +161,12 @@ public class MinioChainStorage implements ChainStorageService, InitializingBean 
 
     @Override
     public String append(String bucketName, String objectKey, String content) throws IOException {
-        byte[] contentBytes = content.getBytes(StandardCharsets.UTF_8);
+        return appendBytes(bucketName, objectKey, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
+    public String appendBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
+        ensureBucketExists(bucketName);
 
         try {
             // 1. 将新内容上传为临时对象
@@ -170,7 +175,7 @@ public class MinioChainStorage implements ChainStorageService, InitializingBean 
                     PutObjectArgs.builder()
                             .bucket(bucketName)
                             .object(tempPath)
-                            .stream(new ByteArrayInputStream(contentBytes), contentBytes.length, -1)
+                            .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
                             .build()
             );
 
@@ -206,7 +211,7 @@ public class MinioChainStorage implements ChainStorageService, InitializingBean 
                         PutObjectArgs.builder()
                                 .bucket(bucketName)
                                 .object(objectKey)
-                                .stream(new ByteArrayInputStream(contentBytes), contentBytes.length, -1)
+                                .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
                                 .build()
                 );
                 minioClient.removeObject(
@@ -220,6 +225,28 @@ public class MinioChainStorage implements ChainStorageService, InitializingBean 
             return objectKey;
         } catch (Exception e) {
             throw new IOException("MinIO append failed", e);
+        }
+    }
+
+    @Override
+    public String write(String bucketName, String objectKey, String content) throws IOException {
+        return writeBytes(bucketName, objectKey, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
+    public String writeBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
+        ensureBucketExists(bucketName);
+        try {
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectKey)
+                            .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
+                            .build()
+            );
+            return objectKey;
+        } catch (Exception e) {
+            throw new IOException("MinIO write failed", e);
         }
     }
 

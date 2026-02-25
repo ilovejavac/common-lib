@@ -107,7 +107,12 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
 
     @Override
     public String append(String bucketName, String objectKey, String content) throws IOException {
-        byte[] contentBytes = content.getBytes(StandardCharsets.UTF_8);
+        return appendBytes(bucketName, objectKey, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
+    public String appendBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
+        ensureBucketExists(bucketName);
 
         try {
             // 获取文件当前位置（追加需要 position）
@@ -119,11 +124,11 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
             }
 
             ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentLength(contentBytes.length);
+            metadata.setContentLength(bytes.length);
 
             AppendObjectRequest appendRequest = new AppendObjectRequest(
                     bucketName, objectKey,
-                    new ByteArrayInputStream(contentBytes), metadata
+                    new ByteArrayInputStream(bytes), metadata
             );
             appendRequest.setPosition(position);
             ossClient.appendObject(appendRequest);
@@ -131,6 +136,20 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
         } catch (Exception e) {
             throw new IOException("OSS append failed", e);
         }
+    }
+
+    @Override
+    public String write(String bucketName, String objectKey, String content) throws IOException {
+        return writeBytes(bucketName, objectKey, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
+    public String writeBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
+        ensureBucketExists(bucketName);
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(bytes.length);
+        ossClient.putObject(bucketName, objectKey, new ByteArrayInputStream(bytes), metadata);
+        return objectKey;
     }
 
     @Override

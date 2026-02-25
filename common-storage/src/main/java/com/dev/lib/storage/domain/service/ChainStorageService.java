@@ -89,6 +89,39 @@ public interface ChainStorageService {
     String append(String bucketName, String objectKey, String content) throws IOException;
 
     /**
+     * 追加字节数组
+     *
+     * @param bucketName 桶名称
+     * @param objectKey  对象键
+     * @param bytes      追加的字节数组
+     * @return 对象键
+     * @throws IOException 追加失败
+     */
+    String appendBytes(String bucketName, String objectKey, byte[] bytes) throws IOException;
+
+    /**
+     * 写入字符串（覆盖/新建）
+     *
+     * @param bucketName 桶名称
+     * @param objectKey  对象键
+     * @param content    写入的内容
+     * @return 对象键
+     * @throws IOException 写入失败
+     */
+    String write(String bucketName, String objectKey, String content) throws IOException;
+
+    /**
+     * 写入字节数组（覆盖/新建）
+     *
+     * @param bucketName 桶名称
+     * @param objectKey  对象键
+     * @param bytes      写入的字节数组
+     * @return 对象键
+     * @throws IOException 写入失败
+     */
+    String writeBytes(String bucketName, String objectKey, byte[] bytes) throws IOException;
+
+    /**
      * 按行替换文件内容
      *
      * @param bucketName  桶名称
