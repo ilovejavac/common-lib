@@ -40,7 +40,7 @@ public class VfsUploadService {
     // ==================== ZIP 上传 ====================
 
     /**
-     * 上传并解压 ZIP 文件
+     * 上传并解压 ZIP 文件（如果文件存在则覆盖）
      */
     @Transactional(rollbackFor = Exception.class)
     public List<String> uploadZip(VfsContext ctx, String path, InputStream zipStream) {
@@ -62,9 +62,11 @@ public class VfsUploadService {
                     ensureDirectoryExists(ctx, entryPath, createdDirs);
                 } else {
                     ensureParentDirectoryExists(ctx, entryPath, createdDirs);
-                    validateFileNotExists(entryPath);
-                    String bizId = versionManager.createFileWithVersioning(ctx, entryPath, zis, entry.getSize());
-                    fileIds.add(bizId);
+                    // 如果文件存在，覆盖写入；否则创建新文件
+                    String bizId = uploadOrOverwriteFile(ctx, entryPath, zis, entry.getSize());
+                    if (bizId != null) {
+                        fileIds.add(bizId);
+                    }
                     zis.closeEntry();
                 }
             }
@@ -77,7 +79,7 @@ public class VfsUploadService {
     // ==================== 单文件上传 ====================
 
     /**
-     * 上传单个文件
+     * 上传单个文件（如果存在则覆盖）
      *
      * @param ctx        VFS 上下文
      * @param path       目标文件路径
@@ -91,7 +93,22 @@ public class VfsUploadService {
         String fullPath = pathResolver.resolve(ctx, path);
 
         ensureParentDirectoryExists(ctx, fullPath, new HashSet<>());
-        validateFileNotExists(fullPath);
+
+        // 如果文件存在，使用 VfsWriteService 覆盖写入
+        if (fileRepository.findByPath(fullPath).isPresent()) {
+            log.debug("File already exists, will overwrite: {}", fullPath);
+            try {
+                versionManager.writeWithCOW(
+                        fileRepository.findByPathForUpdate(fullPath).orElseThrow(),
+                        inputStream,
+                        size,
+                        fullPath
+                );
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to overwrite file", e);
+            }
+            return fileRepository.findByPath(fullPath).map(f -> f.getBizId()).orElse(null);
+        }
 
         return versionManager.createFileWithVersioning(ctx, fullPath, inputStream, size);
     }
@@ -99,7 +116,7 @@ public class VfsUploadService {
     // ==================== 多文件上传 ====================
 
     /**
-     * 上传多个文件（基于 MultipartFile）
+     * 上传多个文件（基于 MultipartFile，如果文件存在则覆盖）
      *
      * @param ctx          VFS 上下文
      * @param targetPath   目标路径
@@ -139,10 +156,12 @@ public class VfsUploadService {
 
                 String fullPath = pathResolver.normalize(basePath + "/" + relativePath);
                 ensureParentDirectoryForUpload(ctx, fullPath, createdDirs);
-                validateFileNotExists(fullPath);
 
-                String bizId = createFileWithStoragePrefix(ctx, fullPath, file, storagePathPrefix);
-                fileIds.add(bizId);
+                // 如果文件存在，覆盖写入；否则创建新文件
+                String bizId = uploadOrOverwriteMultipartFile(ctx, fullPath, file, storagePathPrefix);
+                if (bizId != null) {
+                    fileIds.add(bizId);
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload files", e);
@@ -175,13 +194,6 @@ public class VfsUploadService {
         }
     }
 
-    private void validateFileNotExists(String entryPath) {
-
-        if (fileRepository.findByPath(entryPath).isPresent()) {
-            throw new IllegalArgumentException("File already exists: " + entryPath);
-        }
-    }
-
     private String resolveStoragePathPrefix(String targetPath) {
 
         if (targetPath == null || "/".equals(targetPath) || targetPath.isEmpty()) {
@@ -206,6 +218,53 @@ public class VfsUploadService {
             } else {
                 createdDirs.add(parentPath);
             }
+        }
+    }
+
+    /**
+     * 上传或覆盖文件（用于 ZIP 解压）
+     */
+    private String uploadOrOverwriteFile(VfsContext ctx, String fullPath, InputStream inputStream, long size) {
+
+        if (fileRepository.findByPath(fullPath).isPresent()) {
+            log.debug("File already exists, will overwrite: {}", fullPath);
+            try {
+                versionManager.writeWithCOW(
+                        fileRepository.findByPathForUpdate(fullPath).orElseThrow(),
+                        inputStream,
+                        size,
+                        fullPath
+                );
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to overwrite file", e);
+            }
+            return fileRepository.findByPath(fullPath).map(f -> f.getBizId()).orElse(null);
+        } else {
+            return versionManager.createFileWithVersioning(ctx, fullPath, inputStream, size);
+        }
+    }
+
+    /**
+     * 上传或覆盖文件（用于 MultipartFile）
+     */
+    private String uploadOrOverwriteMultipartFile(VfsContext ctx, String fullPath, MultipartFile file, String storagePathPrefix)
+            throws IOException {
+
+        if (fileRepository.findByPath(fullPath).isPresent()) {
+            log.debug("File already exists, will overwrite: {}", fullPath);
+            try {
+                versionManager.writeWithCOW(
+                        fileRepository.findByPathForUpdate(fullPath).orElseThrow(),
+                        file.getInputStream(),
+                        file.getSize(),
+                        fullPath
+                );
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to overwrite file", e);
+            }
+            return fileRepository.findByPath(fullPath).map(f -> f.getBizId()).orElse(null);
+        } else {
+            return versionManager.createFileWithVersioning(ctx, fullPath, file.getInputStream(), file.getSize());
         }
     }
 

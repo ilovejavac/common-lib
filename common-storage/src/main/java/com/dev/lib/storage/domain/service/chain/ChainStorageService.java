@@ -1,5 +1,6 @@
-package com.dev.lib.storage.domain.service;
+package com.dev.lib.storage.domain.service.chain;
 
+import com.dev.lib.storage.domain.service.StorageService;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;

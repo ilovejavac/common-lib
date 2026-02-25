@@ -1,6 +1,6 @@
 package com.dev.lib.storage;
 
-import com.dev.lib.storage.domain.service.ChainStorageService;
+import com.dev.lib.storage.domain.service.chain.ChainStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;

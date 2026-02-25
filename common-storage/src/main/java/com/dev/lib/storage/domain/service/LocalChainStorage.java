@@ -1,12 +1,15 @@
 package com.dev.lib.storage.domain.service;
 
 import com.dev.lib.storage.config.AppStorageProperties;
-import lombok.RequiredArgsConstructor;
+import com.dev.lib.storage.data.FileSystemRepository;
+import com.dev.lib.storage.domain.service.chain.AbstractChainStorage;
+import com.dev.lib.storage.domain.service.chain.ChainStorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -24,13 +27,14 @@ import java.nio.file.StandardOpenOption;
 @Slf4j
 @Component
 @Primary
-@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.storage", name = "type", havingValue = "local", matchIfMissing = false)
-public class LocalChainStorage implements ChainStorageService, InitializingBean {
-
-    private final AppStorageProperties fileProperties;
+public class LocalChainStorage extends AbstractChainStorage implements ChainStorageService, InitializingBean {
 
     private String basePath;
+
+    public LocalChainStorage(AppStorageProperties fileProperties, FileSystemRepository fileRepository) {
+        super(fileProperties, fileRepository);
+    }
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -46,16 +50,30 @@ public class LocalChainStorage implements ChainStorageService, InitializingBean 
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String upload(String bucketName, String objectKey, MultipartFile file) throws IOException {
-        return upload(bucketName, objectKey, file.getInputStream());
+        Path targetPath = resolvePath(bucketName, objectKey);
+        // 确保父目录存在
+        Files.createDirectories(targetPath.getParent());
+        Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+        // 同步数据库记录
+        saveFileRecord(bucketName, objectKey, targetPath.toString(), file.getSize());
+
+        return objectKey;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
         Path targetPath = resolvePath(bucketName, objectKey);
         // 确保父目录存在
         Files.createDirectories(targetPath.getParent());
-        Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+        long size = Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+        // 同步数据库记录
+        saveFileRecord(bucketName, objectKey, targetPath.toString(), size);
+
         return objectKey;
     }
 
@@ -66,10 +84,14 @@ public class LocalChainStorage implements ChainStorageService, InitializingBean 
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(String bucketName, String objectKey) {
         try {
             Path filePath = resolvePath(bucketName, objectKey);
             Files.deleteIfExists(filePath);
+
+            // 同步删除数据库记录
+            deleteFileRecord(bucketName, objectKey);
         } catch (IOException e) {
             throw new RuntimeException("Local delete failed", e);
         }
@@ -86,49 +108,78 @@ public class LocalChainStorage implements ChainStorageService, InitializingBean 
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String copy(String bucketName, String sourceKey, String targetKey) throws IOException {
         Path sourcePath = resolvePath(bucketName, sourceKey);
         Path targetPath = resolvePath(bucketName, targetKey);
         Files.createDirectories(targetPath.getParent());
+        long size = Files.size(sourcePath);
         Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+        // 同步数据库记录
+        saveFileRecord(bucketName, targetKey, targetPath.toString(), size);
+
         return targetKey;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String append(String bucketName, String objectKey, String content) throws IOException {
         Path filePath = resolvePath(bucketName, objectKey);
         Files.createDirectories(filePath.getParent());
         Files.writeString(filePath, content, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+
+        // 更新数据库记录
+        long newSize = Files.size(filePath);
+        updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
+
         return objectKey;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String appendBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
         Path filePath = resolvePath(bucketName, objectKey);
         Files.createDirectories(filePath.getParent());
         Files.write(filePath, bytes, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+
+        // 更新数据库记录
+        long newSize = Files.size(filePath);
+        updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
+
         return objectKey;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String write(String bucketName, String objectKey, String content) throws IOException {
         Path filePath = resolvePath(bucketName, objectKey);
         Files.createDirectories(filePath.getParent());
         Files.writeString(filePath, content, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        // 同步数据库记录
+        saveFileRecord(bucketName, objectKey, filePath.toString(), (long) content.getBytes(StandardCharsets.UTF_8).length);
+
         return objectKey;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String writeBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
         Path filePath = resolvePath(bucketName, objectKey);
         Files.createDirectories(filePath.getParent());
         Files.write(filePath, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        // 同步数据库记录
+        saveFileRecord(bucketName, objectKey, filePath.toString(), (long) bytes.length);
+
         return objectKey;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String replaceLines(String bucketName, String objectKey, StorageService.LineTransformer transformer) throws IOException {
         Path filePath = resolvePath(bucketName, objectKey);
         Path tempPath = Files.createTempFile("local-replace-", ".txt");
@@ -153,6 +204,10 @@ public class LocalChainStorage implements ChainStorageService, InitializingBean 
             // 2. 替换原文件
             Files.createDirectories(filePath.getParent());
             Files.move(tempPath, filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // 更新数据库记录
+            long newSize = Files.size(filePath);
+            updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
 
             return objectKey;
         } catch (Exception e) {

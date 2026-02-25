@@ -6,14 +6,17 @@ import com.aliyun.oss.model.AppendObjectRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.dev.lib.storage.config.AppStorageProperties;
+import com.dev.lib.storage.data.FileSystemRepository;
+import com.dev.lib.storage.domain.service.chain.AbstractChainStorage;
+import com.dev.lib.storage.domain.service.chain.ChainStorageService;
 import jakarta.annotation.PreDestroy;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -28,14 +31,15 @@ import java.io.FilterInputStream;
 @Slf4j
 @Component
 @Primary
-@RequiredArgsConstructor
 @ConditionalOnClass(name = "com.aliyun.oss.OSS")
 @ConditionalOnProperty(prefix = "app.storage", name = "type", havingValue = "oss")
-public class OssChainStorage implements ChainStorageService, InitializingBean {
-
-    private final AppStorageProperties fileProperties;
+public class OssChainStorage extends AbstractChainStorage implements ChainStorageService, InitializingBean {
 
     private OSS ossClient;
+
+    public OssChainStorage(AppStorageProperties fileProperties, FileSystemRepository fileRepository) {
+        super(fileProperties, fileRepository);
+    }
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -48,11 +52,13 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String upload(String bucketName, String objectKey, MultipartFile file) throws IOException {
         return upload(bucketName, objectKey, file.getInputStream());
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
         ensureBucketExists(bucketName);
         // 读取 InputStream 到字节数组以获取大小（参考历史 commit 12536ee）
@@ -60,6 +66,10 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(bytes.length);
         ossClient.putObject(bucketName, objectKey, new ByteArrayInputStream(bytes), metadata);
+
+        // 同步数据库记录
+        saveFileRecord(bucketName, objectKey, (long) bytes.length);
+
         return objectKey;
     }
 
@@ -83,8 +93,12 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(String bucketName, String objectKey) {
         ossClient.deleteObject(bucketName, objectKey);
+
+        // 同步删除数据库记录
+        deleteFileRecord(bucketName, objectKey);
     }
 
     @Override
@@ -96,9 +110,15 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String copy(String bucketName, String sourceKey, String targetKey) throws IOException {
         try {
             ossClient.copyObject(bucketName, sourceKey, bucketName, targetKey);
+
+            // 获取源文件大小并同步数据库记录
+            ObjectMetadata metadata = ossClient.getObjectMetadata(bucketName, sourceKey);
+            saveFileRecord(bucketName, targetKey, metadata.getContentLength());
+
             return targetKey;
         } catch (Exception e) {
             throw new IOException("OSS copy failed", e);
@@ -106,11 +126,13 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String append(String bucketName, String objectKey, String content) throws IOException {
         return appendBytes(bucketName, objectKey, content.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String appendBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
         ensureBucketExists(bucketName);
 
@@ -132,6 +154,10 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
             );
             appendRequest.setPosition(position);
             ossClient.appendObject(appendRequest);
+
+            // 更新数据库记录
+            saveFileRecord(bucketName, objectKey, position + bytes.length);
+
             return objectKey;
         } catch (Exception e) {
             throw new IOException("OSS append failed", e);
@@ -139,20 +165,27 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String write(String bucketName, String objectKey, String content) throws IOException {
         return writeBytes(bucketName, objectKey, content.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String writeBytes(String bucketName, String objectKey, byte[] bytes) throws IOException {
         ensureBucketExists(bucketName);
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(bytes.length);
         ossClient.putObject(bucketName, objectKey, new ByteArrayInputStream(bytes), metadata);
+
+        // 同步数据库记录
+        saveFileRecord(bucketName, objectKey, (long) bytes.length);
+
         return objectKey;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String replaceLines(String bucketName, String objectKey, StorageService.LineTransformer transformer) throws IOException {
         java.nio.file.Path tempInput = java.nio.file.Files.createTempFile("oss-replace-in-", ".txt");
         java.nio.file.Path tempOutput = java.nio.file.Files.createTempFile("oss-replace-out-", ".txt");
@@ -180,9 +213,13 @@ public class OssChainStorage implements ChainStorageService, InitializingBean {
             }
 
             // 3. 上传新文件
+            long fileSize = java.nio.file.Files.size(tempOutput);
             try (InputStream is = java.nio.file.Files.newInputStream(tempOutput)) {
                 ossClient.putObject(bucketName, objectKey, is);
             }
+
+            // 更新数据库记录
+            saveFileRecord(bucketName, objectKey, fileSize);
 
             return objectKey;
         } catch (Exception e) {
