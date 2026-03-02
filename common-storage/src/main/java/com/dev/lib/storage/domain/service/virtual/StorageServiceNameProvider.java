@@ -1,5 +1,6 @@
 package com.dev.lib.storage.domain.service.virtual;
 
+import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.storage.domain.model.VfsContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

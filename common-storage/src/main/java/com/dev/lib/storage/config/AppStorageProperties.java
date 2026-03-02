@@ -21,7 +21,7 @@ public class AppStorageProperties {
 
     private Rustfs rustfs;
 
-    private Vfs vfs = new Vfs();
+    private VirtualFile vfs = new VirtualFile();
 
     @Data
     public static class Local {
@@ -73,7 +73,7 @@ public class AppStorageProperties {
     }
 
     @Data
-    public static class Vfs {
+    public static class VirtualFile {
 
         /**
          * 临时文件默认过期时间（分钟）
