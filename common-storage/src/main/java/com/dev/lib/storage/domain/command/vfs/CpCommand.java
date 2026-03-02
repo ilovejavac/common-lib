@@ -1,16 +1,16 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 /**
  * cp 命令
  */
 public class CpCommand extends VfsCommandBase {
 
-    public CpCommand(VirtualFileSystem vfs) {
+    public CpCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -29,30 +29,30 @@ public class CpCommand extends VfsCommandBase {
             String dest = parsed.getString(1);
 
             if (dest.endsWith("/")) {
-                if (!vfs.exists(toVfsContext(ctx), dest)) {
-                    vfs.createDirectory(toVfsContext(ctx), dest, true);
+                if (!Vfs.exists(toVfsContext(ctx), dest)) {
+                    Vfs.createDirectory(toVfsContext(ctx), dest, true);
                 }
             }
 
             // 如果源是目录但没有 -r，报错
-            if (!recursive && vfs.isDirectory(toVfsContext(ctx), src)) {
+            if (!recursive && Vfs.isDirectory(toVfsContext(ctx), src)) {
                 throw new IllegalArgumentException("cp: -r not specified; omitting directory '" + src + "'");
             }
-            vfs.copy(toVfsContext(ctx), src, dest, recursive);
+            Vfs.copy(toVfsContext(ctx), src, dest, recursive);
         } else {
             String destDir = parsed.getString(parsed.positionalCount() - 1);
 
-            if (!vfs.exists(toVfsContext(ctx), destDir)) {
-                vfs.createDirectory(toVfsContext(ctx), destDir, true);
+            if (!Vfs.exists(toVfsContext(ctx), destDir)) {
+                Vfs.createDirectory(toVfsContext(ctx), destDir, true);
             }
 
             for (int i = 0; i < parsed.positionalCount() - 1; i++) {
                 String src = parsed.getString(i);
                 // 如果源是目录但没有 -r，报错
-                if (!recursive && vfs.isDirectory(toVfsContext(ctx), src)) {
+                if (!recursive && Vfs.isDirectory(toVfsContext(ctx), src)) {
                     throw new IllegalArgumentException("cp: -r not specified; omitting directory '" + src + "'");
                 }
-                vfs.copy(toVfsContext(ctx), src, destDir, recursive);
+                Vfs.copy(toVfsContext(ctx), src, destDir, recursive);
             }
         }
 

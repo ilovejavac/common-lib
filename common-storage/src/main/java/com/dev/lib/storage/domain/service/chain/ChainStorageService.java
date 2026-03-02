@@ -1,6 +1,6 @@
 package com.dev.lib.storage.domain.service.chain;
 
-import com.dev.lib.storage.domain.service.StorageService;
+import com.dev.lib.storage.Storage;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -9,11 +9,7 @@ import java.io.InputStream;
 /**
  * 链式存储服务接口 - 支持动态 bucket
  *
- * <p>与 StorageService 的区别：</p>
- * <ul>
- *   <li>StorageService: 从配置读取固定 bucket，传统接口</li>
- *   <li>ChainStorageService: 动态传入 bucket，支持链式调用</li>
- * </ul>
+ * <p>动态传入 bucket，供 Storage 静态工具调用。</p>
  */
 public interface ChainStorageService {
 
@@ -131,5 +127,5 @@ public interface ChainStorageService {
      * @return 对象键
      * @throws IOException 替换失败
      */
-    String replaceLines(String bucketName, String objectKey, StorageService.LineTransformer transformer) throws IOException;
+    String replaceLines(String bucketName, String objectKey, Storage.LineTransformer transformer) throws IOException;
 }

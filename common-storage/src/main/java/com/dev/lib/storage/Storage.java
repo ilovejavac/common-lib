@@ -315,10 +315,17 @@ public class Storage implements InitializingBean {
          * @return 对象键
          * @throws java.io.IOException 替换失败
          */
-        public String replaceLines(com.dev.lib.storage.domain.service.StorageService.LineTransformer transformer) throws java.io.IOException {
+        public String replaceLines(LineTransformer transformer) throws java.io.IOException {
             log.debug("Replacing lines in bucket: {}, key: {}", bucketName, objectKey);
             return instance.chainStorageService.replaceLines(bucketName, objectKey, transformer);
         }
+    }
+
+    @FunctionalInterface
+    public interface LineTransformer {
+
+        String transform(int lineNum, String line);
+
     }
 
     /**

@@ -2,27 +2,14 @@ package com.dev.lib.config;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.config.properties.AppSnowFlakeProperties;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 @Configuration
+@EnableConfigurationProperties({AppSnowFlakeProperties.class, AppSecurityProperties.class})
 public class CommonAutoConfig {
-
-    @Bean
-    @ConfigurationProperties(prefix = "app.security")
-    public AppSecurityProperties appSecurityProperties() {
-
-        return new AppSecurityProperties();
-    }
-
-    @Bean
-    @ConfigurationProperties(prefix = "app.snow-flake")
-    public AppSnowFlakeProperties appSnowFlakeProperties() {
-
-        return new AppSnowFlakeProperties();
-    }
 
     @Bean
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {

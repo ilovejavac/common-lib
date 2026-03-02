@@ -41,7 +41,7 @@ spring:
         service-name: ${spring.application.name}
         health-check-interval: 15s
         health-check-timeout: 5s
-        health-check-path: /healthz
+        health-check-path: /${server.servlet.context-path}/healthz
         prefer-ip-address: true
         instance-id: ${spring.application.name}-${random.uuid}
       config:

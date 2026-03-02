@@ -1,7 +1,10 @@
 package com.dev.lib.storage.trigger.controller;
 
+import com.dev.lib.storage.Vfs;
+import com.dev.lib.storage.domain.adapter.StorageFileRepo;
 import com.dev.lib.storage.domain.model.StorageFile;
-import com.dev.lib.storage.domain.service.FileService;
+import com.dev.lib.storage.domain.service.virtual.storage.VfsFileStorageService;
+import com.dev.lib.util.parallel.ParallelExecutor;
 import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -12,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -23,7 +27,9 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class FileController {
 
-    private final FileService fileService;
+    private final StorageFileRepo storageFileRepo;
+
+    private final VfsFileStorageService storageService;
 
 //    /**
 //     * 文件上传（支持多文件、文件夹结构保留）
@@ -76,8 +82,8 @@ public class FileController {
             @RequestParam(required = false) String name
     ) throws IOException {
 
-        StorageFile file = fileService.getById(id);
-        InputStream is   = fileService.download(file);
+        StorageFile file = storageFileRepo.findByBizId(id);
+        InputStream is   = downloadByStoragePath(file.getStoragePath());
 
         String filename = (name != null && !name.isBlank()) ? name : file.getOriginalName();
 
@@ -102,7 +108,8 @@ public class FileController {
     @GetMapping("/{id}/url")
     public ResponseEntity<String> getPresignedUrl(@PathVariable String id) {
 
-        String url = fileService.getPresignedUrl(id);
+        StorageFile file = storageFileRepo.findByBizId(id);
+        String      url  = presignedUrlByStoragePath(file.getStoragePath(), 6 * 24 * 60 * 60);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(6, TimeUnit.DAYS).mustRevalidate())
                 .body(url);
@@ -114,7 +121,29 @@ public class FileController {
     @PostMapping("/urls")
     public ServerResponse<Map<String, String>> getPresignedUrls(@RequestBody Collection<String> ids) {
 
-        return ServerResponse.success(fileService.getPresignedUrls(ids));
+        if (ids == null || ids.isEmpty()) {
+            return ServerResponse.success(Map.of());
+        }
+
+        Map<String, String> result = new ConcurrentHashMap<>();
+        ParallelExecutor.with(ids).apply(id -> {
+            StorageFile file = storageFileRepo.findByBizId(id);
+            if (file != null && file.getStoragePath() != null) {
+                String url = presignedUrlByStoragePath(file.getStoragePath(), 6 * 24 * 60 * 60);
+                result.put(id, url);
+            }
+        });
+        return ServerResponse.success(result);
+    }
+
+    private InputStream downloadByStoragePath(String storagePath) throws IOException {
+
+        return storageService.download(storagePath);
+    }
+
+    private String presignedUrlByStoragePath(String storagePath, int expireSeconds) {
+
+        return Vfs.getPresignedUrlByStoragePath(storagePath, expireSeconds);
     }
 
 //    /**

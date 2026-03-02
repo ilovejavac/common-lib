@@ -1,8 +1,10 @@
 package com.dev.lib.security.config;
 
+import com.dev.lib.security.config.properties.EndpointScannerProperties;
 import com.dev.lib.security.service.PermissionService;
 import com.dev.lib.security.util.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -13,6 +15,7 @@ import java.util.Arrays;
 @ComponentScan
 @Configuration
 @RequiredArgsConstructor
+@EnableConfigurationProperties(EndpointScannerProperties.class)
 public class SecurityConfig {
 
     @Bean

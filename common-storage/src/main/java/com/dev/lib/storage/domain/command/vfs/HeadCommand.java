@@ -1,7 +1,7 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 import java.util.List;
 
@@ -10,9 +10,9 @@ import java.util.List;
  */
 public class HeadCommand extends VfsCommandBase {
 
-    public HeadCommand(VirtualFileSystem vfs) {
+    public HeadCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -27,7 +27,7 @@ public class HeadCommand extends VfsCommandBase {
         }
 
         String       path      = parsed.getString(0);
-        List<String> fileLines = vfs.readLines(toVfsContext(ctx), path, 1, lines);
+        List<String> fileLines = Vfs.readLines(toVfsContext(ctx), path, 1, lines);
 
         if (fileLines.isEmpty()) {
             return "";

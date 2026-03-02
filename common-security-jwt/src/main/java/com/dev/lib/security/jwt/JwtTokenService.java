@@ -1,8 +1,8 @@
 package com.dev.lib.security.jwt;
 
-import com.alibaba.fastjson2.JSON;
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.security.TokenException;
+import com.dev.lib.security.service.AuthenticateService;
 import com.dev.lib.security.service.TokenManager;
 import com.dev.lib.security.service.TokenService;
 import com.dev.lib.security.util.UserDetails;
@@ -31,6 +31,8 @@ public class JwtTokenService implements TokenService, InitializingBean {
 
     private SecretKey secretKey;
 
+    private final AuthenticateService authenticateService;
+
     @Override
     public void afterPropertiesSet() throws Exception {
 
@@ -57,7 +59,7 @@ public class JwtTokenService implements TokenService, InitializingBean {
 
         return Jwts.builder()
                 .subject(String.valueOf(userDetails.getId()))
-                .claim("user", JSON.toJSONString(userDetails))
+                .claim("userid", userDetails.getId())
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + expireMs))
                 .signWith(secretKey)
@@ -73,8 +75,8 @@ public class JwtTokenService implements TokenService, InitializingBean {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            String userJson = claims.get("user", String.class);
-            return JSON.parseObject(userJson, UserDetails.class);
+            Long userid = claims.get("userid", Long.class);
+            return authenticateService.loadUserById(userid);
         } catch (ExpiredJwtException e) {
             throw new TokenException("token已过期");
         } catch (JwtException e) {

@@ -21,6 +21,8 @@ public class AppStorageProperties {
 
     private Rustfs rustfs;
 
+    private Vfs vfs = new Vfs();
+
     @Data
     public static class Local {
 
@@ -67,6 +69,26 @@ public class AppStorageProperties {
         private String secretKey;
 
         private String bucket;
+
+    }
+
+    @Data
+    public static class Vfs {
+
+        /**
+         * 临时文件默认过期时间（分钟）
+         */
+        private Long temporaryTtlMinutes = 60L;
+
+        /**
+         * 清理任务执行间隔（毫秒）
+         */
+        private Long cleanupIntervalMs = 300000L;
+
+        /**
+         * 清理任务初始延迟（毫秒）
+         */
+        private Long cleanupInitialDelayMs = 60000L;
 
     }
 

@@ -1,16 +1,16 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 /**
  * touch 命令
  */
 public class TouchCommand extends VfsCommandBase {
 
-    public TouchCommand(VirtualFileSystem vfs) {
+    public TouchCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -25,7 +25,7 @@ public class TouchCommand extends VfsCommandBase {
 
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
-            vfs.touchFile(toVfsContext(ctx), path);
+            Vfs.touchFile(toVfsContext(ctx), path);
         }
 
         return null;

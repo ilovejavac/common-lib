@@ -2,6 +2,7 @@ package com.dev.lib.storage.domain.service.virtual.repository;
 
 import com.dev.lib.storage.data.FileSystemRepository;
 import com.dev.lib.storage.data.SysFile;
+import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -18,38 +19,45 @@ public class VfsFileRepository {
 
     private final FileSystemRepository fileSystemRepository;
 
+    private final StorageServiceNameProvider serviceNameProvider;
+
+    private String currentService() {
+
+        return serviceNameProvider.currentServiceName();
+    }
+
     // ==================== 单记录查询 ====================
 
     public Optional<SysFile> findByPath(String virtualPath) {
 
-        return fileSystemRepository.findByVirtualPath(virtualPath);
+        return fileSystemRepository.findByVirtualPath(currentService(), virtualPath);
     }
 
     public Optional<SysFile> findByPathForUpdate(String virtualPath) {
 
-        return fileSystemRepository.findByVirtualPathForUpdate(virtualPath);
+        return fileSystemRepository.findByVirtualPathForUpdate(currentService(), virtualPath);
     }
 
     // ==================== 多记录查询 ====================
 
     public List<SysFile> findChildren(String parentPath) {
 
-        return fileSystemRepository.findByParentPath(parentPath);
+        return fileSystemRepository.findByParentPath(currentService(), parentPath);
     }
 
     public List<SysFile> findDescendants(String prefix) {
 
-        return fileSystemRepository.findByVirtualPathStartingWith(prefix);
+        return fileSystemRepository.findByVirtualPathStartingWith(currentService(), prefix);
     }
 
     public List<SysFile> findDescendantsForUpdate(String prefix) {
 
-        return fileSystemRepository.findByVirtualPathStartingWithForUpdate(prefix);
+        return fileSystemRepository.findByVirtualPathStartingWithForUpdate(currentService(), prefix);
     }
 
     public List<SysFile> findByStoragePath(String storagePath) {
 
-        return fileSystemRepository.findByStoragePath(storagePath);
+        return fileSystemRepository.findByStoragePath(currentService(), storagePath);
     }
 
     // ==================== 保存和删除 ====================

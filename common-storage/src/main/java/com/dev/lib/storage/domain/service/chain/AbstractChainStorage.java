@@ -3,6 +3,7 @@ package com.dev.lib.storage.domain.service.chain;
 import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.storage.data.FileSystemRepository;
 import com.dev.lib.storage.data.SysFile;
+import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,6 +21,8 @@ public abstract class AbstractChainStorage {
 
     protected final FileSystemRepository fileRepository;
 
+    protected final StorageServiceNameProvider serviceNameProvider;
+
     // ==================== 数据库同步辅助方法 ====================
 
     /**
@@ -32,16 +35,20 @@ public abstract class AbstractChainStorage {
      */
     protected void saveFileRecord(String bucketName, String objectKey, String storagePath, Long size) {
 
+        String serviceName = serviceNameProvider.currentServiceName();
         String virtualPath = bucketName + "/" + objectKey;
         String parentPath = extractParentPath(virtualPath);
 
-        Optional<SysFile> existing = fileRepository.findByVirtualPath(virtualPath);
+        Optional<SysFile> existing = fileRepository.findByVirtualPath(serviceName, virtualPath);
         if (existing.isPresent()) {
             // 更新现有记录
             SysFile file = existing.get();
             file.setStoragePath(storagePath);
             if (size != null) {
                 file.setSize(size);
+            }
+            if (file.getServiceName() == null || file.getServiceName().isBlank()) {
+                file.setServiceName(serviceNameProvider.currentServiceName());
             }
             fileRepository.save(file);
         } else {
@@ -59,6 +66,7 @@ public abstract class AbstractChainStorage {
             file.setIsDirectory(false);
             file.setHidden(extractFileName(objectKey).startsWith("."));
             file.setExtension(extractExtension(objectKey));
+            file.setServiceName(serviceNameProvider.currentServiceName());
             fileRepository.save(file);
         }
     }
@@ -87,9 +95,10 @@ public abstract class AbstractChainStorage {
      */
     protected void updateFileRecord(String bucketName, String objectKey, String storagePath, long newSize) {
 
+        String serviceName = serviceNameProvider.currentServiceName();
         String virtualPath = bucketName + "/" + objectKey;
 
-        Optional<SysFile> existing = fileRepository.findByVirtualPath(virtualPath);
+        Optional<SysFile> existing = fileRepository.findByVirtualPath(serviceName, virtualPath);
         if (existing.isPresent()) {
             SysFile file = existing.get();
             file.setStoragePath(storagePath);
@@ -109,8 +118,9 @@ public abstract class AbstractChainStorage {
      */
     protected void deleteFileRecord(String bucketName, String objectKey) {
 
+        String serviceName = serviceNameProvider.currentServiceName();
         String virtualPath = bucketName + "/" + objectKey;
-        fileRepository.findByVirtualPath(virtualPath).ifPresent(fileRepository::delete);
+        fileRepository.findByVirtualPath(serviceName, virtualPath).ifPresent(fileRepository::delete);
     }
 
     // ==================== 路径提取工具方法 ====================

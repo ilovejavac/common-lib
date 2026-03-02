@@ -1,8 +1,8 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.StorageService;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Storage;
+import com.dev.lib.storage.Vfs;
 
 /**
  * sed 命令
@@ -13,13 +13,13 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
  * - 追加行：sed '5a\content' file
  * - 替换行：sed '5c\content' file
  * <p>
- * 使用 StorageService.replaceLines() 原生实现，数据不经 JVM 内存
+ * 使用 Storage.replaceLines() 原生实现，数据不经 JVM 内存
  */
 public class SedCommand extends VfsCommandBase {
 
-    public SedCommand(VirtualFileSystem vfs) {
+    public SedCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -34,17 +34,17 @@ public class SedCommand extends VfsCommandBase {
         String expression = args[0];
         String filePath   = args[args.length - 1];
 
-        // 获取文件的 storagePath 并调用 StorageService.replaceLines
-        String storagePath = vfs.getStoragePath(toVfsContext(ctx), filePath);
+        // 获取文件的 storagePath 并调用 Storage.replaceLines
+        String storagePath = Vfs.getStoragePath(toVfsContext(ctx), filePath);
         if (storagePath == null) {
             return null; // 文件不存在
         }
 
         try {
             // 创建行转换器
-            StorageService.LineTransformer transformer = createTransformer(expression);
+            Storage.LineTransformer transformer = createTransformer(expression);
             // 调用存储服务原生替换
-            vfs.getStorageService().replaceLines(storagePath, transformer);
+            Vfs.replaceLinesByStoragePath(storagePath, transformer);
             return null;
         } catch (Exception e) {
             throw new RuntimeException("sed command failed", e);
@@ -54,7 +54,7 @@ public class SedCommand extends VfsCommandBase {
     /**
      * 根据 sed 表达式创建行转换器
      */
-    private StorageService.LineTransformer createTransformer(String expression) {
+    private Storage.LineTransformer createTransformer(String expression) {
 
         LineRange range = parseLineRange(expression);
         String    cmd   = extractCommand(expression);
@@ -233,7 +233,7 @@ public class SedCommand extends VfsCommandBase {
      * 行插入器（支持 i\ 和 a\ 命令）
      * 由于这两个命令需要返回多行，使用状态机实现
      */
-    private static class LineInserter implements StorageService.LineTransformer {
+    private static class LineInserter implements Storage.LineTransformer {
 
         private final int     targetLine;
 

@@ -95,7 +95,7 @@ public class SnowflakeConfig implements InitializingBean {
 //        }
 //
 //        throw new RuntimeException("Failed to acquire worker ID after " + MAX_RETRY_TIMES + " attempts", lastException);
-        return 0;
+        return Math.clamp(Optional.ofNullable(snowFlakeProperties.getWorkerId()).orElse(0), 0, 15);
     }
 
     @PreDestroy

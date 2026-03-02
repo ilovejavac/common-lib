@@ -1,16 +1,16 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 /**
  * mkdir 命令
  */
 public class MkdirCommand extends VfsCommandBase {
 
-    public MkdirCommand(VirtualFileSystem vfs) {
+    public MkdirCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -26,7 +26,7 @@ public class MkdirCommand extends VfsCommandBase {
 
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
-            vfs.createDirectory(toVfsContext(ctx), path, createParents);
+            Vfs.createDirectory(toVfsContext(ctx), path, createParents);
         }
 
         return null;

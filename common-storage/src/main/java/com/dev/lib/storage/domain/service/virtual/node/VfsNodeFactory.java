@@ -21,7 +21,7 @@ public class VfsNodeFactory {
 
     private final VfsFileRepository fileRepository;
 
-    private final VfsPathResolver   pathResolver;
+    private final VfsPathResolver pathResolver;
 
     /**
      * 批量构建节点列表

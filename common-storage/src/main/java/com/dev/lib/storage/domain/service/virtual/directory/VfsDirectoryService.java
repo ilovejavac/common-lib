@@ -3,6 +3,7 @@ package com.dev.lib.storage.domain.service.virtual.directory;
 import com.dev.lib.entity.id.IDWorker;
 import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.domain.model.VfsContext;
+import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
 import com.dev.lib.storage.domain.service.virtual.path.VfsPathResolver;
 import com.dev.lib.storage.domain.service.virtual.repository.VfsFileRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class VfsDirectoryService {
 
     private final VfsFileRepository fileRepository;
     private final VfsPathResolver   pathResolver;
+    private final StorageServiceNameProvider serviceNameProvider;
 
     /**
      * 递归创建目录（使用数据库唯一约束防止并发重复创建）
@@ -47,7 +49,7 @@ public class VfsDirectoryService {
             ensureDirs(ctx, parent, created);
         }
 
-        createDirectoryInternal(fullPath);
+        createDirectoryInternal(ctx, fullPath);
         created.add(fullPath);
     }
 
@@ -58,7 +60,7 @@ public class VfsDirectoryService {
      *
      * @param virtualPath 虚拟路径
      */
-    private void createDirectoryInternal(String virtualPath) {
+    private void createDirectoryInternal(VfsContext ctx, String virtualPath) {
 
         try {
             String  name = pathResolver.getName(virtualPath);
@@ -70,6 +72,7 @@ public class VfsDirectoryService {
             dir.setOriginalName(name);
             dir.setStorageName(name);
             dir.setHidden(name.startsWith("."));
+            dir.setServiceName(serviceNameProvider.resolve(ctx));
             fileRepository.save(dir);
         } catch (DataIntegrityViolationException e) {
             // 并发创建时可能已由其他线程创建，再次检查确认
@@ -103,6 +106,7 @@ public class VfsDirectoryService {
             dir.setOriginalName(name);
             dir.setStorageName(name);
             dir.setHidden(name.startsWith("."));
+            dir.setServiceName(serviceNameProvider.currentServiceName());
             fileRepository.save(dir);
         } catch (DataIntegrityViolationException e) {
             // 并发创建时可能已由其他线程创建

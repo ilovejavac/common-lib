@@ -1,16 +1,16 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 /**
  * mv 命令
  */
 public class MvCommand extends VfsCommandBase {
 
-    public MvCommand(VirtualFileSystem vfs) {
+    public MvCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -26,12 +26,12 @@ public class MvCommand extends VfsCommandBase {
         if (parsed.positionalCount() == 2) {
             String src  = parsed.getString(0);
             String dest = parsed.getString(1);
-            vfs.move(toVfsContext(ctx), src, dest);
+            Vfs.move(toVfsContext(ctx), src, dest);
         } else {
             String destDir = parsed.getString(parsed.positionalCount() - 1);
             for (int i = 0; i < parsed.positionalCount() - 1; i++) {
                 String src = parsed.getString(i);
-                vfs.move(toVfsContext(ctx), src, destDir);
+                Vfs.move(toVfsContext(ctx), src, destDir);
             }
         }
 

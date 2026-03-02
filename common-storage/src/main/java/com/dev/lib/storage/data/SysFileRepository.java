@@ -18,7 +18,15 @@ public interface SysFileRepository extends BaseRepository<SysFile> {
     @Data
     class Query extends DslQuery<SysFile> {
 
+        private String bizId;
+
         private LocalDateTime deleteAfterLe;
+
+        private LocalDateTime expirationAtLe;
+
+        private Boolean temporary;
+
+        private String serviceName;
 
         @Condition(field = "temporary", operator = LogicalOperator.OR)
         private Boolean orTemporary;
@@ -32,6 +40,21 @@ public interface SysFileRepository extends BaseRepository<SysFile> {
         return loads(new Query().setBizIdIn(bizIds));
     }
 
+    default Optional<SysFile> findByBizIdAndServiceName(String bizId, String serviceName) {
+
+        return load(new Query().setBizId(bizId).setServiceName(serviceName));
+    }
+
+    default List<SysFile> findAllByBizIdInAndServiceName(Collection<String> bizIds, String serviceName) {
+
+        return loads(new Query().setBizIdIn(bizIds).setServiceName(serviceName));
+    }
+
+    default Optional<SysFile> findByBizIdForUpdate(String bizId) {
+
+        return lockForUpdate().load(new Query().setBizId(bizId));
+    }
+
     /**
      * 批量删除文件记录
      */
@@ -42,6 +65,14 @@ public interface SysFileRepository extends BaseRepository<SysFile> {
         }
         // 使用 QueryDSL 批量删除
         delete(new Query().setBizIdIn(bizIds));
+    }
+
+    default void deleteAllByBizIdInAndServiceName(Collection<String> bizIds, String serviceName) {
+
+        if (bizIds == null || bizIds.isEmpty()) {
+            return;
+        }
+        delete(new Query().setBizIdIn(bizIds).setServiceName(serviceName));
     }
 
     Optional<SysFile> findByBizId(String bizId);

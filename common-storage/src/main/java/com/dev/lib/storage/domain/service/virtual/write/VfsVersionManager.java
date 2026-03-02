@@ -1,8 +1,10 @@
 package com.dev.lib.storage.domain.service.virtual.write;
 
 import com.dev.lib.entity.id.IDWorker;
+import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.domain.model.VfsContext;
+import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
 import com.dev.lib.storage.domain.service.virtual.directory.VfsDirectoryService;
 import com.dev.lib.storage.domain.service.virtual.path.VfsPathResolver;
 import com.dev.lib.storage.domain.service.virtual.repository.VfsFileRepository;
@@ -31,6 +33,8 @@ public class VfsVersionManager {
 
     private static final int VERSIONS_TO_DELETE = 5;
 
+    private static final long DEFAULT_TEMP_TTL_MINUTES = 60L;
+
     private final VfsFileRepository     fileRepository;
 
     private final VfsFileStorageService storageService;
@@ -38,6 +42,10 @@ public class VfsVersionManager {
     private final VfsDirectoryService   directoryService;
 
     private final VfsPathResolver       pathResolver;
+
+    private final AppStorageProperties storageProperties;
+
+    private final StorageServiceNameProvider serviceNameProvider;
 
     // ==================== 文件创建 ====================
 
@@ -64,6 +72,8 @@ public class VfsVersionManager {
             file.setSize(size);
             file.setStorageType(storageService.getStorageProperties().getType());
             file.setHidden(fileName.startsWith("."));
+            file.setServiceName(serviceNameProvider.resolve(ctx));
+            applyTemporaryMetadataForCreate(file, ctx);
             fileRepository.save(file);
             return file.getBizId();
         } catch (IOException e) {
@@ -77,12 +87,17 @@ public class VfsVersionManager {
      * 执行带 COW 的写入操作
      */
     @Transactional(rollbackFor = Exception.class)
-    public void writeWithCOW(SysFile file, InputStream contentStream, long size, String fullPath) throws IOException {
+    public void writeWithCOW(VfsContext ctx, SysFile file, InputStream contentStream, long size, String fullPath) throws IOException {
 
         String oldStoragePath = file.getStoragePath();
         String newStoragePath = storageService.upload(contentStream, pathResolver.getName(fullPath), null);
 
         updateFileWithVersioning(file, newStoragePath, size, oldStoragePath);
+        if (file.getServiceName() == null || file.getServiceName().isBlank()) {
+            file.setServiceName(serviceNameProvider.resolve(ctx));
+        }
+        applyTemporaryMetadataForUpdate(file, ctx);
+        fileRepository.save(file);
     }
 
     /**
@@ -115,6 +130,48 @@ public class VfsVersionManager {
         }
 
         fileRepository.save(file);
+    }
+
+    private void applyTemporaryMetadataForCreate(SysFile file, VfsContext ctx) {
+
+        boolean temporary = ctx != null && Boolean.TRUE.equals(ctx.getTemporary());
+        file.setTemporary(temporary);
+
+        if (temporary) {
+            file.setExpirationAt(resolveExpirationAt(ctx));
+        } else {
+            file.setExpirationAt(null);
+        }
+    }
+
+    private void applyTemporaryMetadataForUpdate(SysFile file, VfsContext ctx) {
+
+        if (ctx == null || ctx.getTemporary() == null) {
+            return;
+        }
+
+        if (Boolean.TRUE.equals(ctx.getTemporary())) {
+            file.setTemporary(true);
+            file.setExpirationAt(resolveExpirationAt(ctx));
+            return;
+        }
+
+        file.setTemporary(false);
+        file.setExpirationAt(null);
+    }
+
+    private LocalDateTime resolveExpirationAt(VfsContext ctx) {
+
+        if (ctx != null && ctx.getExpirationAt() != null) {
+            return ctx.getExpirationAt();
+        }
+
+        long ttlMinutes = DEFAULT_TEMP_TTL_MINUTES;
+        if (storageProperties.getVfs() != null && storageProperties.getVfs().getTemporaryTtlMinutes() != null) {
+            ttlMinutes = storageProperties.getVfs().getTemporaryTtlMinutes();
+        }
+
+        return LocalDateTime.now().plusMinutes(Math.max(ttlMinutes, 1L));
     }
 
     /**
@@ -165,6 +222,11 @@ public class VfsVersionManager {
             copy.setContentType(src.getContentType());
             copy.setSize(src.getSize());
             copy.setStorageType(src.getStorageType());
+            copy.setServiceName(
+                    (src.getServiceName() == null || src.getServiceName().isBlank())
+                    ? serviceNameProvider.currentServiceName()
+                    : src.getServiceName()
+            );
             fileRepository.save(copy);
         } catch (IOException e) {
             throw new RuntimeException("Failed to copy file content", e);

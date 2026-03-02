@@ -1,7 +1,7 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 /**
  * write 命令 - 写入文件内容
@@ -10,9 +10,9 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
  */
 public class WriteCommand extends VfsCommandBase {
 
-    public WriteCommand(VirtualFileSystem vfs) {
+    public WriteCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -45,9 +45,9 @@ public class WriteCommand extends VfsCommandBase {
         String fileContent = content.toString();
 
         if (append) {
-            vfs.appendFile(toVfsContext(ctx), filePath, fileContent);
+            Vfs.appendFile(toVfsContext(ctx), filePath, fileContent);
         } else {
-            vfs.writeFile(toVfsContext(ctx), filePath, fileContent);
+            Vfs.writeFile(toVfsContext(ctx), filePath, fileContent);
         }
 
         return null;

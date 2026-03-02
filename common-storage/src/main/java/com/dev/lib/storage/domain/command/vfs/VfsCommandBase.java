@@ -3,7 +3,6 @@ package com.dev.lib.storage.domain.command.vfs;
 import com.dev.lib.bash.BashCommand;
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.domain.model.VfsContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
 
 import java.util.Arrays;
 
@@ -12,12 +11,7 @@ import java.util.Arrays;
  */
 public abstract class VfsCommandBase<T extends Object> extends BashCommand<T> {
 
-    protected final VirtualFileSystem vfs;
-
-    protected VfsCommandBase(VirtualFileSystem vfs) {
-
-        this.vfs = vfs;
-    }
+    protected VfsCommandBase() {}
 
     protected VfsContext toVfsContext(ExecuteContext ctx) {
 

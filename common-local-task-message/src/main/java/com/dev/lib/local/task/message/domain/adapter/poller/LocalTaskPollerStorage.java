@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -49,24 +50,27 @@ public class LocalTaskPollerStorage implements PollerStorage {
 
     @Override
     public List<PollerContext> fetchPending(String taskType, List<Integer> houseNumbers, Long lastId, int limit) {
-        List<LocalTaskMessagePo> pos = repository.loadsByHouseNumber(houseNumbers, lastId, limit);
-
         LocalDateTime now = LocalDateTime.now();
+        List<LocalTaskMessagePo> pos = new ArrayList<>(
+                repository.loadsDuePendingByHouseNumber(houseNumbers, lastId, limit, taskType, now)
+        );
+
+        int remaining = limit - pos.size();
+        if (remaining > 0) {
+            // PROCESSING 任务用于超时恢复，先多拉一批再在内存中过滤
+            int candidateLimit = Math.max(remaining * 5, remaining);
+            List<LocalTaskMessagePo> processingCandidates =
+                    repository.loadsProcessingByHouseNumber(houseNumbers, lastId, candidateLimit, taskType);
+
+            pos.addAll(
+                    processingCandidates.stream()
+                            .filter(po -> isProcessingTimeout(po, now))
+                            .limit(remaining)
+                            .toList()
+            );
+        }
 
         return pos.stream()
-                .filter(po -> {
-                    // 1. PENDING 状态的任务
-                    if (po.getStatus() == LocalTaskStatus.PENDING) {
-                        return po.getNextRetryTime() == null || !po.getNextRetryTime().isAfter(now);
-                    }
-                    // 2. PROCESSING 状态但已超时的任务（服务器重启恢复）
-                    if (po.getStatus() == LocalTaskStatus.PROCESSING && po.getProcessedAt() != null) {
-                        LocalDateTime timeoutTime = po.getProcessedAt().plusMinutes(po.getTimeoutMinutes());
-                        return now.isAfter(timeoutTime);
-                    }
-                    return false;
-                })
-                .filter(po -> taskType == null || taskType.equals(po.getTaskType()))
                 .map(this::toContext)
                 .collect(Collectors.toList());
     }
@@ -74,10 +78,24 @@ public class LocalTaskPollerStorage implements PollerStorage {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateToProcessing(String taskId) {
-        return repository.loadByTaskId(taskId)
+        return repository.lockForUpdate().load(new TaskMessageRepository.Query().setTaskId(taskId))
                 .map(po -> {
+                    LocalDateTime now = LocalDateTime.now();
+
+                    if (po.getStatus() == LocalTaskStatus.PENDING) {
+                        if (po.getNextRetryTime() != null && po.getNextRetryTime().isAfter(now)) {
+                            return false;
+                        }
+                    } else if (po.getStatus() == LocalTaskStatus.PROCESSING) {
+                        if (!isProcessingTimeout(po, now)) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+
                     po.setStatus(LocalTaskStatus.PROCESSING);
-                    po.setProcessedAt(LocalDateTime.now());
+                    po.setProcessedAt(now);
                     return true;
                 })
                 .orElse(false);
@@ -101,6 +119,14 @@ public class LocalTaskPollerStorage implements PollerStorage {
             po.setRetryCount(po.getRetryCount() + 1);
             po.setNextRetryTime(nextRetryTime);
         });
+    }
+
+    private boolean isProcessingTimeout(LocalTaskMessagePo po, LocalDateTime now) {
+        if (po.getStatus() != LocalTaskStatus.PROCESSING || po.getProcessedAt() == null) {
+            return false;
+        }
+        LocalDateTime timeoutTime = po.getProcessedAt().plusMinutes(po.getTimeoutMinutes());
+        return now.isAfter(timeoutTime);
     }
 
     private PollerContext toContext(LocalTaskMessagePo po) {

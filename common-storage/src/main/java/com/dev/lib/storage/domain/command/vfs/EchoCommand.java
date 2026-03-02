@@ -1,16 +1,16 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 /**
  * echo 命令
  */
 public class EchoCommand extends VfsCommandBase {
 
-    public EchoCommand(VirtualFileSystem vfs) {
+    public EchoCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -56,9 +56,9 @@ public class EchoCommand extends VfsCommandBase {
 
         if (filePath != null) {
             if (append) {
-                vfs.appendFile(toVfsContext(ctx), filePath, finalContent);
+                Vfs.appendFile(toVfsContext(ctx), filePath, finalContent);
             } else {
-                vfs.writeFile(toVfsContext(ctx), filePath, finalContent);
+                Vfs.writeFile(toVfsContext(ctx), filePath, finalContent);
             }
             return null;
         }

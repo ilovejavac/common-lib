@@ -1,7 +1,7 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 /**
  * find 命令
@@ -9,9 +9,9 @@ import com.dev.lib.storage.domain.service.VirtualFileSystem;
  */
 public class FindCommand extends VfsCommandBase {
 
-    public FindCommand(VirtualFileSystem vfs) {
+    public FindCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -36,7 +36,7 @@ public class FindCommand extends VfsCommandBase {
             }
         }
 
-        return vfs.findByName(toVfsContext(ctx), basePath, pattern, recursive);
+        return Vfs.findByName(toVfsContext(ctx), basePath, pattern, recursive);
     }
 
 }

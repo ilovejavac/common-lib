@@ -16,8 +16,10 @@ import java.util.List;
 
 @Entity
 @Table(name = "sys_storage_file",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"virtualPath"}),
+        uniqueConstraints = @UniqueConstraint(columnNames = {"serviceName", "virtualPath"}),
         indexes = {
+                @Index(name = "idx_service_name", columnList = "serviceName"),
+                @Index(name = "idx_service_virtual_path", columnList = "serviceName,virtualPath"),
                 @Index(name = "idx_parent_path", columnList = "parentPath"),
                 @Index(name = "idx_virtual_path_prefix", columnList = "virtualPath")
         })
@@ -48,6 +50,9 @@ public class SysFile extends TenantEntity {
     private StorageType storageType;     // 存储类型
 
     private String category;        // 分类(avatar/document/image)
+
+    @Column(length = 128)
+    private String serviceName;     // 服务归属（默认 spring.application.name）
 
     private Boolean temporary = false; // 临时文件
 

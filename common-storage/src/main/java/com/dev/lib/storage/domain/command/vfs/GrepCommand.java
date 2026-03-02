@@ -3,7 +3,7 @@ package com.dev.lib.storage.domain.command.vfs;
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.domain.model.VfsContext;
 import com.dev.lib.storage.domain.model.VfsNode;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -19,9 +19,9 @@ import java.util.regex.Pattern;
  */
 public class GrepCommand extends VfsCommandBase {
 
-    public GrepCommand(VirtualFileSystem vfs) {
+    public GrepCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -46,12 +46,12 @@ public class GrepCommand extends VfsCommandBase {
 
         // -l 模式：只返回文件名列表
         if (filesOnly) {
-            return vfs.findByContent(vfsCtx, path, pattern, recursive);
+            return Vfs.findByContent(vfsCtx, path, pattern, recursive);
         }
 
         // 默认模式：返回匹配行
         List<String>  results      = new ArrayList<>();
-        List<VfsNode> matchedFiles = vfs.findByContent(vfsCtx, path, pattern, recursive);
+        List<VfsNode> matchedFiles = Vfs.findByContent(vfsCtx, path, pattern, recursive);
 
         Pattern regex = ignoreCase
                         ? Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
@@ -67,7 +67,7 @@ public class GrepCommand extends VfsCommandBase {
     private void grepFile(VfsContext ctx, String path, Pattern pattern,
                           boolean showLineNum, boolean showFileName, List<String> results) {
 
-        try (InputStream is = vfs.openFile(ctx, path);
+        try (InputStream is = Vfs.openFile(ctx, path);
              BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
             String line;

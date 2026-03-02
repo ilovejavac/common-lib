@@ -14,7 +14,7 @@
 
     <groupId>com.dev.lib</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.4.0</version>
+    <version>1.4.1</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -27,7 +27,6 @@
         <module>common-storage</module>
         <module>common-cache</module>
         <module>common-excel</module>
-        <module>common-ai</module>
         <module>common-security-sa</module>
         <module>common-web-notify</module>
 
@@ -45,6 +44,7 @@
         <module>common-mq-rabbit</module>
         <module>common-mq-kafka</module>
         <module>common-mq-rocketmq</module>
+        <module>common-agent</module>
     </modules>
 
     <properties>
@@ -80,7 +80,7 @@
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
 
-        <lib.version>1.4.0</lib.version>
+        <lib.version>1.4.1</lib.version>
         <skipTests>true</skipTests>
     </properties>
 
@@ -402,7 +402,7 @@
             </dependency>
             <dependency>
                 <groupId>com.dev.lib</groupId>
-                <artifactId>common-ai</artifactId>
+                <artifactId>common-agent</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>

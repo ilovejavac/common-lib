@@ -1,7 +1,7 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -13,9 +13,9 @@ import java.nio.charset.StandardCharsets;
  */
 public class TailCommand extends VfsCommandBase {
 
-    public TailCommand(VirtualFileSystem vfs) {
+    public TailCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -31,7 +31,7 @@ public class TailCommand extends VfsCommandBase {
 
         String path = parsed.getString(0);
 
-        try (InputStream is = vfs.openFile(toVfsContext(ctx), path);
+        try (InputStream is = Vfs.openFile(toVfsContext(ctx), path);
              BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
             String[] buffer = new String[lines];

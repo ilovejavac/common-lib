@@ -53,7 +53,7 @@ public class VfsFileOperationService {
             SysFile file = existing.get();
             validateIsFile(file, path);
             try (InputStream is = new ByteArrayInputStream(bytes)) {
-                versionManager.writeWithCOW(file, is, bytes.length, fullPath);
+                versionManager.writeWithCOW(ctx, file, is, bytes.length, fullPath);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to write file", e);
             }
@@ -82,7 +82,7 @@ public class VfsFileOperationService {
             SysFile file = existing.get();
             validateIsFile(file, path);
             try {
-                versionManager.writeWithCOW(file, inputStream, -1, fullPath);
+                versionManager.writeWithCOW(ctx, file, inputStream, -1, fullPath);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to write file", e);
             }

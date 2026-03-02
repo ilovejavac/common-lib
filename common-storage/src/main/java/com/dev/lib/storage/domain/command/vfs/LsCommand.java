@@ -2,7 +2,7 @@ package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.domain.model.VfsNode;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 import java.util.List;
 
@@ -12,9 +12,9 @@ import java.util.List;
  */
 public class LsCommand extends VfsCommandBase<List<VfsNode>> {
 
-    public LsCommand(VirtualFileSystem vfs) {
+    public LsCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -43,10 +43,10 @@ public class LsCommand extends VfsCommandBase<List<VfsNode>> {
 
         if (dirOnly) {
             // -d 模式：只返回目录本身的信息，depth=0
-            return vfs.listDirectory(vfsCtx, path, 0);
+            return Vfs.listDirectory(vfsCtx, path, 0);
         }
 
-        return vfs.listDirectory(vfsCtx, path, depth);
+        return Vfs.listDirectory(vfsCtx, path, depth);
     }
 
 }

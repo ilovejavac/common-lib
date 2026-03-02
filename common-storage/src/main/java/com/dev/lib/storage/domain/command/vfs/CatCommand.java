@@ -2,7 +2,7 @@ package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.domain.model.VfsContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -15,9 +15,9 @@ import java.util.List;
  */
 public class CatCommand extends VfsCommandBase {
 
-    public CatCommand(VirtualFileSystem vfs) {
+    public CatCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -44,7 +44,7 @@ public class CatCommand extends VfsCommandBase {
             String path = parsed.getString(i);
 
             if (startLine > 1 || lineCount != -1) {
-                List<String> lines   = vfs.readLines(ctx, path, startLine, lineCount);
+                List<String> lines   = Vfs.readLines(ctx, path, startLine, lineCount);
                 int          lineNum = startLine;
                 for (String line : lines) {
                     if (showLineNumbers) {
@@ -54,7 +54,7 @@ public class CatCommand extends VfsCommandBase {
                     }
                 }
             } else {
-                try (InputStream is = vfs.openFile(ctx, path);
+                try (InputStream is = Vfs.openFile(ctx, path);
                      BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
                     String line;

@@ -1,16 +1,16 @@
 package com.dev.lib.storage.domain.command.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.service.VirtualFileSystem;
+import com.dev.lib.storage.Vfs;
 
 /**
  * rm 命令
  */
 public class RmCommand extends VfsCommandBase {
 
-    public RmCommand(VirtualFileSystem vfs) {
+    public RmCommand() {
 
-        super(vfs);
+        super();
     }
 
     @Override
@@ -28,7 +28,7 @@ public class RmCommand extends VfsCommandBase {
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
             try {
-                vfs.delete(toVfsContext(ctx), path, recursive);
+                Vfs.delete(toVfsContext(ctx), path, recursive);
             } catch (IllegalArgumentException e) {
                 // -f 忽略不存在的文件
                 if (!force || !e.getMessage().contains("not found")) {

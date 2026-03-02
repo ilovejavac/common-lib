@@ -1,8 +1,8 @@
 package com.dev.lib.storage.domain.service.virtual.storage;
 
+import com.dev.lib.storage.Storage;
 import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.storage.data.SysFile;
-import com.dev.lib.storage.domain.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,8 +22,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class VfsFileStorageService {
 
-    private final StorageService        storageService;
-
     private final VfsStoragePathManager pathManager;
 
     // ==================== 上传操作 ====================
@@ -34,7 +32,8 @@ public class VfsFileStorageService {
     public String upload(InputStream inputStream, String fileName, String storagePathPrefix) throws IOException {
 
         String storagePath = pathManager.generateStoragePath(fileName, storagePathPrefix);
-        storageService.upload(inputStream, storagePath);
+        StorageRef ref = toStorageRef(storagePath);
+        Storage.bucket(ref.bucket()).object(ref.objectKey()).write(inputStream);
         return storagePath;
     }
 
@@ -52,10 +51,12 @@ public class VfsFileStorageService {
     public String appendAndUpload(String oldStoragePath, byte[] appendBytes, String fileName) throws IOException {
 
         String newStoragePath = pathManager.generateStoragePath(fileName, null);
-        storageService.copy(oldStoragePath, newStoragePath);
+        StorageRef oldRef = toStorageRef(oldStoragePath);
+        StorageRef newRef = toStorageRef(newStoragePath);
+        Storage.bucket(oldRef.bucket()).object(oldRef.objectKey()).copy(newRef.objectKey());
 
         String content = new String(appendBytes, StandardCharsets.UTF_8);
-        storageService.append(newStoragePath, content);
+        Storage.bucket(newRef.bucket()).object(newRef.objectKey()).append(content);
 
         return newStoragePath;
     }
@@ -67,7 +68,8 @@ public class VfsFileStorageService {
      */
     public InputStream download(String storagePath) throws IOException {
 
-        return storageService.download(storagePath);
+        StorageRef ref = toStorageRef(storagePath);
+        return Storage.bucket(ref.bucket()).object(ref.objectKey()).download();
     }
 
     // ==================== 复制操作 ====================
@@ -77,7 +79,9 @@ public class VfsFileStorageService {
      */
     public void copy(String srcPath, String destPath) throws IOException {
 
-        storageService.copy(srcPath, destPath);
+        StorageRef srcRef = toStorageRef(srcPath);
+        StorageRef dstRef = toStorageRef(destPath);
+        Storage.bucket(srcRef.bucket()).object(srcRef.objectKey()).copy(dstRef.objectKey());
     }
 
     // ==================== 删除操作 ====================
@@ -87,7 +91,8 @@ public class VfsFileStorageService {
      */
     public void delete(String storagePath) {
 
-        storageService.delete(storagePath);
+        StorageRef ref = toStorageRef(storagePath);
+        Storage.bucket(ref.bucket()).object(ref.objectKey()).delete();
     }
 
     /**
@@ -95,7 +100,12 @@ public class VfsFileStorageService {
      */
     public void deleteAll(List<String> storagePaths) {
 
-        storageService.deleteAll(storagePaths);
+        if (storagePaths == null || storagePaths.isEmpty()) {
+            return;
+        }
+        for (String path : storagePaths) {
+            delete(path);
+        }
     }
 
     // ==================== 文件信息收集 ====================
@@ -126,16 +136,61 @@ public class VfsFileStorageService {
         return pathManager.generateStoragePath(fileName, storagePathPrefix);
     }
 
-    // ==================== Getter ====================
-
-    public StorageService getStorageService() {
-
-        return storageService;
-    }
-
     public AppStorageProperties getStorageProperties() {
 
         return pathManager.getStorageProperties();
     }
+
+    public String replaceLines(String storagePath, Storage.LineTransformer transformer) throws IOException {
+
+        StorageRef ref = toStorageRef(storagePath);
+        return Storage.bucket(ref.bucket()).object(ref.objectKey()).replaceLines(transformer);
+    }
+
+    public String getPresignedUrl(String storagePath, int expireSeconds) {
+
+        StorageRef ref = toStorageRef(storagePath);
+        return Storage.bucket(ref.bucket()).object(ref.objectKey()).presignedUrl(expireSeconds);
+    }
+
+    private String defaultBucket() {
+
+        AppStorageProperties p = pathManager.getStorageProperties();
+        if (p == null || p.getType() == null) {
+            return "default";
+        }
+
+        return switch (p.getType()) {
+            case LOCAL -> "default";
+            case MINIO -> p.getMinio() != null && p.getMinio().getBucket() != null
+                          ? p.getMinio().getBucket()
+                          : "default";
+            case OSS -> p.getOss() != null && p.getOss().getBucket() != null
+                        ? p.getOss().getBucket()
+                        : "default";
+            case RUSTFS -> p.getRustfs() != null && p.getRustfs().getBucket() != null
+                           ? p.getRustfs().getBucket()
+                           : "default";
+        };
+    }
+
+    private StorageRef toStorageRef(String storagePath) {
+
+        String normalized = storagePath == null ? "" : storagePath.strip();
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+
+        if (pathManager.getStorageProperties().getType() == com.dev.lib.storage.domain.model.StorageType.LOCAL) {
+            int idx = normalized.indexOf('/');
+            if (idx > 0 && idx < normalized.length() - 1) {
+                return new StorageRef(normalized.substring(0, idx), normalized.substring(idx + 1));
+            }
+        }
+
+        return new StorageRef(defaultBucket(), normalized);
+    }
+
+    private record StorageRef(String bucket, String objectKey) {}
 
 }

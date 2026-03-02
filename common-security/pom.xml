@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.dev.lib</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.4.0</version>
+        <version>1.4.1</version>
     </parent>
 
     <artifactId>common-security</artifactId>
@@ -20,6 +20,11 @@
             <groupId>com.dev.lib</groupId>
             <artifactId>common-data-jpa</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
