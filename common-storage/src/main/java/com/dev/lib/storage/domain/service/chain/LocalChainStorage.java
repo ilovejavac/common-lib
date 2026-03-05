@@ -61,10 +61,8 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         Files.createDirectories(targetPath.getParent());
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-        // 同步数据库记录
-        saveFileRecord(bucketName, objectKey, targetPath.toString(), file.getSize());
-
-        return objectKey;
+        // 同步数据库记录并返回 bizId
+        return saveFileRecord(bucketName, objectKey, targetPath.toString(), file.getSize());
     }
 
     @Override
@@ -75,10 +73,8 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         Files.createDirectories(targetPath.getParent());
         long size = Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-        // 同步数据库记录
-        saveFileRecord(bucketName, objectKey, targetPath.toString(), size);
-
-        return objectKey;
+        // 同步数据库记录并返回 bizId
+        return saveFileRecord(bucketName, objectKey, targetPath.toString(), size);
     }
 
     @Override
@@ -120,10 +116,8 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         long size = Files.size(sourcePath);
         Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-        // 同步数据库记录
-        saveFileRecord(bucketName, targetKey, targetPath.toString(), size);
-
-        return targetKey;
+        // 同步数据库记录并返回 bizId
+        return saveFileRecord(bucketName, targetKey, targetPath.toString(), size);
     }
 
     @Override
@@ -134,11 +128,9 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         Files.writeString(filePath, content, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 
-        // 更新数据库记录
+        // 更新数据库记录并返回 bizId
         long newSize = Files.size(filePath);
-        updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
-
-        return objectKey;
+        return updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
     }
 
     @Override
@@ -148,11 +140,9 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         Files.createDirectories(filePath.getParent());
         Files.write(filePath, bytes, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 
-        // 更新数据库记录
+        // 更新数据库记录并返回 bizId
         long newSize = Files.size(filePath);
-        updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
-
-        return objectKey;
+        return updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
     }
 
     @Override
@@ -163,10 +153,8 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         Files.writeString(filePath, content, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
-        // 同步数据库记录
-        saveFileRecord(bucketName, objectKey, filePath.toString(), (long) content.getBytes(StandardCharsets.UTF_8).length);
-
-        return objectKey;
+        // 同步数据库记录并返回 bizId
+        return saveFileRecord(bucketName, objectKey, filePath.toString(), (long) content.getBytes(StandardCharsets.UTF_8).length);
     }
 
     @Override
@@ -176,10 +164,8 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         Files.createDirectories(filePath.getParent());
         Files.write(filePath, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
-        // 同步数据库记录
-        saveFileRecord(bucketName, objectKey, filePath.toString(), (long) bytes.length);
-
-        return objectKey;
+        // 同步数据库记录并返回 bizId
+        return saveFileRecord(bucketName, objectKey, filePath.toString(), (long) bytes.length);
     }
 
     @Override
@@ -209,11 +195,9 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
             Files.createDirectories(filePath.getParent());
             Files.move(tempPath, filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // 更新数据库记录
+            // 更新数据库记录并返回 bizId
             long newSize = Files.size(filePath);
-            updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
-
-            return objectKey;
+            return updateFileRecord(bucketName, objectKey, filePath.toString(), newSize);
         } catch (Exception e) {
             throw new IOException("Local replaceLines failed", e);
         } finally {

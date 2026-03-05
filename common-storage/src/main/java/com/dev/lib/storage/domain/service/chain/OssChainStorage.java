@@ -65,16 +65,12 @@ public class OssChainStorage extends AbstractChainStorage implements ChainStorag
     @Transactional(rollbackFor = Exception.class)
     public String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
         ensureBucketExists(bucketName);
-        // 读取 InputStream 到字节数组以获取大小（参考历史 commit 12536ee）
-        byte[] bytes = inputStream.readAllBytes();
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentLength(bytes.length);
-        ossClient.putObject(bucketName, objectKey, new ByteArrayInputStream(bytes), metadata);
+        // 流式上传，不预先读取内容到内存
+        ossClient.putObject(bucketName, objectKey, inputStream);
 
-        // 同步数据库记录
-        saveFileRecord(bucketName, objectKey, (long) bytes.length);
-
-        return objectKey;
+        // 注意：由于未读取文件内容，无法获取文件大小
+        // 将保存记录但 size 为 null，并返回 bizId
+        return saveFileRecord(bucketName, objectKey, null);
     }
 
     @Override
@@ -119,11 +115,9 @@ public class OssChainStorage extends AbstractChainStorage implements ChainStorag
         try {
             ossClient.copyObject(bucketName, sourceKey, bucketName, targetKey);
 
-            // 获取源文件大小并同步数据库记录
+            // 获取源文件大小并同步数据库记录，返回 bizId
             ObjectMetadata metadata = ossClient.getObjectMetadata(bucketName, sourceKey);
-            saveFileRecord(bucketName, targetKey, metadata.getContentLength());
-
-            return targetKey;
+            return saveFileRecord(bucketName, targetKey, metadata.getContentLength());
         } catch (Exception e) {
             throw new IOException("OSS copy failed", e);
         }
@@ -159,10 +153,8 @@ public class OssChainStorage extends AbstractChainStorage implements ChainStorag
             appendRequest.setPosition(position);
             ossClient.appendObject(appendRequest);
 
-            // 更新数据库记录
-            saveFileRecord(bucketName, objectKey, position + bytes.length);
-
-            return objectKey;
+            // 更新数据库记录并返回 bizId
+            return saveFileRecord(bucketName, objectKey, position + bytes.length);
         } catch (Exception e) {
             throw new IOException("OSS append failed", e);
         }
@@ -182,10 +174,8 @@ public class OssChainStorage extends AbstractChainStorage implements ChainStorag
         metadata.setContentLength(bytes.length);
         ossClient.putObject(bucketName, objectKey, new ByteArrayInputStream(bytes), metadata);
 
-        // 同步数据库记录
-        saveFileRecord(bucketName, objectKey, (long) bytes.length);
-
-        return objectKey;
+        // 同步数据库记录并返回 bizId
+        return saveFileRecord(bucketName, objectKey, (long) bytes.length);
     }
 
     @Override
@@ -222,10 +212,8 @@ public class OssChainStorage extends AbstractChainStorage implements ChainStorag
                 ossClient.putObject(bucketName, objectKey, is);
             }
 
-            // 更新数据库记录
-            saveFileRecord(bucketName, objectKey, fileSize);
-
-            return objectKey;
+            // 更新数据库记录并返回 bizId
+            return saveFileRecord(bucketName, objectKey, fileSize);
         } catch (Exception e) {
             throw new IOException("OSS replaceLines failed", e);
         } finally {

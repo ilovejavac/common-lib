@@ -32,14 +32,16 @@ public abstract class AbstractChainStorage {
      * @param objectKey   对象键
      * @param storagePath 存储路径
      * @param size        文件大小
+     * @return SysFile 的 bizId
      */
-    protected void saveFileRecord(String bucketName, String objectKey, String storagePath, Long size) {
+    protected String saveFileRecord(String bucketName, String objectKey, String storagePath, Long size) {
 
         String serviceName = serviceNameProvider.currentServiceName();
         String virtualPath = bucketName + "/" + objectKey;
         String parentPath = extractParentPath(virtualPath);
 
         Optional<SysFile> existing = fileRepository.findByVirtualPath(serviceName, virtualPath);
+        SysFile savedFile;
         if (existing.isPresent()) {
             // 更新现有记录
             SysFile file = existing.get();
@@ -50,7 +52,7 @@ public abstract class AbstractChainStorage {
             if (file.getServiceName() == null || file.getServiceName().isBlank()) {
                 file.setServiceName(serviceNameProvider.currentServiceName());
             }
-            fileRepository.save(file);
+            savedFile = fileRepository.save(file);
         } else {
             // 创建新记录
             SysFile file = new SysFile();
@@ -67,8 +69,9 @@ public abstract class AbstractChainStorage {
             file.setHidden(extractFileName(objectKey).startsWith("."));
             file.setExtension(extractExtension(objectKey));
             file.setServiceName(serviceNameProvider.currentServiceName());
-            fileRepository.save(file);
+            savedFile = fileRepository.save(file);
         }
+        return savedFile.getBizId();
     }
 
     /**
@@ -78,11 +81,12 @@ public abstract class AbstractChainStorage {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param size       文件大小
+     * @return SysFile 的 bizId
      */
-    protected void saveFileRecord(String bucketName, String objectKey, Long size) {
+    protected String saveFileRecord(String bucketName, String objectKey, Long size) {
 
         String virtualPath = bucketName + "/" + objectKey;
-        saveFileRecord(bucketName, objectKey, virtualPath, size);
+        return saveFileRecord(bucketName, objectKey, virtualPath, size);
     }
 
     /**
@@ -92,8 +96,9 @@ public abstract class AbstractChainStorage {
      * @param objectKey   对象键
      * @param storagePath 存储路径
      * @param newSize     新文件大小
+     * @return SysFile 的 bizId
      */
-    protected void updateFileRecord(String bucketName, String objectKey, String storagePath, long newSize) {
+    protected String updateFileRecord(String bucketName, String objectKey, String storagePath, long newSize) {
 
         String serviceName = serviceNameProvider.currentServiceName();
         String virtualPath = bucketName + "/" + objectKey;
@@ -103,10 +108,11 @@ public abstract class AbstractChainStorage {
             SysFile file = existing.get();
             file.setStoragePath(storagePath);
             file.setSize(newSize);
-            fileRepository.save(file);
+            SysFile savedFile = fileRepository.save(file);
+            return savedFile.getBizId();
         } else {
             // 如果记录不存在，创建新记录
-            saveFileRecord(bucketName, objectKey, storagePath, newSize);
+            return saveFileRecord(bucketName, objectKey, storagePath, newSize);
         }
     }
 

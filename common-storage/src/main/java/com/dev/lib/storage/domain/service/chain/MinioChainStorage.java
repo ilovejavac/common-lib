@@ -79,10 +79,8 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                             .build()
             );
 
-            // 同步数据库记录
-            saveFileRecord(bucketName, objectKey, file.getSize());
-
-            return objectKey;
+            // 同步数据库记录并返回 bizId
+            return saveFileRecord(bucketName, objectKey, file.getSize());
         } catch (Exception e) {
             throw new IOException("MinIO upload failed", e);
         }
@@ -93,19 +91,17 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
     public String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
         ensureBucketExists(bucketName);
         try {
-            byte[] bytes = inputStream.readAllBytes();
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(bucketName)
                             .object(objectKey)
-                            .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
+                            .stream(inputStream, -1, -1)  // 流式上传，大小未知
                             .build()
             );
 
-            // 同步数据库记录
-            saveFileRecord(bucketName, objectKey, (long) bytes.length);
-
-            return objectKey;
+            // 注意：由于未知文件大小，无法同步数据库记录的 size 字段
+            // 将保存记录但 size 为 null，并返回 bizId
+            return saveFileRecord(bucketName, objectKey, null);
         } catch (Exception e) {
             throw new IOException("MinIO upload failed", e);
         }
@@ -174,13 +170,11 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                             .build()
             );
 
-            // 获取源文件大小并同步数据库记录
+            // 获取源文件大小并同步数据库记录，返回 bizId
             StatObjectResponse stat = minioClient.statObject(
                     StatObjectArgs.builder().bucket(bucketName).object(sourceKey).build()
             );
-            saveFileRecord(bucketName, targetKey, stat.size());
-
-            return targetKey;
+            return saveFileRecord(bucketName, targetKey, stat.size());
         } catch (Exception e) {
             throw new IOException("MinIO copy failed", e);
         }
@@ -240,8 +234,8 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                                 .build()
                 );
 
-                // 更新数据库记录
-                saveFileRecord(bucketName, objectKey, originalSize + bytes.length);
+                // 更新数据库记录并返回 bizId
+                return saveFileRecord(bucketName, objectKey, originalSize + bytes.length);
             } else {
                 minioClient.putObject(
                         PutObjectArgs.builder()
@@ -257,11 +251,9 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                                 .build()
                 );
 
-                // 创建数据库记录
-                saveFileRecord(bucketName, objectKey, (long) bytes.length);
+                // 创建数据库记录并返回 bizId
+                return saveFileRecord(bucketName, objectKey, (long) bytes.length);
             }
-
-            return objectKey;
         } catch (Exception e) {
             throw new IOException("MinIO append failed", e);
         }
@@ -286,10 +278,8 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                             .build()
             );
 
-            // 同步数据库记录
-            saveFileRecord(bucketName, objectKey, (long) bytes.length);
-
-            return objectKey;
+            // 同步数据库记录并返回 bizId
+            return saveFileRecord(bucketName, objectKey, (long) bytes.length);
         } catch (Exception e) {
             throw new IOException("MinIO write failed", e);
         }
@@ -339,10 +329,8 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                 );
             }
 
-            // 更新数据库记录
-            saveFileRecord(bucketName, objectKey, fileSize);
-
-            return objectKey;
+            // 更新数据库记录并返回 bizId
+            return saveFileRecord(bucketName, objectKey, fileSize);
         } catch (Exception e) {
             throw new IOException("MinIO replaceLines failed", e);
         } finally {

@@ -19,7 +19,7 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param file       MultipartFile 文件
-     * @return 对象键
+     * @return SysFile 的 bizId
      * @throws IOException 上传失败
      */
     String upload(String bucketName, String objectKey, MultipartFile file) throws IOException;
@@ -30,7 +30,7 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param inputStream 输入流
-     * @return 对象键
+     * @return SysFile 的 bizId
      * @throws IOException 上传失败
      */
     String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException;
@@ -69,7 +69,7 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param sourceKey  源对象键
      * @param targetKey  目标对象键
-     * @return 目标对象键
+     * @return SysFile 的 bizId
      * @throws IOException 复制失败
      */
     String copy(String bucketName, String sourceKey, String targetKey) throws IOException;
@@ -80,7 +80,7 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param content    追加的内容
-     * @return 对象键
+     * @return SysFile 的 bizId
      * @throws IOException 追加失败
      */
     String append(String bucketName, String objectKey, String content) throws IOException;
@@ -91,7 +91,7 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param bytes      追加的字节数组
-     * @return 对象键
+     * @return SysFile 的 bizId
      * @throws IOException 追加失败
      */
     String appendBytes(String bucketName, String objectKey, byte[] bytes) throws IOException;
@@ -102,7 +102,7 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param content    写入的内容
-     * @return 对象键
+     * @return SysFile 的 bizId
      * @throws IOException 写入失败
      */
     String write(String bucketName, String objectKey, String content) throws IOException;
@@ -113,7 +113,7 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param bytes      写入的字节数组
-     * @return 对象键
+     * @return SysFile 的 bizId
      * @throws IOException 写入失败
      */
     String writeBytes(String bucketName, String objectKey, byte[] bytes) throws IOException;
@@ -124,7 +124,7 @@ public interface ChainStorageService {
      * @param bucketName  桶名称
      * @param objectKey   对象键
      * @param transformer 行转换器
-     * @return 对象键
+     * @return SysFile 的 bizId
      * @throws IOException 替换失败
      */
     String replaceLines(String bucketName, String objectKey, Storage.LineTransformer transformer) throws IOException;

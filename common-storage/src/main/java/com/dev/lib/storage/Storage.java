@@ -194,7 +194,7 @@ public class Storage implements InitializingBean {
          * 写入 MultipartFile（覆盖/新建）
          *
          * @param file MultipartFile 文件
-         * @return 对象键
+         * @return SysFile 的 bizId
          * @throws java.io.IOException 写入失败
          */
         public String write(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
@@ -206,7 +206,7 @@ public class Storage implements InitializingBean {
          * 写入输入流（覆盖/新建）
          *
          * @param inputStream 输入流
-         * @return 对象键
+         * @return SysFile 的 bizId
          * @throws java.io.IOException 写入失败
          */
         public String write(InputStream inputStream) throws java.io.IOException {
@@ -218,7 +218,7 @@ public class Storage implements InitializingBean {
          * 写入字符串（覆盖/新建）
          *
          * @param content 字符串内容
-         * @return 对象键
+         * @return SysFile 的 bizId
          * @throws java.io.IOException 写入失败
          */
         public String write(String content) throws java.io.IOException {
@@ -230,7 +230,7 @@ public class Storage implements InitializingBean {
          * 写入字节数组（覆盖/新建）
          *
          * @param bytes 字节数组
-         * @return 对象键
+         * @return SysFile 的 bizId
          * @throws java.io.IOException 写入失败
          */
         public String write(byte[] bytes) throws java.io.IOException {
@@ -242,7 +242,7 @@ public class Storage implements InitializingBean {
          * 追加字符串到文件
          *
          * @param content 追加的内容
-         * @return 对象键
+         * @return SysFile 的 bizId
          * @throws java.io.IOException 追加失败
          */
         public String append(String content) throws java.io.IOException {
@@ -254,7 +254,7 @@ public class Storage implements InitializingBean {
          * 追加字节数组到文件
          *
          * @param bytes 追加的字节数组
-         * @return 对象键
+         * @return SysFile 的 bizId
          * @throws java.io.IOException 追加失败
          */
         public String append(byte[] bytes) throws java.io.IOException {
@@ -300,7 +300,7 @@ public class Storage implements InitializingBean {
          * 复制文件到目标路径
          *
          * @param targetObjectKey 目标对象键
-         * @return 目标对象键
+         * @return SysFile 的 bizId
          * @throws java.io.IOException 复制失败
          */
         public String copy(String targetObjectKey) throws java.io.IOException {
@@ -312,7 +312,7 @@ public class Storage implements InitializingBean {
          * 按行替换文件内容
          *
          * @param transformer 行转换器
-         * @return 对象键
+         * @return SysFile 的 bizId
          * @throws java.io.IOException 替换失败
          */
         public String replaceLines(LineTransformer transformer) throws java.io.IOException {
