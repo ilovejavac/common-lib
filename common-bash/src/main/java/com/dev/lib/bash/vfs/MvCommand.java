@@ -20,7 +20,8 @@ public class MvCommand extends VfsCommand<Void> {
         String srcPath = parsed.getString(0);
         String destPath = parsed.getString(1);
 
-        Vfs.move(toVfsContext(ctx), srcPath, destPath);
+        Vfs.context(toVfsContext(ctx)).mv(srcPath, destPath);
+//        Vfs.move(toVfsContext(ctx), srcPath, destPath);
         return null;
     }
 }

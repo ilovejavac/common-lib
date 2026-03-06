@@ -19,7 +19,7 @@ public class TouchCommand extends VfsCommand<Void> {
 
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
-            Vfs.touchFile(toVfsContext(ctx), path);
+            Vfs.context(toVfsContext(ctx)).file(path).touch();
         }
 
         return null;

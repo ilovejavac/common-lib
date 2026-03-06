@@ -21,7 +21,7 @@ public class CpCommand extends VfsCommand<Void> {
         String srcPath = parsed.getString(0);
         String destPath = parsed.getString(1);
 
-        Vfs.copy(toVfsContext(ctx), srcPath, destPath, recursive);
+        Vfs.context(toVfsContext(ctx)).cp(srcPath, destPath, recursive);
         return null;
     }
 }

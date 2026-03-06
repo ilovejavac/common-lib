@@ -45,7 +45,7 @@ public class CatCommand extends VfsCommand<String> {
             String path = parsed.getString(i);
 
             if (startLine > 1 || lineCount != -1) {
-                List<String> lines = Vfs.readLines(ctx, path, startLine, lineCount);
+                List<String> lines = Vfs.context(ctx).file(path).readLines(startLine, lineCount);
                 int lineNum = startLine;
                 for (String line : lines) {
                     if (showLineNumbers) {
@@ -55,7 +55,7 @@ public class CatCommand extends VfsCommand<String> {
                     }
                 }
             } else {
-                try (InputStream is = Vfs.openFile(ctx, path);
+                try (InputStream is = Vfs.context(ctx).file(path).open();
                      BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
                     String line;

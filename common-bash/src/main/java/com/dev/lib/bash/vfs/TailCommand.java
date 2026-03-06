@@ -33,7 +33,7 @@ public class TailCommand extends VfsCommand<String> {
 
         String path = parsed.getString(0);
 
-        try (InputStream is = Vfs.openFile(toVfsContext(ctx), path);
+        try (InputStream is = Vfs.context(toVfsContext(ctx)).file(path).open();
              BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
             String[] buffer = new String[lines];

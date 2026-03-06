@@ -22,7 +22,7 @@ public class RmCommand extends VfsCommand<Void> {
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
             try {
-                Vfs.delete(toVfsContext(ctx), path, recursive);
+                Vfs.context(toVfsContext(ctx)).rm(path, recursive);
             } catch (IllegalArgumentException e) {
                 if (!force || !e.getMessage().contains("not found")) {
                     throw e;
