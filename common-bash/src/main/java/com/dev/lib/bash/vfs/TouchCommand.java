@@ -1,4 +1,4 @@
-package com.dev.lib.storage.domain.command.vfs;
+package com.dev.lib.bash.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
@@ -6,17 +6,11 @@ import com.dev.lib.storage.Vfs;
 /**
  * touch 命令
  */
-public class TouchCommand extends VfsCommandBase {
-
-    public TouchCommand() {
-
-        super();
-    }
+public class TouchCommand extends VfsCommand<Void> {
 
     @Override
-    public Object execute(ExecuteContext ctx) {
-
-        String[]   args   = parseArgs(ctx.getCommand());
+    public Void execute(ExecuteContext ctx) {
+        String[] args = parseArgs(ctx.getCommand());
         ParsedArgs parsed = parseArgs(args);
 
         if (parsed.positionalCount() == 0) {
@@ -30,5 +24,4 @@ public class TouchCommand extends VfsCommandBase {
 
         return null;
     }
-
 }

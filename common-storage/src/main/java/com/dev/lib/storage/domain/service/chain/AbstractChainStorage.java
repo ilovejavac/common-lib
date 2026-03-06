@@ -1,17 +1,26 @@
 package com.dev.lib.storage.domain.service.chain;
 
 import com.dev.lib.storage.config.AppStorageProperties;
-import com.dev.lib.storage.data.FileSystemRepository;
+import com.dev.lib.storage.data.VfsPathRepository;
 import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
+import com.dev.lib.storage.domain.service.write.SysFileCowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Optional;
 
 /**
  * ChainStorage 抽象基类
  * 提供数据库同步的通用逻辑
+ *
+ * 重构说明：
+ * - 使用统一的 SysFileCowService 处理 COW 逻辑
+ * - Storage 和 VFS 共享相同的版本管理机制
+ * - 解决并发写入导致的文件丢失问题
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -19,14 +28,16 @@ public abstract class AbstractChainStorage {
 
     protected final AppStorageProperties fileProperties;
 
-    protected final FileSystemRepository fileRepository;
+    protected final VfsPathRepository fileRepository;
 
     protected final StorageServiceNameProvider serviceNameProvider;
 
-    // ==================== 数据库同步辅助方法 ====================
+    protected final SysFileCowService sysFileCowService;  // 统一 COW 服务
+
+    // ==================== 数据库同步辅助方法（带 COW）====================
 
     /**
-     * 保存文件记录到数据库（如果已存在则更新）
+     * 保存文件记录到数据库（如果已存在则使用 COW 更新）
      *
      * @param bucketName  桶名称
      * @param objectKey   对象键
@@ -40,15 +51,28 @@ public abstract class AbstractChainStorage {
         String virtualPath = bucketName + "/" + objectKey;
         String parentPath = extractParentPath(virtualPath);
 
-        Optional<SysFile> existing = fileRepository.findByVirtualPath(serviceName, virtualPath);
+        Optional<SysFile> existing = fileRepository.findByVirtualPathForUpdate(serviceName, virtualPath);
         SysFile savedFile;
+
         if (existing.isPresent()) {
-            // 更新现有记录
+            // 文件已存在，使用 COW 更新
             SysFile file = existing.get();
-            file.setStoragePath(storagePath);
-            if (size != null) {
-                file.setSize(size);
+
+            // 使用统一的 COW 逻辑（通过模拟 InputStream）
+            try (InputStream dummyStream = new ByteArrayInputStream(new byte[0])) {
+                String fileName = extractFileName(objectKey);
+                // 注意：这里 storagePath 是已经上传好的路径，不需要再次上传
+                // 直接应用 COW 逻辑
+                applyCOWForExistingFile(file, storagePath, size != null ? size : -1);
+            } catch (IOException e) {
+                log.warn("Failed to apply COW for file: {}", virtualPath, e);
+                // 降级：直接覆盖
+                file.setStoragePath(storagePath);
+                if (size != null) {
+                    file.setSize(size);
+                }
             }
+
             if (file.getServiceName() == null || file.getServiceName().isBlank()) {
                 file.setServiceName(serviceNameProvider.currentServiceName());
             }
@@ -72,6 +96,36 @@ public abstract class AbstractChainStorage {
             savedFile = fileRepository.save(file);
         }
         return savedFile.getBizId();
+    }
+
+    /**
+     * 为已存在的文件应用 COW 逻辑
+     * 注意：storagePath 已经是上传后的路径，不需要再次上传
+     */
+    private void applyCOWForExistingFile(SysFile file, String newStoragePath, long newSize) {
+        String oldStoragePath = file.getStoragePath();
+
+        // 先添加旧版本（如果启用了 COW）
+        if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
+            sysFileCowService.addOldVersion(file, oldStoragePath);
+        }
+
+        // 更新 storagePath 和 size
+        file.setStoragePath(newStoragePath);
+        if (newSize >= 0) {
+            file.setSize(newSize);
+        }
+    }
+
+    /**
+     * 检查是否启用 COW
+     */
+    private boolean isCOWEnabled() {
+        if (fileProperties.getVfs() == null) {
+            return true;
+        }
+        Boolean cowEnabled = fileProperties.getVfs().getCowEnabled();
+        return cowEnabled == null || cowEnabled;
     }
 
     /**

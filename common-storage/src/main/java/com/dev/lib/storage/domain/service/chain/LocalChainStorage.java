@@ -1,9 +1,10 @@
 package com.dev.lib.storage.domain.service.chain;
 
 import com.dev.lib.storage.config.AppStorageProperties;
-import com.dev.lib.storage.data.FileSystemRepository;
+import com.dev.lib.storage.data.VfsPathRepository;
 import com.dev.lib.storage.Storage;
 import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
+import com.dev.lib.storage.domain.service.write.SysFileCowService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -34,10 +35,11 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
 
     public LocalChainStorage(
             AppStorageProperties fileProperties,
-            FileSystemRepository fileRepository,
-            StorageServiceNameProvider serviceNameProvider
+            VfsPathRepository fileRepository,
+            StorageServiceNameProvider serviceNameProvider,
+            SysFileCowService sysFileCowService
     ) {
-        super(fileProperties, fileRepository, serviceNameProvider);
+        super(fileProperties, fileRepository, serviceNameProvider, sysFileCowService);
     }
 
     @Override

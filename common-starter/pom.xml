@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.dev.lib</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.4.1</version>
+        <version>1.4.2</version>
     </parent>
 
     <artifactId>common-starter</artifactId>
@@ -40,22 +40,6 @@
         <dependency>
             <groupId>com.dev.lib</groupId>
             <artifactId>common-excel</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-dict</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-storage</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-schedule</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.dev.lib</groupId>
-            <artifactId>common-local-task-message</artifactId>
         </dependency>
         <dependency>
             <groupId>com.dev.lib</groupId>

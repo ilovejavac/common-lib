@@ -90,6 +90,22 @@ public abstract class BashCommand<T extends Object> {
      */
     protected ParsedArgs parseArgs(String... args) {
 
+        return parseArgs(args, Set.of("n"), Set.of());
+    }
+
+    /**
+     * 解析参数为 Map（可指定哪些选项可带值）
+     *
+     * @param args 命令参数数组
+     * @param shortValueFlags 可带值的短选项（不带 '-'，如 n）
+     * @param longValueFlags 可带值的长选项（不带 '--'，如 depth）
+     */
+    protected ParsedArgs parseArgs(
+            String[] args,
+            Set<String> shortValueFlags,
+            Set<String> longValueFlags
+    ) {
+
         ParsedArgs parsed = new ParsedArgs();
 
         for (int i = 0; i < args.length; i++) {
@@ -102,8 +118,21 @@ public abstract class BashCommand<T extends Object> {
                 // 处理长选项（如 --depth 3）
                 if (arg.startsWith("--") && arg.length() > 2) {
                     String longFlag = arg.substring(2);
+
+                    // 支持 --key=value
+                    int equalIdx = longFlag.indexOf('=');
+                    if (equalIdx > 0 && equalIdx < longFlag.length() - 1) {
+                        String key = longFlag.substring(0, equalIdx);
+                        String raw = longFlag.substring(equalIdx + 1);
+                        Object value = tryParseValue(raw);
+                        parsed.options.put(key, value != null ? value : raw);
+                        continue;
+                    }
+
                     // 检查下一个参数是否是值
-                    if (i + 1 < args.length && !isOptionLike(args[i + 1])) {
+                    if (longValueFlags.contains(longFlag)
+                            && i + 1 < args.length
+                            && !isOptionLike(args[i + 1])) {
                         String nextArg = args[i + 1];
                         Object value = tryParseValue(nextArg);
                         if (value != null) {
@@ -122,9 +151,7 @@ public abstract class BashCommand<T extends Object> {
 
                 // 检查下一个参数是否是值（仅当最后一个标志是已知的"带值标志"时）
                 char lastFlag = flags.charAt(flags.length() - 1);
-                // -n: 带数值的标志（如 head/tail -n 10）
-                // 其他标志都是布尔值
-                boolean canTakeValue = (lastFlag == 'n');
+                boolean canTakeValue = shortValueFlags.contains(String.valueOf(lastFlag));
 
                 if (canTakeValue && i + 1 < args.length && !isOptionLike(args[i + 1])) {
                     String nextArg = args[i + 1];

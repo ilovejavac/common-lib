@@ -9,6 +9,7 @@ import com.dev.lib.storage.domain.service.virtual.directory.VfsDirectoryService;
 import com.dev.lib.storage.domain.service.virtual.path.VfsPathResolver;
 import com.dev.lib.storage.domain.service.virtual.repository.VfsFileRepository;
 import com.dev.lib.storage.domain.service.virtual.storage.VfsFileStorageService;
+import com.dev.lib.storage.domain.service.write.SysFileCowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,15 +24,15 @@ import java.util.List;
 /**
  * VFS 版本管理器
  * 负责文件的版本管理和 COW（写时复制）操作
+ *
+ * 重构说明：
+ * - 使用统一的 SysFileCowService 处理 COW 逻辑
+ * - 保留 VFS 特定的业务逻辑（临时文件、目录管理等）
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class VfsVersionManager {
-
-    private static final int MAX_OLD_VERSIONS   = 10;
-
-    private static final int VERSIONS_TO_DELETE = 5;
 
     private static final long DEFAULT_TEMP_TTL_MINUTES = 60L;
 
@@ -46,6 +47,8 @@ public class VfsVersionManager {
     private final AppStorageProperties storageProperties;
 
     private final StorageServiceNameProvider serviceNameProvider;
+
+    private final SysFileCowService sysFileCowService;  // 统一 COW 服务
 
     // ==================== 文件创建 ====================
 
@@ -85,49 +88,36 @@ public class VfsVersionManager {
 
     /**
      * 执行带 COW 的写入操作
+     * 重构：使用统一的 SysFileCowService
      */
     @Transactional(rollbackFor = Exception.class)
     public void writeWithCOW(VfsContext ctx, SysFile file, InputStream contentStream, long size, String fullPath) throws IOException {
 
-        String oldStoragePath = file.getStoragePath();
-        String newStoragePath = storageService.upload(contentStream, pathResolver.getName(fullPath), null);
+        String fileName = pathResolver.getName(fullPath);
 
-        updateFileWithVersioning(file, newStoragePath, size, oldStoragePath);
+        // 使用统一的 COW 写入服务
+        sysFileCowService.writeWithCOW(file, contentStream, size, fileName);
+
+        // 应用 VFS 特定的元数据
         if (file.getServiceName() == null || file.getServiceName().isBlank()) {
             file.setServiceName(serviceNameProvider.resolve(ctx));
         }
         applyTemporaryMetadataForUpdate(file, ctx);
+
         fileRepository.save(file);
     }
 
     /**
      * 追加内容到文件
+     * 重构：使用统一的 SysFileCowService
      */
     @Transactional(rollbackFor = Exception.class)
     public void appendContent(SysFile file, byte[] contentBytes, String fullPath) throws IOException {
 
-        String oldStoragePath = file.getStoragePath();
-        String newStoragePath = storageService.appendAndUpload(
-                file.getStoragePath(),
-                contentBytes,
-                pathResolver.getName(fullPath)
-        );
+        String fileName = pathResolver.getName(fullPath);
 
-        long newSize = file.getSize() == null ? contentBytes.length : file.getSize() + contentBytes.length;
-        updateFileWithVersioning(file, newStoragePath, newSize, oldStoragePath);
-    }
-
-    /**
-     * 更新文件并管理旧版本
-     */
-    private void updateFileWithVersioning(SysFile file, String newStoragePath, long newSize, String oldStoragePath) {
-
-        file.setStoragePath(newStoragePath);
-        file.setSize(newSize);
-
-        if (oldStoragePath != null && !oldStoragePath.equals(newStoragePath)) {
-            manageOldVersions(file, oldStoragePath);
-        }
+        // 使用统一的 COW 写入服务
+        sysFileCowService.appendWithCOW(file, contentBytes, fileName);
 
         fileRepository.save(file);
     }
@@ -172,27 +162,6 @@ public class VfsVersionManager {
         }
 
         return LocalDateTime.now().plusMinutes(Math.max(ttlMinutes, 1L));
-    }
-
-    /**
-     * 管理旧版本文件
-     */
-    private void manageOldVersions(SysFile file, String oldStoragePath) {
-
-        List<String> oldPaths = file.getOldStoragePaths();
-        if (oldPaths == null) {
-            oldPaths = new ArrayList<>();
-        }
-
-        if (oldPaths.size() >= MAX_OLD_VERSIONS) {
-            List<String> toDelete = oldPaths.subList(0, VERSIONS_TO_DELETE);
-            storageService.deleteAll(new ArrayList<>(toDelete));
-            toDelete.clear();
-        }
-
-        oldPaths.add(oldStoragePath);
-        file.setOldStoragePaths(oldPaths);
-        file.setDeleteAfter(LocalDateTime.now().plusMinutes(5));
     }
 
     // ==================== 文件复制 ====================

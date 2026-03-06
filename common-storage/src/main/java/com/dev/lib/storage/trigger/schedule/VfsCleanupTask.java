@@ -1,7 +1,7 @@
 package com.dev.lib.storage.trigger.schedule;
 
 import com.dev.lib.storage.data.SysFile;
-import com.dev.lib.storage.data.SysFileRepository;
+import com.dev.lib.storage.data.SysFileBizIdRepository;
 import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
 import com.dev.lib.storage.domain.service.virtual.cleanup.VfsAsyncCleanupService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class VfsCleanupTask {
 
-    private final SysFileRepository      sysFileRepository;
+    private final SysFileBizIdRepository      sysFileRepository;
 
     private final VfsAsyncCleanupService asyncCleanupService;
 
@@ -38,13 +38,13 @@ public class VfsCleanupTask {
         String serviceName = serviceNameProvider.currentServiceName();
 
         List<SysFile> oldVersionFiles = sysFileRepository.loads(
-                new SysFileRepository.Query()
+                new SysFileBizIdRepository.Query()
                         .setServiceName(serviceName)
                         .setDeleteAfterLe(now)
         );
 
         List<SysFile> expiredTempFiles = sysFileRepository.loads(
-                new SysFileRepository.Query()
+                new SysFileBizIdRepository.Query()
                         .setServiceName(serviceName)
                         .setTemporary(true)
                         .setExpirationAtLe(now)

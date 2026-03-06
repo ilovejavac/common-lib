@@ -1,6 +1,6 @@
 package com.dev.lib.storage.domain.service.virtual.cleanup;
 
-import com.dev.lib.storage.data.SysFileRepository;
+import com.dev.lib.storage.data.SysFileBizIdRepository;
 import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
 import com.dev.lib.storage.domain.service.virtual.storage.VfsFileStorageService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class VfsAsyncCleanupService {
 
-    private final SysFileRepository sysFileRepository;
+    private final SysFileBizIdRepository sysFileRepository;
 
     private final VfsFileStorageService storageService;
 

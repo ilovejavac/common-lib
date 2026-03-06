@@ -1,4 +1,4 @@
-package com.dev.lib.storage.domain.command.vfs;
+package com.dev.lib.bash.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
@@ -6,19 +6,13 @@ import com.dev.lib.storage.Vfs;
 /**
  * mkdir 命令
  */
-public class MkdirCommand extends VfsCommandBase {
-
-    public MkdirCommand() {
-
-        super();
-    }
+public class MkdirCommand extends VfsCommand<Void> {
 
     @Override
-    public Object execute(ExecuteContext ctx) {
-
-        String[]   args          = parseArgs(ctx.getCommand());
-        ParsedArgs parsed        = parseArgs(args);
-        boolean    createParents = parsed.hasFlag("r");
+    public Void execute(ExecuteContext ctx) {
+        String[] args = parseArgs(ctx.getCommand());
+        ParsedArgs parsed = parseArgs(args);
+        boolean createParents = parsed.hasFlag("p") || parsed.hasFlag("r");
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("mkdir: missing operand");
@@ -31,5 +25,4 @@ public class MkdirCommand extends VfsCommandBase {
 
         return null;
     }
-
 }

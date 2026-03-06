@@ -1,38 +1,39 @@
-package com.dev.lib.storage.domain.command.vfs;
+package com.dev.lib.bash.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
-import com.dev.lib.storage.domain.model.VfsContext;
 import com.dev.lib.storage.Vfs;
+import com.dev.lib.storage.domain.model.VfsContext;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 
 /**
  * cat 命令
  */
-public class CatCommand extends VfsCommandBase {
-
-    public CatCommand() {
-
-        super();
-    }
+public class CatCommand extends VfsCommand<String> {
 
     @Override
-    public Object execute(ExecuteContext ctx) {
-
+    public String execute(ExecuteContext ctx) {
         String[] args = parseArgs(ctx.getCommand());
         return cat(toVfsContext(ctx), args);
     }
 
-    private Object cat(VfsContext ctx, String[] args) {
+    private String cat(VfsContext ctx, String[] args) {
+        ParsedArgs parsed = parseArgs(args, Set.of("n", "s", "c"), Set.of());
+        boolean showLineNumbers = parsed.hasFlag("n");
+        Integer startLine = parsed.getInt("s", 1);
+        Integer lineCount = parsed.getInt("c", -1);
 
-        ParsedArgs parsed          = parseArgs(args);
-        boolean    showLineNumbers = parsed.hasFlag("n");
-        Integer    startLine       = parsed.getInt("s", 1);
-        Integer    lineCount       = parsed.getInt("c", -1);
+        if (startLine == null || startLine < 1) {
+            throw new IllegalArgumentException("cat: invalid start line: " + startLine);
+        }
+        if (lineCount == null || lineCount < -1) {
+            throw new IllegalArgumentException("cat: invalid line count: " + lineCount);
+        }
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("cat: missing file operand");
@@ -44,8 +45,8 @@ public class CatCommand extends VfsCommandBase {
             String path = parsed.getString(i);
 
             if (startLine > 1 || lineCount != -1) {
-                List<String> lines   = Vfs.readLines(ctx, path, startLine, lineCount);
-                int          lineNum = startLine;
+                List<String> lines = Vfs.readLines(ctx, path, startLine, lineCount);
+                int lineNum = startLine;
                 for (String line : lines) {
                     if (showLineNumbers) {
                         result.append(String.format("%6d\t%s\n", lineNum++, line));
@@ -58,7 +59,7 @@ public class CatCommand extends VfsCommandBase {
                      BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
                     String line;
-                    int    lineNum = 1;
+                    int lineNum = 1;
                     while ((line = reader.readLine()) != null) {
                         if (showLineNumbers) {
                             result.append(String.format("%6d\t%s\n", lineNum++, line));
@@ -74,5 +75,4 @@ public class CatCommand extends VfsCommandBase {
 
         return result.toString();
     }
-
 }

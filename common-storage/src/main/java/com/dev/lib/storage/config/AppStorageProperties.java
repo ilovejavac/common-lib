@@ -90,6 +90,22 @@ public class AppStorageProperties {
          */
         private Long cleanupInitialDelayMs = 60000L;
 
+        /**
+         * 是否启用 COW（Copy-On-Write）机制
+         * 默认启用，禁用后写入操作将直接覆盖文件，不保留旧版本
+         *
+         * 启用 COW 的优点：
+         * - 并发安全：写入时不影响正在读取的旧版本
+         * - 版本管理：保留最多 10 个旧版本
+         * - 延迟删除：5 分钟后异步清理，防止并发读取失败
+         *
+         * 禁用 COW 的场景：
+         * - 不需要版本管理
+         * - 追求极致性能
+         * - 存储空间受限
+         */
+        private Boolean cowEnabled = true;
+
     }
 
 }

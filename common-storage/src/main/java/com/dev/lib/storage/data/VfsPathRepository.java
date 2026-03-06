@@ -8,7 +8,20 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface FileSystemRepository extends BaseRepository<SysFile> {
+/**
+ * VFS 虚拟路径查询 Repository
+ * 基于 virtualPath（虚拟路径）查询文件
+ *
+ * 使用场景：
+ * - VFS 文件系统：通过虚拟路径定位文件
+ * - Storage API：通过 bucket/objectKey 组合的虚拟路径查询
+ *
+ * 查询维度：
+ * - virtualPath：完整虚拟路径（如 "/bucket/file.txt"）
+ * - parentPath：父路径（如 "/bucket"）
+ * - virtualPathStartWith：路径前缀（用于目录查询）
+ */
+public interface VfsPathRepository extends BaseRepository<SysFile> {
 
     @Data
     class Query extends DslQuery<SysFile> {

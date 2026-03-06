@@ -11,7 +11,22 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface SysFileRepository extends BaseRepository<SysFile> {
+/**
+ * SysFile 业务 ID 查询 Repository
+ * 基于 bizId（业务 ID）查询文件
+ *
+ * 使用场景：
+ * - 适配器层：通过 bizId 定位文件
+ * - 清理任务：通过 deleteAfter、expirationAt 查询过期文件
+ * - 批量操作：通过 bizIdIn 批量查询/删除
+ *
+ * 查询维度：
+ * - bizId：业务 ID（主键）
+ * - deleteAfter：延迟删除时间（用于 COW 清理）
+ * - expirationAt：过期时间（用于临时文件清理）
+ * - temporary：是否临时文件
+ */
+public interface SysFileBizIdRepository extends BaseRepository<SysFile> {
 
     QSysFile q = QSysFile.sysFile;
 

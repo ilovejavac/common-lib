@@ -1,7 +1,7 @@
 package com.dev.lib.storage.domain.adapter;
 
 import com.dev.lib.storage.data.SysFile;
-import com.dev.lib.storage.data.SysFileRepository;
+import com.dev.lib.storage.data.SysFileBizIdRepository;
 import com.dev.lib.storage.data.SysFileToStorageFileMapper;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageFileToSysFileMapper;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class StorageFileAdapt implements StorageFileRepo {
 
-    private final SysFileRepository fileRepository;
+    private final SysFileBizIdRepository fileRepository;
 
     private final SysFileToStorageFileMapper storageFileMapper;
 

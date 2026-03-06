@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.dev.lib</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.4.1</version>
+        <version>1.4.2</version>
     </parent>
 
     <artifactId>common-bash</artifactId>
@@ -15,6 +15,10 @@
         <dependency>
             <groupId>com.dev.lib</groupId>
             <artifactId>common-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.dev.lib</groupId>
+            <artifactId>common-storage</artifactId>
         </dependency>
     </dependencies>
 
