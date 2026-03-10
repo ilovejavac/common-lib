@@ -293,4 +293,4 @@ void testVersionCleanup() {
 
 **重构完成时间**：2026-03-06
 **重构人员**：Claude Sonnet 4.6
-**版本**：v1.4.2
+**版本**：v1.4.3

@@ -52,8 +52,8 @@ public class SseEmitterManager {
                 TimeUnit.SECONDS
         );
         log.info(
-                "SSE initialized with timeout: {}ms, heartbeat: {}s",
-                sseProperties.getTimeout(), sseProperties.getHeartbeatInterval()
+                "SSE initialized with non-expiring connections, heartbeat: {}s",
+                sseProperties.getHeartbeatInterval()
         );
     }
 
@@ -71,7 +71,7 @@ public class SseEmitterManager {
             throw new IllegalStateException("Maximum SSE connections reached");
         }
 
-        SseEmitter emitter = new SseEmitter(sseProperties.getTimeout());
+        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         emitters.put(clientId, emitter);
 
         // 设置超时和完成回调
@@ -91,8 +91,8 @@ public class SseEmitterManager {
         });
 
         log.info(
-                "SSE connection created for client: {}, timeout: {}ms",
-                clientId, sseProperties.getTimeout()
+                "SSE connection created for client: {}, non-expiring",
+                clientId
         );
 
         sendConnected(clientId);

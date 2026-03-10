@@ -139,20 +139,39 @@ sm.fire(OrderEvent.SHIP);  // PAID -> SHIPPED
 #### 3.4 管道 Pipeline
 
 ```java
-// 定义处理管道
-Pipeline<String, String> pipeline = Pipeline.<String, String>builder()
-    .stage("validate", input -> {
-        if (input == null || input.isEmpty()) {
-            throw new IllegalArgumentException("Invalid input");
+// 上下文：承载中间状态与输出
+class TextPipelineContext extends PipeLineContext<String> {
+    private boolean valid = true;
+
+    public boolean isValid() { return valid; }
+
+    public void setValid(boolean valid) { this.valid = valid; }
+}
+
+// 定义处理管道（当前版本 API）
+Pipeline<String, TextPipelineContext, String> pipeline = Pipeline.<String, TextPipelineContext, String>builder()
+    .stage((input, ctx) -> {
+        if (input == null || input.isBlank()) {
+            ctx.setValid(false);
+            ctx.setOutput("INVALID");
+            ctx.terminate(); // 提前结束后续 stage
         }
-        return input;
     })
-    .stage("transform", String::toUpperCase)
-    .stage("prefix", input -> "PROCESSED: " + input)
+    .stage((input, ctx) -> {
+        if (ctx.isValid()) {
+            ctx.setOutput("PROCESSED: " + input.toUpperCase());
+        }
+    })
+    .refine(ctx -> {
+        if (ctx.getOutput() != null) {
+            ctx.setOutput(ctx.getOutput().trim());
+        }
+    })
+    .orElse("DEFAULT")
     .build();
 
 // 执行管道
-String result = pipeline.execute("hello");  // "PROCESSED: HELLO"
+String result = pipeline.execute("hello", new TextPipelineContext());  // "PROCESSED: HELLO"
 ```
 
 #### 3.5 规约模式 Specification

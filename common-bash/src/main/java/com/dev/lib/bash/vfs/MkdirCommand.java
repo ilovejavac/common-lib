@@ -10,19 +10,23 @@ public class MkdirCommand extends VfsCommand<Void> {
 
     @Override
     public Void execute(ExecuteContext ctx) {
-        String[] args = parseArgs(ctx.getCommand());
-        ParsedArgs parsed = parseArgs(args);
-        boolean createParents = parsed.hasFlag("p") || parsed.hasFlag("r");
+
+        String[]   args          = parseArgs(ctx.getCommand());
+        ParsedArgs parsed        = parseArgs(args);
+        boolean    createParents = parsed.hasFlag("p") || parsed.hasFlag("r");
 
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("mkdir: missing operand");
         }
 
+        Vfs.ContextBuilder root = Vfs.context(toVfsContext(ctx));
+
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
-            Vfs.createDirectory(toVfsContext(ctx), path, createParents);
+            root.mkdir(path, createParents);
         }
 
         return null;
     }
+
 }
