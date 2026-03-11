@@ -28,6 +28,7 @@ class AgentChatControllerTest {
     @BeforeEach
     void setUp() {
 
+        // 只组装控制器测试所需的最小依赖，避免把整个 Spring 容器拉起来。
         AgentProperties properties = new AgentProperties();
         AgentChatAppService appService = new AgentChatAppService(
                 new DefaultSessionManager(
@@ -48,6 +49,7 @@ class AgentChatControllerTest {
     }
 
     @Test
+    // 验证合法请求能够走完整个 HTTP 入参绑定和返回体序列化流程。
     void shouldAcceptValidChatRequest() throws Exception {
 
         mockMvc.perform(post("/api/agent/chat")
@@ -65,6 +67,7 @@ class AgentChatControllerTest {
     }
 
     @Test
+    // 验证空白 prompt 会被参数校验拦截，而不是继续进入应用层。
     void shouldRejectBlankPrompt() throws Exception {
 
         mockMvc.perform(post("/api/agent/chat")

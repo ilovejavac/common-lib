@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AgentSessionTest {
 
     @Test
+    // 验证新建会话的默认状态，确保后续状态流转有可信起点。
     void shouldStartIdleWhenCreated() {
 
         AgentSession session = AgentSession.create("s-1", Instant.parse("2026-03-11T00:00:00Z"));
@@ -21,6 +22,7 @@ class AgentSessionTest {
     }
 
     @Test
+    // 验证历史超限时只淘汰最旧的非系统消息，系统消息必须保留。
     void shouldTrimOldestNonSystemMessagesWhenHistoryExceedsLimit() {
 
         AgentSession session = AgentSession.create("s-1", Instant.parse("2026-03-11T00:00:00Z"));
@@ -37,6 +39,7 @@ class AgentSessionTest {
     }
 
     @Test
+    // 验证待处理队列达到上限后拒绝继续入队，避免内存和调度失控。
     void shouldRejectPendingMessageWhenQueueIsFull() {
 
         AgentSession session = AgentSession.create("s-1", Instant.parse("2026-03-11T00:00:00Z"));
@@ -51,6 +54,7 @@ class AgentSessionTest {
     }
 
     @Test
+    // 验证关闭后的会话不再接受新消息，避免终态对象被再次写入。
     void shouldRejectNewMessageWhenSessionClosed() {
 
         AgentSession session = AgentSession.create("s-1", Instant.parse("2026-03-11T00:00:00Z"));

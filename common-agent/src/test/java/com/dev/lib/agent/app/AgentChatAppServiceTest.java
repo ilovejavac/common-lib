@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AgentChatAppServiceTest {
 
     @Test
+    // 验证应用服务在立即执行模式下会清空待处理队列，并把会话状态恢复为空闲。
     void shouldDrainPendingQueueAfterImmediateExecution() {
 
         AgentProperties properties = new AgentProperties();

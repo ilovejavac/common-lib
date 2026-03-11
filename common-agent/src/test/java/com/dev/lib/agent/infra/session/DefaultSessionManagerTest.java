@@ -22,11 +22,13 @@ class DefaultSessionManagerTest {
     @BeforeEach
     void setUp() {
 
+        // 固定时间让测试结果稳定，避免断言受当前系统时间影响。
         Clock clock = Clock.fixed(Instant.parse("2026-03-11T00:00:00Z"), ZoneOffset.UTC);
         sessionManager = new DefaultSessionManager(new InMemorySessionRepository(), clock);
     }
 
     @Test
+    // 验证未提供 sessionId 时会自动创建新会话并保存到仓库。
     void shouldCreateNewSessionWhenSessionIdMissing() {
 
         AgentSession session = sessionManager.getOrCreate(null);
@@ -36,6 +38,7 @@ class DefaultSessionManagerTest {
     }
 
     @Test
+    // 验证同一个 sessionId 会复用已有会话，避免重复创建。
     void shouldReuseExistingSessionWhenSessionIdExists() {
 
         AgentSession created = sessionManager.getOrCreate("s-1");
@@ -45,6 +48,7 @@ class DefaultSessionManagerTest {
     }
 
     @Test
+    // 验证同一会话只能从空闲态成功进入运行态一次，防止重复抢占执行权。
     void shouldOnlyMarkRunningOnceForSameSession() {
 
         AgentSession session = sessionManager.getOrCreate("s-1");
@@ -55,6 +59,7 @@ class DefaultSessionManagerTest {
     }
 
     @Test
+    // 验证销毁会话后仓库中不再能查到它，避免悬挂数据残留。
     void shouldDestroySession() {
 
         AgentSession session = sessionManager.getOrCreate("s-1");

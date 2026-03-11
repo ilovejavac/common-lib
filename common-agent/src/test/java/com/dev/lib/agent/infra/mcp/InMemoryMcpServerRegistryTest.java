@@ -18,10 +18,12 @@ class InMemoryMcpServerRegistryTest {
     @BeforeEach
     void setUp() {
 
+        // 固定注册时间，确保时间相关字段在测试中可预测。
         registry = new InMemoryMcpServerRegistry(Clock.fixed(Instant.parse("2026-03-11T00:00:00Z"), ZoneOffset.UTC));
     }
 
     @Test
+    // 验证首次注册会写入完整的服务定义和默认状态。
     void shouldRegisterNewServer() {
 
         McpServerDefinition registered = registry.register("dw", "Data Warehouse", "http://localhost:8081/sse", "desc");
@@ -33,6 +35,7 @@ class InMemoryMcpServerRegistryTest {
     }
 
     @Test
+    // 验证相同 serverId 再次注册时会覆盖旧值，而不是产生重复记录。
     void shouldUpdateServerWhenRegisteringSameIdAgain() {
 
         registry.register("dw", "Data Warehouse", "http://localhost:8081/sse", "desc");
@@ -44,6 +47,7 @@ class InMemoryMcpServerRegistryTest {
     }
 
     @Test
+    // 验证列表查询能返回当前已注册的全部服务。
     void shouldListCurrentServers() {
 
         registry.register("dw", "DW", "http://localhost:8081/sse", "desc");
