@@ -1,8 +1,8 @@
 package com.dev.lib.cloud.filter;
 
-import com.alibaba.fastjson2.JSON;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
+import com.dev.lib.util.Jsons;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
@@ -14,10 +14,8 @@ public class UserContextProviderFilter implements Filter {
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
 
         try {
-            UserDetails user = JSON.parseObject(
-                    RpcContext.getServerAttachment().getAttachment("user"),
-                    UserDetails.class
-            );
+            String userJson = RpcContext.getServerAttachment().getAttachment("user");
+            UserDetails user = userJson == null ? null : Jsons.parse(userJson, UserDetails.class);
 
             if (user != null) {
                 // 恢复用户上下文，B 服务就能直接用 SecurityContextHolder.get()

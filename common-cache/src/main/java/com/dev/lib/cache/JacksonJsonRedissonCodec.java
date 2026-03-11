@@ -1,8 +1,6 @@
 package com.dev.lib.cache;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.JSONWriter;
+import com.dev.lib.util.Jsons;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
@@ -13,17 +11,13 @@ import org.redisson.client.protocol.Encoder;
 
 import java.io.IOException;
 
-public class FastJson2JsonRedissonSerializer extends BaseCodec {
+public class JacksonJsonRedissonCodec extends BaseCodec {
 
     private final Encoder encoder = in -> {
         ByteBuf out = ByteBufAllocator.DEFAULT.buffer();
         try {
             ByteBufOutputStream os = new ByteBufOutputStream(out);
-            JSON.writeTo(
-                    os,
-                    in,
-                    JSONWriter.Feature.WriteClassName
-            );
+            Jsons.writeWithType(os, in);
             return os.buffer();
         } catch (Exception e) {
             out.release();
@@ -31,10 +25,9 @@ public class FastJson2JsonRedissonSerializer extends BaseCodec {
         }
     };
 
-    private final Decoder<Object> decoder = (buf, state) -> JSON.parseObject(
+    private final Decoder<Object> decoder = (buf, state) -> Jsons.parseWithType(
             new ByteBufInputStream(buf),
-            Object.class,
-            JSONReader.Feature.SupportAutoType
+            Object.class
     );
 
     @Override
@@ -48,5 +41,4 @@ public class FastJson2JsonRedissonSerializer extends BaseCodec {
 
         return encoder;
     }
-
 }

@@ -1,11 +1,11 @@
 package com.dev.lib.web;
 
-import com.alibaba.fastjson2.JSON;
 import com.dev.lib.entity.id.IDWorker;
 import com.dev.lib.entity.id.IntEncoder;
 import com.dev.lib.security.util.ClientInfoExtractor;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
+import com.dev.lib.util.Jsons;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -113,7 +113,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             if (content.length > 0) {
                 try {
                     String body = new String(content, request.getCharacterEncoding());
-                    business.put("request_body", JSON.parse(body));
+                    business.put("request_body", Jsons.parse(body));
                     hasBusiness = true;
                 } catch (Exception e) {
                     business.put("request_body", new String(content, request.getCharacterEncoding()));

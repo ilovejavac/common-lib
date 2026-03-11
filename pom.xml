@@ -74,7 +74,6 @@
         <minio.version>8.6.0</minio.version>
         <oss.version>3.17.4</oss.version>
         <eclipse-collections.version>13.0.0</eclipse-collections.version>
-        <fastjson2.version>2.0.58</fastjson2.version>
         <jwt.version>0.12.6</jwt.version>
 
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
@@ -304,16 +303,6 @@
                 <version>${redisson.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.alibaba.fastjson2</groupId>
-                <artifactId>fastjson2</artifactId>
-                <version>${fastjson2.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.alibaba.fastjson2</groupId>
-                <artifactId>fastjson2-extension-spring6</artifactId>
-                <version>${fastjson2.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>io.minio</groupId>
                 <artifactId>minio</artifactId>
                 <version>${minio.version}</version>
@@ -469,10 +458,6 @@
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>com.alibaba.fastjson2</groupId>
-            <artifactId>fastjson2</artifactId>
-        </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib</artifactId>

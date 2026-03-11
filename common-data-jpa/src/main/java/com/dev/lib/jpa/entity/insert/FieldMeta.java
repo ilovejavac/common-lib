@@ -1,6 +1,6 @@
 package com.dev.lib.jpa.entity.insert;
 
-import com.alibaba.fastjson2.JSON;
+import com.dev.lib.util.Jsons;
 import lombok.Data;
 
 import java.lang.reflect.Field;
@@ -27,7 +27,7 @@ public class FieldMeta {
             if (value == null) return null;
 
             if (isJson) {
-                return JSON.toJSONString(value);
+                return Jsons.toJson(value);
             }
             if (isEnumString && value instanceof Enum<?> e) {
                 return e.name();

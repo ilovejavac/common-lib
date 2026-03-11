@@ -184,8 +184,8 @@ GET http://localhost:8080/healthz
 
 1. **自动配置**
    - `CommonAutoConfig`：核心自动配置
-   - `JacksonConfig`：JSON 序列化配置（FastJson2）
-   - `FastJson2Support`：FastJson2 集成
+   - `JacksonConfig`：JSON 序列化配置
+   - `Jsons`：统一静态 JSON 工具入口
 
 2. **响应模型**
    - `ServerResponse`：统一响应结构

@@ -1,12 +1,11 @@
 package com.dev.lib.security.domain;
 
 import cn.dev33.satoken.dao.auto.SaTokenDaoByStringFollowObject;
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.TypeReference;
 import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.security.model.TokenItem;
 import com.dev.lib.security.model.TokenType;
 import com.dev.lib.security.service.TokenManager;
+import com.dev.lib.util.Jsons;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -172,8 +171,7 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
         }
 
         try {
-            String json = JSON.toJSONString(object);
-            return JSON.parseObject(json, new TypeReference<>() {});
+            return Jsons.toMap(object);
         } catch (Exception e) {
             log.error("Failed to serialize object to metadata: {}", object.getClass(), e);
             return new HashMap<>();
@@ -191,10 +189,7 @@ public class DbSaTokenDao implements SaTokenDaoByStringFollowObject {
 
         try {
             if (metadata.containsKey("loginId") || metadata.containsKey("type")) {
-                return JSON.parseObject(
-                        JSON.toJSONString(metadata),
-                        cn.dev33.satoken.session.SaSession.class
-                );
+                return Jsons.convert(metadata, cn.dev33.satoken.session.SaSession.class);
             }
             return metadata;
         } catch (Exception e) {

@@ -1,9 +1,9 @@
 package com.dev.lib.jpa.entity.audit;
 
-import com.alibaba.fastjson2.JSON;
 import com.dev.lib.entity.audit.AuditAction;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.util.Dispatcher;
+import com.dev.lib.util.Jsons;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
 import jakarta.persistence.PostUpdate;
@@ -80,7 +80,7 @@ public class AuditListener {
     private String toJson(Object obj) {
 
         try {
-            return JSON.toJSONString(obj);
+            return Jsons.toJson(obj);
         } catch (Exception e) {
             return "{}";
         }

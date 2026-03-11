@@ -1,10 +1,10 @@
 package com.dev.lib.jpa.entity.log;
 
-import com.alibaba.fastjson2.JSON;
 import com.dev.lib.entity.log.OperateLog;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
 import com.dev.lib.util.Dispatcher;
+import com.dev.lib.util.Jsons;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,14 +50,14 @@ public class OperateLogAspect {
             Object[] filteredArgs = java.util.Arrays.stream(point.getArgs())
                     .filter(arg -> !(arg instanceof org.springframework.web.multipart.MultipartFile))
                     .toArray();
-            logger.setRequestParams(JSON.toJSONString(filteredArgs));
+            logger.setRequestParams(Jsons.toJson(filteredArgs));
         }
 
         try {
             Object result = point.proceed();
 
             if (operateLog.recordResult()) {
-                logger.setResult(JSON.toJSONString(result));
+                logger.setResult(Jsons.toJson(result));
             }
 
             logger.setSuccess(true);

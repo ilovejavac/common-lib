@@ -1,37 +1,30 @@
 package com.dev.lib.jpa.config;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.TypeReference;
-import com.dev.lib.config.FastJson2Support;
+import com.dev.lib.util.Jsons;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.format.FormatMapper;
-//import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
 
 @Slf4j
 @Configuration
 public class HibernateJsonConfig {
 
-
     @Bean
-    public HibernatePropertiesCustomizer hibernatePropertiesCustomizer(
-//            ObjectMapper objectMapper
-    ) {
+    public HibernatePropertiesCustomizer hibernatePropertiesCustomizer() {
 
         return properties -> properties.put(
                 "hibernate.type.json_format_mapper",
-//                new JacksonJsonFormatMapper(objectMapper)
-                new FastJson2FormatMapper()
+                new JacksonFormatMapper()
         );
     }
 
-    static class FastJson2FormatMapper implements FormatMapper {
+    @Slf4j
+    static class JacksonFormatMapper implements FormatMapper {
 
         @Override
         public <T> T fromString(
@@ -43,11 +36,14 @@ public class HibernateJsonConfig {
             if (charSequence == null) {
                 return null;
             }
-            return JSON.parseObject(
-                    charSequence.toString(),
-                    javaType.getJavaTypeClass(),
-                    FastJson2Support.READER_FEATURES
-            );
+            try {
+                return Jsons.parse(charSequence.toString(), javaType.getJavaTypeClass());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        "Failed to deserialize JSON for Hibernate type " + javaType.getJavaTypeClass().getName(),
+                        e
+                );
+            }
         }
 
         @Override
@@ -60,13 +56,14 @@ public class HibernateJsonConfig {
             if (value == null) {
                 return null;
             }
-            return JSON.toJSONString(
-                    value,
-                    FastJson2Support.VALUE_FILTER,
-                    FastJson2Support.WRITER_FEATURES
-            );
+            try {
+                return Jsons.toJson(value);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        "Failed to serialize JSON for Hibernate value type " + value.getClass().getName(),
+                        e
+                );
+            }
         }
-
     }
-
 }

@@ -1,8 +1,8 @@
 package com.dev.lib.notify.core;
 
-import com.alibaba.fastjson2.JSON;
 import com.dev.lib.notify.config.SseProperties;
 import com.dev.lib.notify.model.Message;
+import com.dev.lib.util.Jsons;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -131,7 +131,7 @@ public class SseEmitterManager {
 
         try {
             // 使用 topic 作为事件名称，message 只提供数据
-            String data = JSON.toJSONString(message.getData());
+            String data = Jsons.toJson(message.getData());
             emitter.send(SseEmitter.event()
                                  .name(topic)
                                  .data(data)

@@ -165,7 +165,7 @@ ServerResponse的结构为
 
 ### common-starter 说明
 
-- 修改了 web 序列化机制，默认使用 fastjson2进行返回序列化
+- 修改了 web 序列化机制，默认使用 Jackson / ObjectMapper 进行返回序列化
   - 修改了时间格式化
   - 修改了BigDecimal格式
   - 设置了 Long 丢失精度保护(超大 Long 会自动转 string)
