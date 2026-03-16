@@ -108,7 +108,7 @@ public class VfsBashCommand extends BashCommand<String> {
             if (isSystemPath(path)) continue;
 
             // 检查 VFS 中是否存在
-            if (Vfs.exists(vfsCtx, path)) {
+            if (Vfs.path(vfsCtx, path).exists()) {
                 paths.add(path);
             }
         }
@@ -140,7 +140,7 @@ public class VfsBashCommand extends BashCommand<String> {
         Map<String, FileSnapshot> snapshots = new HashMap<>();
 
         for (String vfsPath : vfsPaths) {
-            if (Vfs.isDirectory(vfsCtx, vfsPath)) {
+            if (Vfs.path(vfsCtx, vfsPath).isDirectory()) {
                 downloadDirectory(vfsCtx, vfsPath, tempDir, snapshots);
             } else {
                 downloadFile(vfsCtx, vfsPath, tempDir, snapshots);
@@ -159,7 +159,7 @@ public class VfsBashCommand extends BashCommand<String> {
         Files.createDirectories(localPath.getParent());
 
         // 流式下载
-        try (InputStream is = Vfs.openFile(vfsCtx, vfsPath)) {
+        try (InputStream is = Vfs.path(vfsCtx, vfsPath).cat().execute()) {
             Files.copy(is, localPath, StandardCopyOption.REPLACE_EXISTING);
         }
 
@@ -177,7 +177,7 @@ public class VfsBashCommand extends BashCommand<String> {
         Files.createDirectories(localDir);
 
         // 递归下载子文件
-        List<VfsNode> nodes = Vfs.listDirectory(vfsCtx, vfsPath, 10);
+        List<VfsNode> nodes = Vfs.path(vfsCtx, vfsPath).ls();
         for (VfsNode node : nodes) {
             if (!Boolean.TRUE.equals(node.getIsDirectory())) {
                 downloadFile(vfsCtx, node.getPath(), tempDir, snapshots);
@@ -219,14 +219,14 @@ public class VfsBashCommand extends BashCommand<String> {
 
             if (!Files.exists(localPath)) {
                 // 文件被删除，从 VFS 删除
-                Vfs.delete(vfsCtx, vfsPath, false);
+                Vfs.path(vfsCtx, vfsPath).rm(false);
                 continue;
             }
 
             if (snapshot.isModified(localPath)) {
                 // 文件被修改，流式上传回 VFS
                 try (InputStream input = Files.newInputStream(localPath)) {
-                    Vfs.writeFile(vfsCtx, vfsPath, input);
+                    Vfs.path(vfsCtx, vfsPath).write(input);
                 }
             }
         }
@@ -241,7 +241,7 @@ public class VfsBashCommand extends BashCommand<String> {
                 if (!snapshots.containsKey(vfsPath)) {
                     // 新文件，流式上传到 VFS
                     try (InputStream input = Files.newInputStream(localPath)) {
-                        Vfs.writeFile(vfsCtx, vfsPath, input);
+                        Vfs.path(vfsCtx, vfsPath).write(input);
                     }
                 }
                 return FileVisitResult.CONTINUE;

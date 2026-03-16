@@ -17,10 +17,10 @@ public class TouchCommand extends VfsCommand<Void> {
             throw new IllegalArgumentException("touch: missing file operand");
         }
 
-        Vfs.ContextBuilder root = Vfs.context(toVfsContext(ctx));
+        var vfsCtx = toVfsContext(ctx);
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
-            root.file(path).touch();
+            Vfs.path(vfsCtx, path).touch();
         }
 
         return null;

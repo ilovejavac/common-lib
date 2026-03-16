@@ -81,11 +81,11 @@ public class GrepCommand extends VfsCommand<String> {
     private List<String> collectTargetFiles(VfsContext ctx, List<String> operands, boolean recursive) {
         List<String> files = new ArrayList<>();
         for (String operand : operands) {
-            if (Vfs.context(ctx).file(operand).isDirectory()) {
+            if (Vfs.path(ctx, operand).isDirectory()) {
                 if (!recursive) {
                     throw new IllegalArgumentException("grep: " + operand + ": Is a directory");
                 }
-                List<VfsNode> nodes = Vfs.context(ctx).findByName(operand, "*", true);
+                List<VfsNode> nodes = Vfs.path(ctx, operand).find("*");
                 for (VfsNode node : nodes) {
                     if (!Boolean.TRUE.equals(node.getIsDirectory())) {
                         files.add(node.getPath());
@@ -103,7 +103,7 @@ public class GrepCommand extends VfsCommand<String> {
             boolean showLineNum, boolean showFileName, boolean filesOnly,
             boolean ignoreCase, boolean fixedString, List<String> output
     ) {
-        try (InputStream is = Vfs.context(ctx).file(path).open();
+        try (InputStream is = Vfs.path(ctx, path).cat().execute();
              BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
             String line;

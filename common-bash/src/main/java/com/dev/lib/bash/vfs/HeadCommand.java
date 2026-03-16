@@ -26,7 +26,7 @@ public class HeadCommand extends VfsCommand<String> {
         }
 
         String path = parsed.getString(0);
-        List<String> fileLines = Vfs.context(toVfsContext(ctx)).file(path).readLines(1, lines);
+        List<String> fileLines = Vfs.path(toVfsContext(ctx), path).readLines(1, lines);
 
         if (fileLines.isEmpty()) {
             return "";

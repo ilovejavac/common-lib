@@ -17,22 +17,37 @@ public class VfsCommandFactory implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
-        // 文件查看
-        registry.register("ls", new LsCommand());
+        // 文件读取类
         registry.register("cat", new CatCommand());
         registry.register("head", new HeadCommand());
         registry.register("tail", new TailCommand());
+        registry.register("wc", new WcBashCommand());
 
-        // 文件搜索
-        registry.register("find", new FindCommand());
+        // 文本处理类
         registry.register("grep", new GrepCommand());
+        registry.register("sed", new SedBashCommand());
+        registry.register("cut", new CutBashCommand());
+        registry.register("sort", new SortBashCommand());
+        registry.register("uniq", new UniqBashCommand());
 
-        // 文件操作
+        // 文件操作类
         registry.register("touch", new TouchCommand());
-        registry.register("mkdir", new MkdirCommand());
-        registry.register("rm", new RmCommand());
         registry.register("cp", new CpCommand());
         registry.register("mv", new MvCommand());
+        registry.register("rm", new RmCommand());
+
+        // 目录操作类
+        registry.register("ls", new LsCommand());
+        registry.register("mkdir", new MkdirCommand());
+        registry.register("pwd", new PwdBashCommand());
+        registry.register("tree", new TreeBashCommand());
+
+        // 搜索类
+        registry.register("find", new FindCommand());
+
+        // 文件信息类
+        registry.register("stat", new StatBashCommand());
+        registry.register("diff", new DiffBashCommand());
 
         // 完整 bash 支持（管道、变量、控制流等）
         registry.register("vfsbash", new VfsBashCommand());

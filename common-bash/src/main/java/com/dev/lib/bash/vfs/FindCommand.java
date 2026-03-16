@@ -59,7 +59,7 @@ public class FindCommand extends VfsCommand<List<VfsNode>> {
 
         var vfsCtx = toVfsContext(ctx);
         String resolvedBasePath = resolveBasePath(vfsCtx, basePath);
-        List<VfsNode> nodes = Vfs.context(vfsCtx).findByName(basePath, pattern, true);
+        List<VfsNode> nodes = Vfs.path(vfsCtx, basePath).find(pattern);
         List<VfsNode> results = new ArrayList<>();
 
         for (VfsNode node : nodes) {
@@ -116,7 +116,7 @@ public class FindCommand extends VfsCommand<List<VfsNode>> {
     }
 
     private String resolveBasePath(com.dev.lib.storage.domain.model.VfsContext ctx, String basePath) {
-        List<VfsNode> nodes = Vfs.context(ctx).ls(basePath, 0);
+        List<VfsNode> nodes = Vfs.path(ctx, basePath).ls();
         if (nodes == null || nodes.isEmpty() || nodes.get(0).getPath() == null) {
             return normalize(basePath);
         }

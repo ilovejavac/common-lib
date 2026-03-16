@@ -19,11 +19,11 @@ public class RmCommand extends VfsCommand<Void> {
             throw new IllegalArgumentException("rm: missing operand");
         }
 
-        Vfs.ContextBuilder root = Vfs.context(toVfsContext(ctx));
+        var vfsCtx = toVfsContext(ctx);
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
             try {
-                root.rm(path, recursive);
+                Vfs.path(vfsCtx, path).rm(recursive);
             } catch (IllegalArgumentException e) {
                 if (!force || !e.getMessage().contains("not found")) {
                     throw e;

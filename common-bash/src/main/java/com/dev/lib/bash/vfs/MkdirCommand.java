@@ -19,11 +19,10 @@ public class MkdirCommand extends VfsCommand<Void> {
             throw new IllegalArgumentException("mkdir: missing operand");
         }
 
-        Vfs.ContextBuilder root = Vfs.context(toVfsContext(ctx));
-
+        var vfsCtx = toVfsContext(ctx);
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
-            root.mkdir(path, createParents);
+            Vfs.path(vfsCtx, path).mkdir(createParents);
         }
 
         return null;

@@ -293,6 +293,46 @@ public class VfsFileService {
     }
 
     /**
+     * 文件对比（逐行比较，输出 unified diff 格式）
+     */
+    @Transactional(readOnly = true)
+    public String diff(VfsContext ctx, String pathA, String pathB) {
+        String contentA = readFile(ctx, pathA);
+        String contentB = readFile(ctx, pathB);
+
+        String[] linesA = contentA.split("\n", -1);
+        String[] linesB = contentB.split("\n", -1);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("--- ").append(pathA).append("\n");
+        sb.append("+++ ").append(pathB).append("\n");
+
+        int i = 0, j = 0;
+        while (i < linesA.length || j < linesB.length) {
+            if (i < linesA.length && j < linesB.length && linesA[i].equals(linesB[j])) {
+                sb.append(" ").append(linesA[i]).append("\n");
+                i++;
+                j++;
+            } else if (i < linesA.length && (j >= linesB.length || !containsFrom(linesB, j, linesA[i]))) {
+                sb.append("-").append(linesA[i]).append("\n");
+                i++;
+            } else {
+                sb.append("+").append(linesB[j]).append("\n");
+                j++;
+            }
+        }
+        return sb.toString();
+    }
+
+    private boolean containsFrom(String[] lines, int from, String target) {
+        int lookAhead = Math.min(from + 5, lines.length);
+        for (int k = from; k < lookAhead; k++) {
+            if (lines[k].equals(target)) return true;
+        }
+        return false;
+    }
+
+    /**
      * 获取存储路径
      */
     @Transactional(readOnly = true)

@@ -25,7 +25,7 @@ import java.util.List;
  * 4. 配置开关：支持禁用 COW（storage.vfs.cow-enabled=false）
  *
  * 使用场景：
- * - VFS 写入：Vfs.root("/bucket").file("data.txt").write("content")
+ * - VFS 写入：Vfs.path("/bucket/data.txt").write("content")
  * - Storage 写入：Storage.bucket("bucket").object("data.txt").write("content")
  * - 两者共享相同的 COW 逻辑，避免并发写入时文件丢失
  */
