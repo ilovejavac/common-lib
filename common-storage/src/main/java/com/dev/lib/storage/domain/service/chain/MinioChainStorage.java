@@ -347,6 +347,105 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
         }
     }
 
+    // ==================== 纯 I/O 操作 ====================
+
+    @Override
+    public void putObject(String bucketName, String objectKey, InputStream input) throws IOException {
+        ensureBucketExists(bucketName);
+        try {
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectKey)
+                            .stream(input, -1, -1)
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("MinIO putObject failed", e);
+        }
+    }
+
+    @Override
+    public void copyObject(String bucketName, String sourceKey, String targetKey) throws IOException {
+        try {
+            minioClient.copyObject(
+                    CopyObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(targetKey)
+                            .source(CopySource.builder()
+                                    .bucket(bucketName)
+                                    .object(sourceKey)
+                                    .build())
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("MinIO copyObject failed", e);
+        }
+    }
+
+    @Override
+    public void removeObject(String bucketName, String objectKey) throws IOException {
+        try {
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectKey)
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("MinIO removeObject failed", e);
+        }
+    }
+
+    @Override
+    public void appendObject(String bucketName, String objectKey, byte[] bytes) throws IOException {
+        ensureBucketExists(bucketName);
+        try {
+            String tempPath = objectKey + ".tmp." + com.dev.lib.entity.id.IDWorker.newId();
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(tempPath)
+                            .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
+                            .build()
+            );
+
+            boolean originalExists;
+            try {
+                minioClient.statObject(StatObjectArgs.builder().bucket(bucketName).object(objectKey).build());
+                originalExists = true;
+            } catch (Exception e) {
+                originalExists = false;
+            }
+
+            if (originalExists) {
+                minioClient.composeObject(
+                        ComposeObjectArgs.builder()
+                                .bucket(bucketName)
+                                .object(objectKey)
+                                .sources(asList(
+                                        ComposeSource.builder().bucket(bucketName).object(objectKey).build(),
+                                        ComposeSource.builder().bucket(bucketName).object(tempPath).build()
+                                ))
+                                .build()
+                );
+            } else {
+                minioClient.putObject(
+                        PutObjectArgs.builder()
+                                .bucket(bucketName)
+                                .object(objectKey)
+                                .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
+                                .build()
+                );
+            }
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder().bucket(bucketName).object(tempPath).build()
+            );
+        } catch (Exception e) {
+            throw new IOException("MinIO appendObject failed", e);
+        }
+    }
+
     @PreDestroy
     public void destroy() {
         // MinioClient 使用 HTTP 连接池，会自动管理

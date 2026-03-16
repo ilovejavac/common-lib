@@ -230,6 +230,53 @@ public class OssChainStorage extends AbstractChainStorage implements ChainStorag
         }
     }
 
+    // ==================== 纯 I/O 操作 ====================
+
+    @Override
+    public void putObject(String bucketName, String objectKey, InputStream input) throws IOException {
+        ensureBucketExists(bucketName);
+        ossClient.putObject(bucketName, objectKey, input);
+    }
+
+    @Override
+    public void copyObject(String bucketName, String sourceKey, String targetKey) throws IOException {
+        try {
+            ossClient.copyObject(bucketName, sourceKey, bucketName, targetKey);
+        } catch (Exception e) {
+            throw new IOException("OSS copyObject failed", e);
+        }
+    }
+
+    @Override
+    public void removeObject(String bucketName, String objectKey) throws IOException {
+        ossClient.deleteObject(bucketName, objectKey);
+    }
+
+    @Override
+    public void appendObject(String bucketName, String objectKey, byte[] bytes) throws IOException {
+        ensureBucketExists(bucketName);
+        try {
+            long position;
+            try {
+                position = ossClient.getObjectMetadata(bucketName, objectKey).getContentLength();
+            } catch (Exception e) {
+                position = 0;
+            }
+
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(bytes.length);
+
+            AppendObjectRequest appendRequest = new AppendObjectRequest(
+                    bucketName, objectKey,
+                    new ByteArrayInputStream(bytes), metadata
+            );
+            appendRequest.setPosition(position);
+            ossClient.appendObject(appendRequest);
+        } catch (Exception e) {
+            throw new IOException("OSS appendObject failed", e);
+        }
+    }
+
     private void ensureBucketExists(String bucketName) {
         if (!ossClient.doesBucketExist(bucketName)) {
             ossClient.createBucket(bucketName);

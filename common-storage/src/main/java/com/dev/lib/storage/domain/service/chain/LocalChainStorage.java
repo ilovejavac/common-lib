@@ -170,6 +170,35 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         return saveFileRecord(bucketName, objectKey, filePath.toString(), (long) bytes.length);
     }
 
+    // ==================== 纯 I/O 操作 ====================
+
+    @Override
+    public void putObject(String bucketName, String objectKey, InputStream input) throws IOException {
+        Path targetPath = resolvePath(bucketName, objectKey);
+        Files.createDirectories(targetPath.getParent());
+        Files.copy(input, targetPath, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    @Override
+    public void copyObject(String bucketName, String sourceKey, String targetKey) throws IOException {
+        Path sourcePath = resolvePath(bucketName, sourceKey);
+        Path targetPath = resolvePath(bucketName, targetKey);
+        Files.createDirectories(targetPath.getParent());
+        Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    @Override
+    public void removeObject(String bucketName, String objectKey) throws IOException {
+        Files.deleteIfExists(resolvePath(bucketName, objectKey));
+    }
+
+    @Override
+    public void appendObject(String bucketName, String objectKey, byte[] content) throws IOException {
+        Path filePath = resolvePath(bucketName, objectKey);
+        Files.createDirectories(filePath.getParent());
+        Files.write(filePath, content, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String replaceLines(String bucketName, String objectKey, Storage.LineTransformer transformer) throws IOException {
