@@ -3,11 +3,11 @@ package com.dev.lib.bash.vfs;
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
-import java.util.List;
 import java.util.Set;
 
 /**
- * head 命令
+ * head 命令 - 显示文件前 N 行
+ * 支持: -n lines
  */
 public class HeadCommand extends VfsCommand<String> {
 
@@ -26,11 +26,12 @@ public class HeadCommand extends VfsCommand<String> {
         }
 
         String path = parsed.getString(0);
-        List<String> fileLines = Vfs.context(toVfsContext(ctx)).file(path).readLines(1, lines);
+        var vfsCtx = toVfsContext(ctx);
 
-        if (fileLines.isEmpty()) {
-            return "";
+        try {
+            return Vfs.path(vfsCtx, path).cat().head(lines).executeAsString();
+        } catch (Exception e) {
+            throw new RuntimeException("head: failed to read " + path, e);
         }
-        return String.join("\n", fileLines) + "\n";
     }
 }

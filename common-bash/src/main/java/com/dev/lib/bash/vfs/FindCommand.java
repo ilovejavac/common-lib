@@ -8,8 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * find 命令
- * 语法: find path -name pattern [-maxdepth n] [-type f|d]
+ * find 命令 - 搜索文件
+ * 语法: find [path] -name pattern [-maxdepth n] [-type f|d]
  */
 public class FindCommand extends VfsCommand<List<VfsNode>> {
 
@@ -58,12 +58,14 @@ public class FindCommand extends VfsCommand<List<VfsNode>> {
         }
 
         var vfsCtx = toVfsContext(ctx);
-        String resolvedBasePath = resolveBasePath(vfsCtx, basePath);
-        List<VfsNode> nodes = Vfs.context(vfsCtx).findByName(basePath, pattern, true);
+        String normalizedBase = normalize(basePath);
+
+        // 委托给 Vfs.path().find()
+        List<VfsNode> nodes = Vfs.path(vfsCtx, basePath).find(pattern);
         List<VfsNode> results = new ArrayList<>();
 
         for (VfsNode node : nodes) {
-            if (maxDepth != null && relativeDepth(resolvedBasePath, node.getPath()) > maxDepth) {
+            if (maxDepth != null && relativeDepth(normalizedBase, node.getPath()) > maxDepth) {
                 continue;
             }
             if ("f".equals(type) && Boolean.TRUE.equals(node.getIsDirectory())) {
@@ -93,8 +95,8 @@ public class FindCommand extends VfsCommand<List<VfsNode>> {
             return 0;
         }
         int depth = 1;
-        for (int i = 0; i < rest.length(); i++) {
-            if (rest.charAt(i) == '/') {
+        for (int j = 0; j < rest.length(); j++) {
+            if (rest.charAt(j) == '/') {
                 depth++;
             }
         }
@@ -113,13 +115,5 @@ public class FindCommand extends VfsCommand<List<VfsNode>> {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
         return normalized;
-    }
-
-    private String resolveBasePath(com.dev.lib.storage.domain.model.VfsContext ctx, String basePath) {
-        List<VfsNode> nodes = Vfs.context(ctx).ls(basePath, 0);
-        if (nodes == null || nodes.isEmpty() || nodes.get(0).getPath() == null) {
-            return normalize(basePath);
-        }
-        return normalize(nodes.get(0).getPath());
     }
 }
