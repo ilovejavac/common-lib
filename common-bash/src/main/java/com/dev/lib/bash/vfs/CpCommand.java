@@ -4,7 +4,8 @@ import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
 /**
- * cp 命令
+ * cp 命令 - 复制文件/目录
+ * 支持: -r/-R 递归
  */
 public class CpCommand extends VfsCommand<Void> {
 

@@ -3,14 +3,11 @@ package com.dev.lib.bash.vfs;
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 /**
- * tail 命令
+ * tail 命令 - 显示文件后 N 行
+ * 支持: -n lines
  */
 public class TailCommand extends VfsCommand<String> {
 
@@ -32,36 +29,12 @@ public class TailCommand extends VfsCommand<String> {
         }
 
         String path = parsed.getString(0);
+        var vfsCtx = toVfsContext(ctx);
 
-        try (InputStream is = Vfs.path(toVfsContext(ctx), path).cat().execute();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-
-            String[] buffer = new String[lines];
-            int index = 0;
-            int count = 0;
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                buffer[index] = line;
-                index = (index + 1) % lines;
-                count++;
-            }
-
-            if (count == 0) {
-                return "";
-            }
-
-            StringBuilder result = new StringBuilder();
-            int start = count < lines ? 0 : index;
-            int end = Math.min(count, lines);
-
-            for (int i = 0; i < end; i++) {
-                result.append(buffer[(start + i) % lines]).append("\n");
-            }
-
-            return result.toString();
+        try {
+            return Vfs.path(vfsCtx, path).cat().tail(lines).executeAsString();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to read file: " + path, e);
+            throw new RuntimeException("tail: failed to read " + path, e);
         }
     }
 }

@@ -5,10 +5,6 @@ import com.dev.lib.storage.Vfs;
 import com.dev.lib.storage.domain.model.VfsContext;
 import com.dev.lib.storage.domain.model.VfsNode;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -16,7 +12,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * grep 命令
+ * grep 命令 - 文本搜索
  * 支持: -r/-R 递归, -l 只输出文件名, -n 显示行号, -i 忽略大小写, -F 固定字符串
  */
 public class GrepCommand extends VfsCommand<String> {
@@ -36,51 +32,63 @@ public class GrepCommand extends VfsCommand<String> {
             throw new IllegalArgumentException("grep: missing operand");
         }
 
-        String pattern = parsed.getString(0);
+        String patternText = parsed.getString(0);
         VfsContext vfsCtx = toVfsContext(ctx);
 
-        List<String> operands = new ArrayList<>();
-        for (int i = 1; i < parsed.positionalCount(); i++) {
-            operands.add(parsed.getString(i));
-        }
-
-        List<String> files = collectTargetFiles(vfsCtx, operands, recursive);
+        // 收集目标文件
+        List<String> files = collectTargetFiles(vfsCtx, parsed, recursive);
         boolean showFileName = files.size() > 1;
 
-        List<String> output = new ArrayList<>();
-        Set<String> matchedFileSet = new LinkedHashSet<>();
-
+        // 编译正则（非固定字符串模式）
         Pattern regex = null;
         if (!fixedString) {
             regex = ignoreCase
-                    ? Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
-                    : Pattern.compile(pattern);
+                    ? Pattern.compile(patternText, Pattern.CASE_INSENSITIVE)
+                    : Pattern.compile(patternText);
         }
 
+        // 逐文件搜索
+        List<String> output = new ArrayList<>();
+        Set<String> matchedFiles = new LinkedHashSet<>();
+
         for (String file : files) {
-            boolean matched = grepFile(
-                    vfsCtx, file, pattern, regex,
-                    showLineNum, showFileName, filesOnly,
-                    ignoreCase, fixedString, output
-            );
-            if (matched) {
-                matchedFileSet.add(file);
+            String content;
+            try {
+                content = Vfs.path(vfsCtx, file).cat().executeAsString();
+            } catch (Exception e) {
+                throw new RuntimeException("grep: failed to read file: " + file, e);
+            }
+
+            String[] lines = content.split("\n", -1);
+            for (int lineNum = 1; lineNum <= lines.length; lineNum++) {
+                String line = lines[lineNum - 1];
+                if (!isMatch(line, patternText, regex, ignoreCase, fixedString)) {
+                    continue;
+                }
+
+                matchedFiles.add(file);
+                if (filesOnly) {
+                    break;
+                }
+
+                StringBuilder sb = new StringBuilder();
+                if (showFileName) sb.append(file).append(":");
+                if (showLineNum) sb.append(lineNum).append(":");
+                sb.append(line);
+                output.add(sb.toString());
             }
         }
 
         if (filesOnly) {
-            if (matchedFileSet.isEmpty()) {
-                return "";
-            }
-            return String.join("\n", matchedFileSet) + "\n";
+            return matchedFiles.isEmpty() ? "" : String.join("\n", matchedFiles) + "\n";
         }
-
         return output.isEmpty() ? "" : String.join("\n", output) + "\n";
     }
 
-    private List<String> collectTargetFiles(VfsContext ctx, List<String> operands, boolean recursive) {
+    private List<String> collectTargetFiles(VfsContext ctx, ParsedArgs parsed, boolean recursive) {
         List<String> files = new ArrayList<>();
-        for (String operand : operands) {
+        for (int i = 1; i < parsed.positionalCount(); i++) {
+            String operand = parsed.getString(i);
             if (Vfs.path(ctx, operand).isDirectory()) {
                 if (!recursive) {
                     throw new IllegalArgumentException("grep: " + operand + ": Is a directory");
@@ -98,51 +106,12 @@ public class GrepCommand extends VfsCommand<String> {
         return files;
     }
 
-    private boolean grepFile(
-            VfsContext ctx, String path, String patternText, Pattern pattern,
-            boolean showLineNum, boolean showFileName, boolean filesOnly,
-            boolean ignoreCase, boolean fixedString, List<String> output
-    ) {
-        try (InputStream is = Vfs.path(ctx, path).cat().execute();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-
-            String line;
-            int lineNum = 0;
-            while ((line = reader.readLine()) != null) {
-                lineNum++;
-                if (!isMatch(line, patternText, pattern, ignoreCase, fixedString)) {
-                    continue;
-                }
-
-                if (filesOnly) {
-                    return true;
-                }
-
-                StringBuilder sb = new StringBuilder();
-                if (showFileName) {
-                    sb.append(path).append(":");
-                }
-                if (showLineNum) {
-                    sb.append(lineNum).append(":");
-                }
-                sb.append(line);
-                output.add(sb.toString());
-            }
-            return false;
-        } catch (Exception e) {
-            throw new RuntimeException("grep: failed to read file: " + path, e);
-        }
-    }
-
-    private boolean isMatch(
-            String line, String patternText, Pattern pattern,
-            boolean ignoreCase, boolean fixedString
-    ) {
+    private boolean isMatch(String line, String patternText, Pattern pattern,
+                            boolean ignoreCase, boolean fixedString) {
         if (fixedString) {
-            if (ignoreCase) {
-                return line.toLowerCase().contains(patternText.toLowerCase());
-            }
-            return line.contains(patternText);
+            return ignoreCase
+                    ? line.toLowerCase().contains(patternText.toLowerCase())
+                    : line.contains(patternText);
         }
         return pattern != null && pattern.matcher(line).find();
     }

@@ -4,7 +4,8 @@ import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
 /**
- * rm 命令
+ * rm 命令 - 删除文件/目录
+ * 支持: -r/-R 递归, -f 强制（忽略不存在的文件）
  */
 public class RmCommand extends VfsCommand<Void> {
 

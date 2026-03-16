@@ -4,7 +4,7 @@ import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
 /**
- * touch 命令
+ * touch 命令 - 创建空文件或更新时间戳
  */
 public class TouchCommand extends VfsCommand<Void> {
 
@@ -19,8 +19,7 @@ public class TouchCommand extends VfsCommand<Void> {
 
         var vfsCtx = toVfsContext(ctx);
         for (int i = 0; i < parsed.positionalCount(); i++) {
-            String path = parsed.getString(i);
-            Vfs.path(vfsCtx, path).touch();
+            Vfs.path(vfsCtx, parsed.getString(i)).touch();
         }
 
         return null;

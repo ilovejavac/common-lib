@@ -2,77 +2,85 @@ package com.dev.lib.bash.vfs;
 
 import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
-import com.dev.lib.storage.domain.model.VfsContext;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Set;
 
 /**
- * cat 命令
+ * cat 命令 - 显示文件内容
+ * 支持: -n 显示行号, -s startLine, -c lineCount
  */
 public class CatCommand extends VfsCommand<String> {
 
     @Override
     public String execute(ExecuteContext ctx) {
         String[] args = parseArgs(ctx.getCommand());
-        return cat(toVfsContext(ctx), args);
-    }
-
-    private String cat(VfsContext ctx, String[] args) {
         ParsedArgs parsed = parseArgs(args, Set.of("n", "s", "c"), Set.of());
         boolean showLineNumbers = parsed.hasFlag("n");
-        Integer startLine = parsed.getInt("s", 1);
-        Integer lineCount = parsed.getInt("c", -1);
+        int startLine = parsed.getInt("s", 1);
+        int lineCount = parsed.getInt("c", -1);
 
-        if (startLine == null || startLine < 1) {
+        if (startLine < 1) {
             throw new IllegalArgumentException("cat: invalid start line: " + startLine);
         }
-        if (lineCount == null || lineCount < -1) {
+        if (lineCount < -1) {
             throw new IllegalArgumentException("cat: invalid line count: " + lineCount);
         }
-
         if (parsed.positionalCount() == 0) {
             throw new IllegalArgumentException("cat: missing file operand");
         }
 
+        var vfsCtx = toVfsContext(ctx);
         StringBuilder result = new StringBuilder();
 
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
+            String content = readContent(vfsCtx, path, startLine, lineCount);
 
-            if (startLine > 1 || lineCount != -1) {
-                List<String> lines = Vfs.path(ctx, path).readLines(startLine, lineCount);
-                int lineNum = startLine;
-                for (String line : lines) {
-                    if (showLineNumbers) {
-                        result.append(String.format("%6d\t%s\n", lineNum++, line));
-                    } else {
-                        result.append(line).append("\n");
-                    }
-                }
+            if (showLineNumbers) {
+                result.append(addLineNumbers(content, startLine));
             } else {
-                try (InputStream is = Vfs.path(ctx, path).cat().execute();
-                     BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-
-                    String line;
-                    int lineNum = 1;
-                    while ((line = reader.readLine()) != null) {
-                        if (showLineNumbers) {
-                            result.append(String.format("%6d\t%s\n", lineNum++, line));
-                        } else {
-                            result.append(line).append("\n");
-                        }
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed to read file: " + path, e);
-                }
+                result.append(content);
             }
         }
 
         return result.toString();
+    }
+
+    private String readContent(com.dev.lib.storage.domain.model.VfsContext ctx, String path, int startLine, int lineCount) {
+        try {
+            if (startLine > 1 || lineCount != -1) {
+                // 有范围限制：读取全部然后截取
+                String all = Vfs.path(ctx, path).cat().executeAsString();
+                String[] lines = all.split("\n", -1);
+                int start = Math.min(startLine - 1, lines.length);
+                int end = lineCount == -1 ? lines.length : Math.min(start + lineCount, lines.length);
+
+                StringBuilder sb = new StringBuilder();
+                for (int i = start; i < end; i++) {
+                    sb.append(lines[i]).append("\n");
+                }
+                return sb.toString();
+            }
+            return Vfs.path(ctx, path).cat().executeAsString();
+        } catch (Exception e) {
+            throw new RuntimeException("cat: failed to read " + path, e);
+        }
+    }
+
+    private String addLineNumbers(String content, int startLineNum) {
+        if (content.isEmpty()) {
+            return content;
+        }
+        String[] lines = content.split("\n", -1);
+        StringBuilder sb = new StringBuilder();
+        int lineNum = startLineNum;
+        for (int i = 0; i < lines.length; i++) {
+            // 跳过末尾 split 产生的空行
+            if (i == lines.length - 1 && lines[i].isEmpty()) {
+                continue;
+            }
+            sb.append(String.format("%6d\t%s\n", lineNum++, lines[i]));
+        }
+        return sb.toString();
     }
 }

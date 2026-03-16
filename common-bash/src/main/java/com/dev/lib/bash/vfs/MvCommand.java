@@ -4,7 +4,7 @@ import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
 /**
- * mv 命令
+ * mv 命令 - 移动/重命名文件
  */
 public class MvCommand extends VfsCommand<Void> {
 
