@@ -1,15 +1,11 @@
 package com.dev.lib.storage.domain.service.virtual;
 
-import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.domain.model.VfsContext;
 import com.dev.lib.storage.domain.model.VfsNode;
-import com.dev.lib.storage.domain.service.virtual.path.VfsPathResolver;
-import com.dev.lib.storage.domain.service.virtual.read.VfsReadService;
-import com.dev.lib.storage.domain.service.virtual.repository.VfsFileRepository;
-import com.dev.lib.storage.domain.service.virtual.search.VfsSearchService;
+import com.dev.lib.storage.domain.service.virtual.core.VfsCoreDirectoryService;
+import com.dev.lib.storage.domain.service.virtual.core.VfsFileService;
 import com.dev.lib.storage.domain.service.virtual.storage.VfsFileStorageService;
 import com.dev.lib.storage.domain.service.virtual.upload.VfsUploadService;
-import com.dev.lib.storage.domain.service.virtual.write.VfsWriteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,173 +16,146 @@ import java.util.List;
 
 /**
  * 虚拟文件系统实现
- * 作为入口服务，协调各个领域服务完成 VFS 操作
+ * <p>
+ * 作为入口服务，委托给扁平化的核心服务：
+ * - VfsFileService：文件读写 + COW 版本管理
+ * - VfsCoreDirectoryService：目录操作 + 搜索 + 通配符
+ * - VfsUploadService：ZIP/多文件上传（保留）
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class VirtualFileSystemImpl {
 
-    private final VfsFileRepository fileRepository;
-
-    private final VfsPathResolver pathResolver;
-
+    private final VfsFileService fileService;
+    private final VfsCoreDirectoryService directoryService;
     private final VfsFileStorageService storageService;
-
-    private final VfsReadService readService;
-
-    private final VfsWriteService writeService;
-
     private final VfsUploadService uploadService;
-
-    private final VfsSearchService searchService;
 
     // ==================== 目录列表 ====================
 
     public List<VfsNode> listDirectory(VfsContext ctx, String path, Integer depth) {
-
-        return readService.listDirectory(ctx, path, depth);
+        // depth 参数暂时忽略，新服务默认返回直接子节点
+        return directoryService.list(ctx, path, ctx != null && ctx.isShowHidden());
     }
 
     // ==================== 文件读取 ====================
 
     public InputStream openFile(VfsContext ctx, String path) {
-
-        return readService.openFile(ctx, path);
+        return fileService.openStream(ctx, path);
     }
 
     public String readFile(VfsContext ctx, String path) {
-
-        return readService.readFile(ctx, path);
+        return fileService.readFile(ctx, path);
     }
 
     public List<String> readLines(VfsContext ctx, String path, int startLine, int lineCount) {
-
-        return readService.readLines(ctx, path, startLine, lineCount);
+        return fileService.readLines(ctx, path, startLine, lineCount);
     }
 
     public byte[] readBytes(VfsContext ctx, String path, long offset, int limit) {
-
-        return readService.readBytes(ctx, path, offset, limit);
+        return fileService.readBytes(ctx, path, offset, limit);
     }
 
     public long getFileSize(VfsContext ctx, String path) {
-
-        return readService.getFileSize(ctx, path);
+        return fileService.getSize(ctx, path);
     }
 
     public int getLineCount(VfsContext ctx, String path) {
-
-        return readService.getLineCount(ctx, path);
+        return fileService.getLineCount(ctx, path);
     }
 
     // ==================== 文件写入 ====================
 
     public void writeFile(VfsContext ctx, String path, String content) {
-
-        writeService.writeFile(ctx, path, content);
+        fileService.write(ctx, path, content);
     }
 
     public void writeFile(VfsContext ctx, String path, InputStream inputStream) {
-
-        writeService.writeFile(ctx, path, inputStream);
+        fileService.writeStream(ctx, path, inputStream);
     }
 
     public void appendFile(VfsContext ctx, String path, String content) {
-
-        writeService.appendFile(ctx, path, content);
+        fileService.append(ctx, path, content);
     }
 
     public void touchFile(VfsContext ctx, String path) {
-
-        writeService.touchFile(ctx, path);
+        fileService.touch(ctx, path);
     }
 
     // ==================== 移动操作 ====================
 
     public void move(VfsContext ctx, String srcPath, String destPath) {
-
-        writeService.move(ctx, srcPath, destPath);
+        directoryService.move(ctx, srcPath, destPath);
     }
 
     // ==================== 复制操作 ====================
 
     public void copy(VfsContext ctx, String srcPath, String destPath, boolean recursive) {
-
-        writeService.copy(ctx, srcPath, destPath, recursive);
+        directoryService.copy(ctx, srcPath, destPath, recursive);
     }
 
     // ==================== 删除操作 ====================
 
     public void delete(VfsContext ctx, String path, boolean recursive) {
-
-        writeService.delete(ctx, path, recursive);
+        directoryService.delete(ctx, path, recursive);
     }
 
     // ==================== 目录创建 ====================
 
     public void createDirectory(VfsContext ctx, String path, boolean createParents) {
-
-        writeService.createDirectory(ctx, path, createParents);
+        if (createParents) {
+            directoryService.mkdirp(ctx, path);
+        } else {
+            directoryService.mkdir(ctx, path);
+        }
     }
 
     // ==================== 查找操作 ====================
 
     public List<VfsNode> findByName(VfsContext ctx, String basePath, String pattern, boolean recursive) {
-
-        return searchService.findByName(ctx, basePath, pattern, recursive);
+        return directoryService.findByPattern(ctx, basePath, pattern);
     }
 
     public List<VfsNode> findByContent(VfsContext ctx, String basePath, String content, boolean recursive) {
-
-        return searchService.findByContent(ctx, basePath, content, recursive);
+        return directoryService.findByContent(ctx, basePath, content);
     }
 
     // ==================== 上传操作 ====================
 
     public List<String> uploadZip(VfsContext ctx, String path, InputStream zipStream) {
-
         return uploadService.uploadZip(ctx, path, zipStream);
     }
 
     public List<String> uploadFiles(VfsContext ctx, String targetPath, MultipartFile[] files, String[] relativePaths) {
-
         return uploadService.uploadFiles(ctx, targetPath, files, relativePaths);
     }
 
     public String uploadFile(VfsContext ctx, String path, InputStream inputStream, long size) {
-
         return uploadService.uploadFile(ctx, path, inputStream, size);
     }
 
     // ==================== 工具方法 ====================
 
     public boolean exists(VfsContext ctx, String path) {
-
-        return readService.exists(ctx, path);
+        return fileService.exists(ctx, path);
     }
 
     public boolean isDirectory(VfsContext ctx, String path) {
-
-        return readService.isDirectory(ctx, path);
+        return directoryService.isDirectory(ctx, path);
     }
 
     // ==================== 内部接口（供 Command 使用）====================
 
     public String getStoragePath(VfsContext ctx, String virtualPath) {
-
-        String fullPath = pathResolver.resolve(ctx, virtualPath);
-        return fileRepository.findByPath(fullPath).map(SysFile::getStoragePath).orElse(null);
+        return fileService.getStoragePath(ctx, virtualPath);
     }
 
     public String replaceLinesByStoragePath(String storagePath, com.dev.lib.storage.Storage.LineTransformer transformer) throws java.io.IOException {
-
         return storageService.replaceLines(storagePath, transformer);
     }
 
     public String getPresignedUrlByStoragePath(String storagePath, int expireSeconds) {
-
         return storageService.getPresignedUrl(storagePath, expireSeconds);
     }
-
 }
