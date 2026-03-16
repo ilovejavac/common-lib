@@ -28,6 +28,11 @@ public class PollerContext {
     private Integer timeoutMinutes;
 
     /**
+     * 最大重试次数
+     */
+    private Integer maxRetry;
+
+    /**
      * 业务数据
      */
     private Map<String, Object> payload;
@@ -79,6 +84,10 @@ public class PollerContext {
         return timeoutMinutes;
     }
 
+    public Integer getMaxRetry() {
+        return maxRetry;
+    }
+
     public Map<String, Object> getPayload() {
         return payload;
     }
@@ -118,6 +127,10 @@ public class PollerContext {
 
     public void setTimeoutMinutes(Integer timeoutMinutes) {
         this.timeoutMinutes = timeoutMinutes;
+    }
+
+    public void setMaxRetry(Integer maxRetry) {
+        this.maxRetry = maxRetry;
     }
 
 }

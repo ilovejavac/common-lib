@@ -42,6 +42,7 @@ public class LocalTaskPollerStorage implements PollerStorage {
         po.setHouseNumber(houseNumber);
         po.setStatus(LocalTaskStatus.PENDING);
         po.setRetryCount(0);
+        po.setMaxRetry(task.getMaxRetry() != null ? task.getMaxRetry() : po.getMaxRetry());
         po.setNextRetryTime(LocalDateTime.now());
         po.setTimeoutMinutes(task.getTimeoutMinutes() != null ? task.getTimeoutMinutes() : 5);
 
@@ -130,13 +131,17 @@ public class LocalTaskPollerStorage implements PollerStorage {
     }
 
     private PollerContext toContext(LocalTaskMessagePo po) {
-        return new PollerContext(
+        PollerContext context = new PollerContext(
                 po.getTaskId(),
                 po.getTaskType(),
                 po.getPayload(),
                 po.getRetryCount(),
                 po.getErrorMessage()
         );
+        context.setTaskName(po.getTaskName());
+        context.setMaxRetry(po.getMaxRetry());
+        context.setTimeoutMinutes(po.getTimeoutMinutes());
+        return context;
     }
 
 }

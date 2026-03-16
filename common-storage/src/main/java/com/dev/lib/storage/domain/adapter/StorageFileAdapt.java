@@ -31,9 +31,8 @@ public class StorageFileAdapt implements StorageFileRepo {
     @Transactional(rollbackFor = Exception.class)
     public void remove(String bizId) {
 
-        Optional<SysFile> loadedFile = fileRepository.findByBizIdAndServiceName(
-                bizId,
-                serviceNameProvider.currentServiceName()
+        Optional<SysFile> loadedFile = fileRepository.findByBizId(
+                bizId
         );
         loadedFile.ifPresent(fileRepository::delete);
     }
@@ -42,12 +41,13 @@ public class StorageFileAdapt implements StorageFileRepo {
     public StorageFile findByBizId(String value) {
 
         return storageFileMapper.convert(
-                fileRepository.findByBizIdAndServiceName(value, serviceNameProvider.currentServiceName()).orElse(null)
+                fileRepository.findByBizId(value).orElse(null)
         );
     }
 
     @Override
     public void saveFile(StorageFile storageFile) {
+
         SysFile sysFile = sysFileMapper.convert(storageFile);
         if (sysFile.getServiceName() == null || sysFile.getServiceName().isBlank()) {
             sysFile.setServiceName(serviceNameProvider.currentServiceName());
@@ -58,7 +58,7 @@ public class StorageFileAdapt implements StorageFileRepo {
     @Override
     public List<StorageFile> findByIds(Collection<String> ids) {
 
-        return fileRepository.findAllByBizIdInAndServiceName(ids, serviceNameProvider.currentServiceName())
+        return fileRepository.findAllByBizIdIn(ids)
                 .stream()
                 .map(storageFileMapper::convert)
                 .toList();
@@ -67,7 +67,10 @@ public class StorageFileAdapt implements StorageFileRepo {
     @Override
     public Collection<String> collectRemovePath(Collection<String> ids) {
 
-        List<SysFile>   files = fileRepository.findAllByBizIdInAndServiceName(ids, serviceNameProvider.currentServiceName());
+        List<SysFile> files = fileRepository.findAllByBizIdInAndServiceName(
+                ids,
+                serviceNameProvider.currentServiceName()
+        );
         HashSet<String> paths = new HashSet<>();
         for (SysFile file : files) {
             paths.add(file.getStoragePath());

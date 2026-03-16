@@ -156,7 +156,7 @@ public class Bash {
             }
 
             if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
-                if (current.length() > 0) {
+                if (!current.isEmpty()) {
                     tokens.add(current.toString());
                     current = new StringBuilder();
                 }
@@ -166,7 +166,7 @@ public class Bash {
             current.append(c);
         }
 
-        if (current.length() > 0) {
+        if (!current.isEmpty()) {
             tokens.add(current.toString());
         }
 

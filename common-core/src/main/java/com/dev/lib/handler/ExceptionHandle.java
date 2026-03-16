@@ -8,12 +8,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterValidationResult;
@@ -154,63 +149,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleIllegalArgument(IllegalArgumentException e) {
 
         log.warn("非法参数: {}", e.getMessage());
-        return ServerResponse.requestFail(
-                4070,
-                e.getMessage() != null ? e.getMessage() : MessageUtils.get("error.param.invalid"),
-                null
-        );
-    }
-
-    // ==================== 数据库相关 ====================
-
-    /**
-     * 唯一键/主键冲突
-     */
-    @ExceptionHandler(DuplicateKeyException.class)
-    public ServerResponse<Void> handleDuplicateKey(DuplicateKeyException e, HttpServletRequest request) {
-
-        log.warn("唯一键冲突", e);
-        return ServerResponse.fail(6001, MessageUtils.get("error.duplicate.key"), null);
-    }
-
-    /**
-     * 数据完整性约束（外键等）
-     */
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ServerResponse<Void> handleDataIntegrity(DataIntegrityViolationException e, HttpServletRequest request) {
-
-        log.warn("数据完整性约束违反 [{}]", request.getRequestURI(), e);
-        return ServerResponse.fail(6002, MessageUtils.get("error.data.integrity"), null);
-    }
-
-    /**
-     * SQL语法错误 / 表不存在
-     */
-    @ExceptionHandler(BadSqlGrammarException.class)
-    public ServerResponse<Void> handleBadSql(BadSqlGrammarException e, HttpServletRequest request) {
-
-        log.error("SQL语法错误 [{}] SQL={}", request.getRequestURI(), e.getSql(), e);
-        return ServerResponse.fail(6003, MessageUtils.get("error.database"), null);
-    }
-
-    /**
-     * 乐观锁冲突
-     */
-    @ExceptionHandler(OptimisticLockingFailureException.class)
-    public ServerResponse<Void> handleOptimisticLock(OptimisticLockingFailureException e, HttpServletRequest request) {
-
-        log.warn("乐观锁冲突 [{}]", request.getRequestURI(), e);
-        return ServerResponse.fail(6004, MessageUtils.get("error.concurrent.modify"), null);
-    }
-
-    /**
-     * 数据访问异常（兜底）
-     */
-    @ExceptionHandler(DataAccessException.class)
-    public ServerResponse<Void> handleDataAccess(DataAccessException e, HttpServletRequest request) {
-
-        log.error("数据访问异常 [{}]: {}", request.getRequestURI(), e.getMessage(), e);
-        return ServerResponse.fail(6005, MessageUtils.get("error.database"), null);
+        return ServerResponse.requestFail(4070, e.getMessage() != null ? e.getMessage() : MessageUtils.get("error.param.invalid"), null);
     }
 
     // ==================== HTTP 相关 ====================

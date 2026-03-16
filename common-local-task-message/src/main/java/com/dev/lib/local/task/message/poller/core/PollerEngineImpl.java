@@ -64,6 +64,7 @@ public class PollerEngineImpl implements PollerEngine {
         context.setTaskType(config.getTaskType());
         context.setPayload(payload);
         context.setRetryCount(0);
+        context.setMaxRetry(config.getMaxRetry());
         context.setTimeoutMinutes(config.getTimeoutMinutes());
 
         // 持久化任务
@@ -212,7 +213,8 @@ public class PollerEngineImpl implements PollerEngine {
                 );
             } else {
                 // 执行失败
-                if (!result.isRetryable() || task.getRetryCount() + 1 >= config.getMaxRetry()) {
+                int maxRetry = resolveMaxRetry(task);
+                if (!result.isRetryable() || task.getRetryCount() + 1 >= maxRetry) {
                     // 不可重试或达到最大重试次数
                     storage.updateToFailed(task.getId(), result.getErrorMessage(), null);
                     executor.onFailure(task, result.getErrorMessage());
@@ -253,7 +255,7 @@ public class PollerEngineImpl implements PollerEngine {
 
         log.debug(
                 "Task will be retried at {}: taskId={}, retry={}/{}",
-                nextRetryTime, task.getId(), newRetryCount, config.getMaxRetry()
+                nextRetryTime, task.getId(), newRetryCount, resolveMaxRetry(task)
         );
     }
 
@@ -264,7 +266,8 @@ public class PollerEngineImpl implements PollerEngine {
 
         int newRetryCount = task.getRetryCount() + 1;
 
-        if (newRetryCount >= config.getMaxRetry()) {
+        int maxRetry = resolveMaxRetry(task);
+        if (newRetryCount >= maxRetry) {
             // 达到最大重试次数，不再重试
             String errorMessage = "Max retry exceeded: " + e.getMessage();
             storage.updateToFailed(task.getId(), errorMessage, null);
@@ -283,9 +286,16 @@ public class PollerEngineImpl implements PollerEngine {
 
             log.debug(
                     "Task will be retried at {}: taskId={}, retry={}/{}",
-                    nextRetryTime, task.getId(), newRetryCount, config.getMaxRetry()
+                    nextRetryTime, task.getId(), newRetryCount, maxRetry
             );
         }
+    }
+
+    private int resolveMaxRetry(PollerContext task) {
+
+        return task.getMaxRetry() != null && task.getMaxRetry() > 0
+                ? task.getMaxRetry()
+                : config.getMaxRetry();
     }
 
     /**

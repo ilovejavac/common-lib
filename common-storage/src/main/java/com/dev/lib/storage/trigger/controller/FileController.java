@@ -1,6 +1,5 @@
 package com.dev.lib.storage.trigger.controller;
 
-import com.dev.lib.storage.Vfs;
 import com.dev.lib.storage.domain.adapter.StorageFileRepo;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.service.virtual.storage.VfsFileStorageService;
@@ -15,8 +14,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -143,7 +142,7 @@ public class FileController {
 
     private String presignedUrlByStoragePath(String storagePath, int expireSeconds) {
 
-        return Vfs.getPresignedUrlByStoragePath(storagePath, expireSeconds);
+        return storageService.getPresignedUrl(storagePath, expireSeconds);
     }
 
 //    /**

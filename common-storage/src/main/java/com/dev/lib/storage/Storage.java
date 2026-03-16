@@ -21,11 +21,11 @@ import java.util.Collection;
  * // 获取路径
  * String path = Storage.bucket("my-bucket").object("file.txt").path();
  *
- * // 读取文件内容
+ * // 读取文件内容（注意：会加载到内存，适合小文件）
  * String content = Storage.bucket("my-bucket").object("file.txt").read();
  *
- * // 获取文件流
- * InputStream stream = Storage.bucket("my-bucket").object("file.txt").stream();
+ * // 获取文件流（流式读取，适合大文件）
+ * InputStream is = Storage.bucket("my-bucket").object("file.txt").download();
  *
  * // 写入字符串（覆盖/新建）
  * Storage.bucket("my-bucket").object("data.json").write("{\"key\": \"value\"}");
@@ -120,9 +120,16 @@ public class Storage implements InitializingBean {
          * @return ObjectBuilder
          */
         public ObjectBuilder object(String objectKey) {
+            if (objectKey == null || objectKey.isBlank()) {
+                throw new IllegalArgumentException("objectKey must not be empty");
+            }
             // 去掉开头的斜杠
             if (objectKey.startsWith("/")) {
                 objectKey = objectKey.substring(1);
+            }
+            String bucketPrefix = bucketName + "/";
+            if (objectKey.startsWith(bucketPrefix)) {
+                objectKey = objectKey.substring(bucketPrefix.length());
             }
             return new ObjectBuilder(bucketName, objectKey);
         }
@@ -176,16 +183,6 @@ public class Storage implements InitializingBean {
             try (InputStream is = download()) {
                 return new String(is.readAllBytes(), charset);
             }
-        }
-
-        /**
-         * 获取文件流进行下载
-         *
-         * @return 输入流
-         * @throws java.io.IOException 下载失败
-         */
-        public InputStream stream() throws java.io.IOException {
-            return download();
         }
 
         // ========== 写入操作 ==========
