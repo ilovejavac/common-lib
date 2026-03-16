@@ -4,7 +4,8 @@ import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
 /**
- * cp 命令
+ * cp 命令 - 复制文件/目录
+ * 支持: -r/-R 递归
  */
 public class CpCommand extends VfsCommand<Void> {
 
@@ -21,7 +22,7 @@ public class CpCommand extends VfsCommand<Void> {
         String srcPath = parsed.getString(0);
         String destPath = parsed.getString(1);
 
-        Vfs.context(toVfsContext(ctx)).cp(srcPath, destPath, recursive);
+        Vfs.path(toVfsContext(ctx), srcPath).cp(destPath, recursive);
         return null;
     }
 }

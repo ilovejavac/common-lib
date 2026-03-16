@@ -4,7 +4,8 @@ import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
 /**
- * rm 命令
+ * rm 命令 - 删除文件/目录
+ * 支持: -r/-R 递归, -f 强制（忽略不存在的文件）
  */
 public class RmCommand extends VfsCommand<Void> {
 
@@ -19,11 +20,11 @@ public class RmCommand extends VfsCommand<Void> {
             throw new IllegalArgumentException("rm: missing operand");
         }
 
-        Vfs.ContextBuilder root = Vfs.context(toVfsContext(ctx));
+        var vfsCtx = toVfsContext(ctx);
         for (int i = 0; i < parsed.positionalCount(); i++) {
             String path = parsed.getString(i);
             try {
-                root.rm(path, recursive);
+                Vfs.path(vfsCtx, path).rm(recursive);
             } catch (IllegalArgumentException e) {
                 if (!force || !e.getMessage().contains("not found")) {
                     throw e;

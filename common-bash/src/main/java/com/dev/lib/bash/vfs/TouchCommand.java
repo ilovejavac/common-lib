@@ -4,7 +4,7 @@ import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
 /**
- * touch 命令
+ * touch 命令 - 创建空文件或更新时间戳
  */
 public class TouchCommand extends VfsCommand<Void> {
 
@@ -17,10 +17,9 @@ public class TouchCommand extends VfsCommand<Void> {
             throw new IllegalArgumentException("touch: missing file operand");
         }
 
-        Vfs.ContextBuilder root = Vfs.context(toVfsContext(ctx));
+        var vfsCtx = toVfsContext(ctx);
         for (int i = 0; i < parsed.positionalCount(); i++) {
-            String path = parsed.getString(i);
-            root.file(path).touch();
+            Vfs.path(vfsCtx, parsed.getString(i)).touch();
         }
 
         return null;

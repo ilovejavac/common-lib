@@ -4,7 +4,7 @@ import com.dev.lib.bash.ExecuteContext;
 import com.dev.lib.storage.Vfs;
 
 /**
- * mv 命令
+ * mv 命令 - 移动/重命名文件
  */
 public class MvCommand extends VfsCommand<Void> {
 
@@ -20,7 +20,7 @@ public class MvCommand extends VfsCommand<Void> {
         String srcPath = parsed.getString(0);
         String destPath = parsed.getString(1);
 
-        Vfs.context(toVfsContext(ctx)).mv(srcPath, destPath);
+        Vfs.path(toVfsContext(ctx), srcPath).mv(destPath);
         return null;
     }
 }
