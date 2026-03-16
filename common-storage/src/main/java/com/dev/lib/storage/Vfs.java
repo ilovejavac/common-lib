@@ -1,8 +1,11 @@
 package com.dev.lib.storage;
 
+import com.dev.lib.storage.domain.api.VfsPath;
 import com.dev.lib.storage.domain.model.VfsContext;
 import com.dev.lib.storage.domain.model.VfsNode;
 import com.dev.lib.storage.domain.service.virtual.VirtualFileSystemImpl;
+import com.dev.lib.storage.domain.service.virtual.core.VfsCoreDirectoryService;
+import com.dev.lib.storage.domain.service.virtual.core.VfsFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,12 +17,25 @@ import java.util.List;
 
 /**
  * VFS 静态入口，和 Storage 保持一致的使用方式。
+ * <p>
+ * 支持两种 API：
+ * <pre>
+ * // 1. Linux 风格链式 API（推荐）
+ * Vfs.path("/logs/app.log").cat().grep("ERROR").head(10).executeAsString();
+ * Vfs.path("/data").find("*.csv");
+ * Vfs.path("/backup").mkdir(true);
+ *
+ * // 2. 传统 Builder API（向后兼容）
+ * Vfs.root("/bucket").file("data.txt").read();
+ * </pre>
  */
 @Component
 @RequiredArgsConstructor
 public class Vfs {
 
     private final VirtualFileSystemImpl delegate;
+    private final VfsFileService fileService;
+    private final VfsCoreDirectoryService directoryService;
 
     @Value("${spring.application.name:unknown-service}")
     private String applicationName;
@@ -44,7 +60,52 @@ public class Vfs {
         return instance.delegate;
     }
 
-    // ==================== 链式入口（对齐 Storage） ====================
+    // ==================== Linux 风格链式 API ====================
+
+    /**
+     * Linux 风格链式 API 入口
+     * <pre>
+     * Vfs.path("/logs/app.log").cat().grep("ERROR").head(10).executeAsString();
+     * Vfs.path("/data").find("*.csv");
+     * Vfs.path("/backup").mkdir(true);
+     * Vfs.path("/logs/*.log").ls();
+     * </pre>
+     */
+    public static VfsPath path(String path) {
+        if (instance == null) {
+            throw new IllegalStateException("Vfs is not initialized");
+        }
+        VfsContext ctx = VfsContext.of(null);
+        ctx.setServiceName(defaultServiceName);
+        return new VfsPath(ctx, path, instance.fileService, instance.directoryService);
+    }
+
+    /**
+     * Linux 风格链式 API 入口（带 root）
+     */
+    public static VfsPath path(String root, String path) {
+        if (instance == null) {
+            throw new IllegalStateException("Vfs is not initialized");
+        }
+        VfsContext ctx = VfsContext.of(root);
+        ctx.setServiceName(defaultServiceName);
+        return new VfsPath(ctx, path, instance.fileService, instance.directoryService);
+    }
+
+    /**
+     * Linux 风格链式 API 入口（带 context）
+     */
+    public static VfsPath path(VfsContext ctx, String path) {
+        if (instance == null) {
+            throw new IllegalStateException("Vfs is not initialized");
+        }
+        if (ctx.getServiceName() == null || ctx.getServiceName().isBlank()) {
+            ctx.setServiceName(defaultServiceName);
+        }
+        return new VfsPath(ctx, path, instance.fileService, instance.directoryService);
+    }
+
+    // ==================== 传统链式入口（向后兼容） ====================
 
     public static ContextBuilder root(String root) {
         return context(VfsContext.of(root));
