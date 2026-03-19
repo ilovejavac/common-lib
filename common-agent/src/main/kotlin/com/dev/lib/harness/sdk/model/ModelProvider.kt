@@ -1,15 +1,17 @@
 package com.dev.lib.harness.sdk.model
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import org.springframework.stereotype.Component
 
-class ModelProvider {
-    private lateinit var storage: ModelStorage
+@Component
+data class ModelProvider(
+    val storage: ModelStorage
+) {
     private val modelCache = Caffeine.newBuilder().build<String, LlmClient>()
 
     fun model(id: String): LlmClient = modelCache.get(id) { key ->
         storage.getModel(key)
     }
-
 
 }
 

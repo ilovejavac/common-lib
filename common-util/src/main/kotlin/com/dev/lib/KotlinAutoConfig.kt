@@ -1,5 +1,6 @@
 package com.dev.lib
 
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -10,7 +11,7 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class KotlinAutoConfig : InitializingBean, DisposableBean {
-    private val globalScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val globalScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + CoroutineName("app-global-scope"))
 
     @Bean
     fun scope() = globalScope

@@ -1,7 +1,11 @@
 package com.dev.lib.harness.sdk.skill
 
-class SkillManager {
-    private lateinit var storage: SkillStorage
+import org.springframework.stereotype.Component
+
+@Component
+data class SkillManager(
+    val storage: SkillStorage
+) {
 
 
 }

@@ -1,21 +1,27 @@
 package com.dev.lib.harness.session
 
 import com.dev.lib.CoroutineScopeHolder
+import com.dev.lib.entity.id.IDWorker
 import com.dev.lib.harness.HarnessError
 import com.dev.lib.harness.HarnessException
+import com.dev.lib.harness.protocol.*
 import com.dev.lib.harness.sdk.model.ModelProvider
-import com.dev.lib.harness.turn.ActiveTurn
-import com.dev.lib.harness.turn.TurnContext
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 
-data class AgentSession(
-    val id: String,
-    val modelProvider: ModelProvider
+class AgentSession(
+    config: AgentSessionBuilder
 ) {
+    val id: String = IDWorker.newId()
+    val modelProvider: ModelProvider = config.modelProvider
+
+    companion object {
+        fun newBuilder() = AgentSessionBuilder()
+
+        const val SUBMISSION_CHANNEL_CAPACITY = 32
+    }
 
     private val mutex = Mutex()
     private var runtime = SessionRuntime(
@@ -23,10 +29,8 @@ data class AgentSession(
     )
     val state get() = runtime.state
 
-    val tx = Channel<Submission>(16)
-    val rx = Channel<EventMsg>(Channel.BUFFERED)
-
-    lateinit var activeTurn: ActiveTurn
+    val tx = Channel<Submission>(SUBMISSION_CHANNEL_CAPACITY)
+    val rx = Channel<EventMsg>(Channel.UNLIMITED)
 
     private val commandReceiver = CoroutineScopeHolder.launch {
         for (sub in tx) {
@@ -43,20 +47,20 @@ data class AgentSession(
     private suspend fun dispatch(submission: Submission) {
         val context = OperationContext(this, submission)
         when (val op = submission.op) {
-            is Op.UserTurn -> {
-                OperationHandlers.userInput(context)
+            is command.UserTurn -> {
+                OperationHandler.turn(context)
             }
 
-            is Op.UserInterrupt -> {
-                OperationHandlers.interrupt(context)
+            is command.UserInterrupt -> {
+                OperationHandler.interrupt(context)
             }
 
-            is Op.OverrideTurnContext -> {
-                OperationHandlers.overrideTurnContext(context)
+            is command.OverrideTurnContext -> {
+                OperationHandler.overrideTurnContext(context)
             }
 
-            is Op.ExecApproval -> {
-                OperationHandlers.execApproval(context)
+            is command.ExecApproval -> {
+                OperationHandler.approval(context)
             }
         }
     }
@@ -65,12 +69,7 @@ data class AgentSession(
         check(state != SessionState.CLOSED) { "session-$id closed" }
     }
 
-    suspend fun send(sub: Submission) {
-        validSessionIsRunning()
-        mutex.withLock {
-
-        }
-        emit(EventMsg.UserMessageEvent(message = ""))
+    fun send(sub: Submission) {
         if (tx.trySend(sub).isFailure) {
             throw HarnessException(HarnessError.QUEUE_IS_FULL)
         }
@@ -89,9 +88,23 @@ data class AgentSession(
     }
 
     fun newTurn(): TurnContext {
-        val turnContext = TurnContext(Instant.now(), "")
+        val turnContext = TurnContext(Instant.now(), IDWorker.newId())
 
 
         return turnContext
+    }
+}
+
+class AgentSessionBuilder {
+
+    lateinit var modelProvider: ModelProvider
+
+    fun modelProvider(modelProvider: ModelProvider): AgentSessionBuilder {
+        this.modelProvider = modelProvider
+        return this
+    }
+
+    fun build(): AgentSession {
+        return AgentSession(this)
     }
 }

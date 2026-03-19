@@ -79,7 +79,7 @@
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
 
-        <lib.version>1.4.3</lib.version>
+        <lib.version>1.4.4</lib.version>
         <skipTests>true</skipTests>
     </properties>
 
@@ -526,7 +526,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 

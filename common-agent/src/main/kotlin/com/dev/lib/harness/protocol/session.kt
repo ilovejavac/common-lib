@@ -1,8 +1,21 @@
-package com.dev.lib.harness.turn
+package com.dev.lib.harness.protocol
 
 import java.time.Instant
 
-data class ActiveTurn (
+
+data class SessionRuntime(
+    val state: SessionState,
+) {
+
+    lateinit var activeTurn: ActiveTurn
+
+}
+
+enum class SessionState {
+    IDLE, RUNNING, CLOSED
+}
+
+data class ActiveTurn(
     val tasks: Map<String, RunningTask>,
     val turnState: TurnState
 )
