@@ -8,10 +8,19 @@ data class Turn(
 )
 
 data class TurnContext(
+    val cwd: String,
     val currentDate: Instant,
 
-    val submission: String,
-)
+    val submissionId: String,
+) {
+    fun modelContextWindow(): Int {
+        return 258000
+    }
+
+    fun logUserPrompt(items: List<UserInput>) {
+
+    }
+}
 
 enum class TurnStatus {
     Completed,
@@ -24,6 +33,12 @@ enum class TurnState {
     PendingApproval,
     PendingInput,
     ToolCall
+}
+
+enum class TurnAbortReason {
+    Interrupted,
+    Replaced,
+    ReviewEnded
 }
 
 data class TurnPlanStep(

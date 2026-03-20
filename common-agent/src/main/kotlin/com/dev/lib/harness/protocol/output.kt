@@ -1,7 +1,6 @@
 package com.dev.lib.harness.protocol
 
 import com.dev.lib.notify.model.Message
-import com.dev.lib.util.Jsons
 
 sealed class EventMsg(val type: String) {
 
@@ -9,38 +8,46 @@ sealed class EventMsg(val type: String) {
         val message: String
     ) : EventMsg("error")
 
+    data class Warning(
+        val message: String
+    ) : EventMsg("warning")
+
     data class TurnStarted(
-        val turn: Turn
+        val turn: String,
+        val modelContextWindow: Int
     ) : EventMsg("turn/started")
 
     data class TurnCompleted(
-        val turn: Turn
+        val turn: String,
+        val lastAgentMessage: String
     ) : EventMsg("turn/completed")
 
-    data class TurnPlanUpdated(
+    data class TurnAbort(
         val turn: String,
-        val plan: List<TurnPlanStep>
-    ) : EventMsg("turn/plan/updated")
+        val reason: TurnAbortReason
+    ) : EventMsg("turn/aborted")
+
+    data class TokenCount(
+        val modelContextWindow: Int
+    ) : EventMsg("token/count")
+
+    data class AgentMessage(
+        val message: String
+    ) : EventMsg("item/agent-message")
+
+    data class UserMessage(
+        val message: String
+    ) : EventMsg("item/user-message")
 
     data class AgentMessageDelta(
-        val turn: String,
         val delta: String
     ) : EventMsg("item/agent-message/delta")
 
-    data class FileChangeOutputDelta(
-        val turn: String,
-        val delta: String
-    ) : EventMsg("item/file-change/output-delta")
-
-
+    data class ListSkillResponse(
+        val skills: List<String>
+    ) : EventMsg("skills")
 }
 
 data class EventMessage(val em: EventMsg) : Message() {
     override fun getData(): EventMsg = em
-}
-
-fun main() {
-    val em: EventMsg = EventMsg.AgentMessageDelta("1", "xxx")
-
-    print(Jsons.toJson(em))
 }

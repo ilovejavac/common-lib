@@ -1,37 +1,22 @@
 package com.dev.lib.harness.session
 
-import com.dev.lib.harness.protocol.command
+import com.dev.lib.harness.protocol.Command
 import com.dev.lib.harness.protocol.OperationContext
-import com.dev.lib.harness.protocol.ReviewDecision
+import com.dev.lib.harness.protocol.SteerInputError
+import com.dev.lib.harness.session.tasks.RegularTask
 
 object OperationHandler {
-    suspend fun interrupt(context: OperationContext) {
-
-    }
-
-    suspend fun overrideTurnContext(context: OperationContext) {
-
-    }
 
     suspend fun turn(context: OperationContext) {
-        val (
-            items
-        ) = context.submission.op as command.UserTurn
+        val tc = context.newTurn()
+        val session = context.session
+        val (items) = context.submission.op as Command.UserTurn
 
-        val turnContext = context.session.newTurn()
+        tc.logUserPrompt(items)
 
-        // user prompt(items)
-
-    }
-
-    suspend fun approval(context: OperationContext) {
-        val (
-            sub,
-            decision
-        ) = context.submission.op as command.ExecApproval
-
-        if (decision == ReviewDecision.Abort) {
-
+        session.steerInput(items).match<SteerInputError.NoActiveTurn> { (inputs) ->
+            session.spawnTask(tc, inputs, RegularTask())
         }
     }
+
 }

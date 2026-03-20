@@ -2,33 +2,33 @@ package com.dev.lib.harness.protocol
 
 import com.dev.lib.harness.session.AgentSession
 import com.dev.lib.harness.session.Submission
+import java.time.Instant
 
 data class UserInput(
     val text: String,
+    val image: String,
+    val skill: String
 )
 
-sealed interface command {
+sealed interface Command {
     data class UserTurn(
         val items: List<UserInput>
-    ) : command
-
-    object UserInterrupt : command
-
-    data class OverrideTurnContext(
-        val model: String?
-
-    ) : command
-
-    data class ExecApproval(
-        val submission: String,
-        val decision: ReviewDecision
-    ) : command
+    ) : Command
 }
 
 data class OperationContext(
     val session: AgentSession,
     val submission: Submission
-)
+) {
+    fun newTurn(): TurnContext {
+
+        return TurnContext(
+            cwd = "",
+            currentDate = Instant.now(),
+            submissionId = submission.id
+        )
+    }
+}
 
 enum class ReviewDecision {
     Approved,
