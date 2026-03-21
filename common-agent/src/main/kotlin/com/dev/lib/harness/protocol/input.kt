@@ -25,7 +25,11 @@ data class OperationContext(
         return TurnContext(
             cwd = "",
             currentDate = Instant.now(),
-            submissionId = submission.id
+            submissionId = submission.id,
+            modelInfo = ModelInfo(
+                displayName = "",
+                contextWindow = 1
+            )
         )
     }
 }

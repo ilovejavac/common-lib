@@ -14,9 +14,10 @@ object OperationHandler {
 
         tc.logUserPrompt(items)
 
-        session.steerInput(items).match<SteerInputError.NoActiveTurn> { (inputs) ->
-            session.spawnTask(tc, inputs, RegularTask())
-        }
+        session.steerInput(items)
+            .match(SteerInputError.NoActiveTurn(items)) {
+                session.spawnTask(tc, items, RegularTask())
+            }
     }
 
 }

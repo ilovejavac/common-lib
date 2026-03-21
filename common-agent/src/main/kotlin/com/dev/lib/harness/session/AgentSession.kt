@@ -4,11 +4,11 @@ import com.dev.lib.CoroutineScopeHolder
 import com.dev.lib.Outcome
 import com.dev.lib.entity.id.IDWorker
 import com.dev.lib.harness.HarnessError
-import com.dev.lib.harness.HarnessException
 import com.dev.lib.harness.protocol.*
 import com.dev.lib.harness.sdk.model.ModelProvider
 import com.dev.lib.harness.sdk.skill.SkillManager
 import kotlinx.coroutines.channels.Channel
+import java.time.Instant
 
 class AgentSession(
     config: AgentSessionBuilder
@@ -21,6 +21,7 @@ class AgentSession(
         fun newBuilder() = AgentSessionBuilder()
 
         const val SUBMISSION_CHANNEL_CAPACITY = 32
+        const val  TURN_E2E_DURATION_METRIC = "turn.e2e_duration_ms"
     }
 
     private var runtime = SessionRuntime(
@@ -52,9 +53,9 @@ class AgentSession(
         }
     }
 
-    fun send(sub: Submission) {
+    suspend fun submit(sub: Submission) {
         if (xSub.trySend(sub).isFailure) {
-            throw HarnessException(HarnessError.QUEUE_IS_FULL)
+            emit(EventMsg.Warning(HarnessError.QUEUE_IS_FULL))
         }
     }
 
@@ -68,13 +69,30 @@ class AgentSession(
         return runtime.steerInput(input, turnId)
     }
 
-    fun <T : SessionTask> spawnTask(tc: TurnContext, inputs: List<UserInput>, task: T) {
-//        abortTasks(TurnAbortReason.Replaced)
+    suspend fun <T : SessionTask> spawnTask(tc: TurnContext, inputs: List<UserInput>, task: T) {
+        abortAllTasks(TurnAbortReason.Replaced)
+
+        val sessionTaskContext = SessionTaskContext(this)
+
+        runtime.registRunningTask {
+            RunningTask(
+                turnContext = tc,
+                kind = task.kind,
+                timer = Timer(TURN_E2E_DURATION_METRIC, Instant.now()),
+                jobHolder = CoroutineScopeHolder.launch {
+                    val lastAgentMessage = task.run(sessionTaskContext, tc, inputs)
+                    // refush()
+                    // if !cancelled() {
+                    // pending_input
+                    emit(EventMsg.TurnCompleted(tc.submissionId, lastAgentMessage))
+                    // }
+                })
+        }
 
     }
 
-    fun abortTasks(reason: TurnAbortReason) {
-
+    private suspend fun abortAllTasks(reason: TurnAbortReason) {
+        runtime.abortAllTasks(reason)
     }
 }
 

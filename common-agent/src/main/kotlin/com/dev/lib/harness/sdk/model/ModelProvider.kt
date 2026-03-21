@@ -3,7 +3,6 @@ package com.dev.lib.harness.sdk.model
 import com.github.benmanes.caffeine.cache.Caffeine
 import org.springframework.stereotype.Component
 
-@Component
 data class ModelProvider(
     val storage: ModelStorage
 ) {

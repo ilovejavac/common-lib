@@ -1,5 +1,7 @@
 package com.dev.lib.harness.protocol
 
+import com.dev.lib.Option
+import com.dev.lib.harness.HarnessError
 import com.dev.lib.notify.model.Message
 
 sealed class EventMsg(val type: String) {
@@ -10,21 +12,21 @@ sealed class EventMsg(val type: String) {
 
     data class Warning(
         val message: String
-    ) : EventMsg("warning")
+    ) : EventMsg("warning") {
+
+        constructor(harnessError: HarnessError) : this(harnessError.message)
+    }
 
     data class TurnStarted(
-        val turn: String,
-        val modelContextWindow: Int
+        val turn: String, val modelContextWindow: Int
     ) : EventMsg("turn/started")
 
     data class TurnCompleted(
-        val turn: String,
-        val lastAgentMessage: String
+        val turn: String, val lastAgentMessage: Option<String>
     ) : EventMsg("turn/completed")
 
     data class TurnAbort(
-        val turn: String,
-        val reason: TurnAbortReason
+        val turn: String, val reason: TurnAbortReason
     ) : EventMsg("turn/aborted")
 
     data class TokenCount(

@@ -1,38 +1,32 @@
 package com.dev.lib.harness.protocol
 
+import com.dev.lib.None
+import com.dev.lib.Option
 import java.time.Instant
 
-data class Turn(
-    val id: String,
-    val status: TurnStatus
-)
 
 data class TurnContext(
     val cwd: String,
     val currentDate: Instant,
-
     val submissionId: String,
+    val modelInfo: ModelInfo
 ) {
     fun modelContextWindow(): Int {
         return 258000
     }
 
     fun logUserPrompt(items: List<UserInput>) {
-
+        // todo trace
     }
 }
 
-enum class TurnStatus {
-    Completed,
-    Interrupted,
-    Failed,
-    InProgress
-}
+data class ModelInfo(
+    val displayName: String,
+    val contextWindow: Int,
 
-enum class TurnState {
-    PendingApproval,
-    PendingInput,
-    ToolCall
+    val description: Option<String> = None
+) {
+    val autoCompactTokenLimit: Int = contextWindow * 9 / 10
 }
 
 enum class TurnAbortReason {
@@ -41,13 +35,10 @@ enum class TurnAbortReason {
     ReviewEnded
 }
 
-data class TurnPlanStep(
-    val step: String,
-    val status: TurnPlanStepStatus
-)
+data class TurnState(
+    val pendingApproval: MutableMap<String, ReviewDecision> = mutableMapOf(),
+    val pendingUserInput: MutableMap<String, UserInput> = mutableMapOf(),
+    val pendingTool: MutableMap<String, String> = mutableMapOf(),
 
-enum class TurnPlanStepStatus {
-    Pending,
-    InProgress,
-    Completed
-}
+    val tokenUsage: TokenUsage
+)

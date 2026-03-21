@@ -2,44 +2,72 @@ package com.dev.lib.harness.protocol
 
 import com.dev.lib.Outcome
 import com.dev.lib.harness.session.AgentSession
-import com.dev.lib.harness.session.SessionTask
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
-import java.util.concurrent.ConcurrentLinkedQueue
 
 class SessionRuntime(
-    val state: SessionState,
+    var state: SessionState,
 ) {
 
+    private val pendingUserInputs: MutableList<UserInput> = mutableListOf()
+    private val turnState = TurnState(
+        tokenUsage = TokenUsage()
+    )
     private val activeTurnMutex = Mutex()
-    private var _activeTurn: ActiveTurn? = null
+
+    val tasks: MutableMap<String, RunningTask> = mutableMapOf()
 
     suspend fun steerInput(
-        input: List<UserInput>, turnId: String? = null
+        input: List<UserInput>,
+        expectedTurnId: String? = null
     ): Outcome<String, SteerInputError> {
         if (input.isEmpty()) {
             return Outcome.failure(SteerInputError.EmptyInput)
         }
 
         return activeTurnMutex.withLock {
-            val activeTurn = _activeTurn
-                ?: return Outcome.failure(SteerInputError.NoActiveTurn(input))
+            val activeTurnId = tasks.keys.firstOrNull()
+                ?: return@withLock Outcome.failure(
+                    SteerInputError.NoActiveTurn(input)
+                )
 
-            val turn = when {
-                turnId != null && turnId in activeTurn.tasks -> turnId
-                turnId == null -> activeTurn.tasks.entries.firstOrNull()?.key
-                else -> null
-            } ?: return Outcome.failure(SteerInputError.NoActiveTurn(input))
+            if (expectedTurnId != null && expectedTurnId != activeTurnId) {
+                return@withLock Outcome.failure(
+                    SteerInputError.ExpectedTurnMismatch(
+                        expected = expectedTurnId,
+                        actual = activeTurnId
+                    )
+                )
+            }
 
-            activeTurn.pushPendingInput(input)
-
-            Outcome.success(turn)
+            pendingUserInputs.addAll(input)
+            Outcome.success(activeTurnId)
         }
+    }
+
+    suspend fun abortAllTasks(reason: TurnAbortReason) {
+        activeTurnMutex.withLock {
+            state = SessionState.CLOSED
+        }
+
+        pendingUserInputs.clear()
+    }
+
+    suspend fun registRunningTask(block: () -> RunningTask) {
+        activeTurnMutex.withLock {
+            state = SessionState.RUNNING
+        }
+
+        val runningTask = block()
+
+        tasks[runningTask.turnContext.submissionId] = runningTask
     }
 }
 
 sealed interface SteerInputError {
+
     data class NoActiveTurn(
         val items: List<UserInput>
     ) : SteerInputError
@@ -60,35 +88,12 @@ enum class SessionState {
     IDLE, RUNNING, CLOSED
 }
 
-class ActiveTurn(
-    val tasks: Map<String, RunningTask>,
-    val turnState: TurnState
-) {
-    private val _pendingInput = ConcurrentLinkedQueue<UserInput>()
-    val pendingInput get() = _pendingInput  // 外部只读
-
-    fun pushPendingInput(input: List<UserInput>) {
-        _pendingInput.addAll(input)
-    }
-
-}
-
 data class RunningTask(
     val turnContext: TurnContext,
     val kind: TaskKind,
-    val holder: AbortOnDropHandle,
+    val jobHolder: Job,
     val timer: Timer
 )
-
-data class AbortOnDropHandle(
-    val sessionTask: SessionTask
-) {
-
-    fun abort() {
-
-    }
-
-}
 
 enum class TaskKind {
     Regular,
@@ -99,4 +104,12 @@ enum class TaskKind {
 data class Timer(
     val name: String,
     val startTime: Instant
+)
+
+data class TokenUsage(
+    val inputTokens: Int = 0,
+    val cachedInputTokens: Int = 0,
+    val outputTokens: Int = 0,
+    val reasoningOutputTokens: Int = 0,
+    val totalTokens: Int = 0
 )

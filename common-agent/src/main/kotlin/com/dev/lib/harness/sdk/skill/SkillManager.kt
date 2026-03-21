@@ -2,7 +2,6 @@ package com.dev.lib.harness.sdk.skill
 
 import org.springframework.stereotype.Component
 
-@Component
 data class SkillManager(
     val storage: SkillStorage
 ) {
