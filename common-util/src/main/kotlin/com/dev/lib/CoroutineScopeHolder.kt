@@ -29,7 +29,7 @@ object CoroutineScopeHolder {
     /**
      * 初始化全局协程作用域（仅由 Spring 配置类调用）
      */
-    internal fun initGlobalScope(scope: CoroutineScope) {
+    fun initGlobalScope(scope: CoroutineScope) {
         GLOBAL_SCOPE = scope
     }
 

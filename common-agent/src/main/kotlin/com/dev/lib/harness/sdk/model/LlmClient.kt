@@ -1,5 +1,7 @@
 package com.dev.lib.harness.sdk.model
 
-interface LlmClient {
+import org.springframework.ai.chat.model.ChatModel
 
+interface LlmClient {
+    fun getChatModel(): ChatModel
 }
