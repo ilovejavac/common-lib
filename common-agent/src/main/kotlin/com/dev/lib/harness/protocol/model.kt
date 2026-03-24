@@ -1,50 +1,156 @@
 package com.dev.lib.harness.protocol
 
+import com.alibaba.cloud.ai.graph.NodeOutput
+import com.alibaba.cloud.ai.graph.streaming.OutputType
+import com.alibaba.cloud.ai.graph.streaming.StreamingOutput
+import com.dev.lib.None
 import com.dev.lib.Option
-import org.springframework.ai.chat.messages.MessageType
-import org.springframework.ai.chat.metadata.Usage
-
-data class RequestInput(
-    val model: String,
-    val message: String,
-    val tools: List<Any>
-)
+import com.dev.lib.Some
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.reactive.asFlow
+import org.springframework.ai.chat.messages.AssistantMessage
+import org.springframework.ai.chat.messages.ToolResponseMessage
+import reactor.core.publisher.Flux
+import java.util.concurrent.ConcurrentHashMap
 
 sealed interface ResponseEvent {
-    object Created : ResponseEvent
 
-    data class OutputItemDone(
-        val item: ResponseItem
+    val seq: Int
+
+    data object Created : ResponseEvent {
+        override val seq: Int
+            get() = 0
+    }
+
+    data class OutputTextDelta(
+        val itemId: String,
+        val delta: String,
+        override val seq: Int
     ) : ResponseEvent
 
-    data class OutputItemAdded(
-        val item: ResponseItem
+    data class ReasoningContentDelta(
+        val itemId: String,
+        val delta: String,
+        override val seq: Int
+    ) : ResponseEvent
+
+    data class ToolCallRequest(
+        val callId: String,
+        val name: String,
+        val arguments: String,
+        override val seq: Int
+    ) : ResponseEvent
+
+    data class ToolCallResult(
+        val callId: String,
+        val name: String,
+        val result: String,
+        override val seq: Int
     ) : ResponseEvent
 
     data class Completed(
-        val responseId: String,
-        val tokenUsage: Option<Usage>
+        val lastAssistantMessage: Option<String>,
+        override val seq: Int
     ) : ResponseEvent
-
-    data class OutputTextDelta(
-        val content: String
-    ) : ResponseEvent
-
 }
 
-sealed interface ResponseItem {
-    data class Message(
-        val id: Option<String>,
-        val role: MessageType,
-        val content: String,
-        val endTurn: Boolean,
-        val phase: Option<MessagePhase>
-    ) : ResponseItem
+class SaaResponseEventAdapter(
+    val turnId: String,
+    val flux: Flux<NodeOutput>
+) {
 
+    private var seq = 0
+    private var createdSent = false
+    private var completedSent = false
+    private val pendingToolCalls = ConcurrentHashMap.newKeySet<String>()
+    private var lastAssistantMessage: Option<String> = None
 
-}
+    suspend fun sampling(block: suspend (ResponseEvent) -> Unit) {
+        flux.asFlow().filterIsInstance<StreamingOutput<*>>().collect {
+            onOutput(it, block)
+        }
+    }
 
-enum class MessagePhase {
-    Commentary,
-    FinalAnswer
+    private suspend fun onOutput(
+        out: StreamingOutput<*>,
+        emit: suspend (ResponseEvent) -> Unit
+    ) {
+
+        ensuerCreated(emit)
+
+        when (out.outputType) {
+            OutputType.AGENT_MODEL_STREAMING -> {
+                val msg = out.message()
+                if (msg is AssistantMessage) {
+                    val thinking = msg.metadata["reasoningContent"]?.toString()?.takeIf { it.isNotBlank() }
+                    if (thinking != null) {
+                        emit(ResponseEvent.ReasoningContentDelta(turnId, thinking, seq++))
+                        return
+                    }
+
+                    val delta = msg.text?.takeIf { it.isNotBlank() } ?: return
+                    emit(ResponseEvent.OutputTextDelta(turnId, delta, seq++))
+                }
+            }
+
+            OutputType.AGENT_MODEL_FINISHED -> {
+                val msg = out.message()
+                if (msg is AssistantMessage) {
+                    msg.text?.takeIf { it.isNotBlank() }.let {
+                        lastAssistantMessage = Some(it!!)
+                    }
+
+                    if (msg.hasToolCalls()) {
+                        msg.toolCalls.forEach { tc ->
+                            pendingToolCalls += tc.id
+                            emit(
+                                ResponseEvent.ToolCallRequest(
+                                    callId = tc.id,
+                                    name = tc.name,
+                                    arguments = tc.arguments,
+                                    seq++
+                                )
+                            )
+                        }
+                    } else if (pendingToolCalls.isEmpty()) {
+                        emitCompleted(emit)
+                    }
+                }
+            }
+
+            OutputType.AGENT_TOOL_FINISHED -> {
+                val msg = out.message()
+                if (msg is ToolResponseMessage) {
+                    msg.responses.forEach { r ->
+                        pendingToolCalls -= r.id
+                        emit(
+                            ResponseEvent.ToolCallResult(
+                                callId = r.id,
+                                name = r.name,
+                                result = r.responseData,
+                                seq++
+                            )
+                        )
+                    }
+                }
+            }
+
+            else -> Unit
+        }
+    }
+
+    private suspend fun ensuerCreated(emit: suspend (ResponseEvent) -> Unit) {
+        if (!createdSent) {
+            createdSent = true
+            seq++
+//            emit(ResponseEvent.Created)
+        }
+    }
+
+    private suspend fun emitCompleted(emit: suspend (ResponseEvent) -> Unit) {
+        if (!completedSent) {
+            completedSent = true
+            emit(ResponseEvent.Completed(lastAssistantMessage, seq++))
+        }
+    }
 }

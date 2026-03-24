@@ -1,6 +1,8 @@
 package com.dev.lib
 
-sealed class Option<out T : Any>
+sealed class Option<out T : Any> {
+
+}
 
 data object None : Option<Nothing>()
 

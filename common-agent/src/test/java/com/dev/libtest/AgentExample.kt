@@ -1,18 +1,20 @@
 package com.dev.libtest
 
 import com.dev.lib.CoroutineScopeHolder
-import com.dev.lib.harness.protocol.RequestInput
+import com.dev.lib.None
+import com.dev.lib.harness.protocol.Prompt
+import com.dev.lib.harness.protocol.QueryOptions
+import com.dev.lib.harness.protocol.RequestItem
+import com.dev.lib.harness.protocol.TurnContext
 import com.dev.lib.harness.sdk.Agent
 import com.dev.lib.harness.sdk.model.LlmClient
 import com.dev.lib.harness.sdk.model.ModelProvider
 import com.dev.lib.harness.sdk.model.ModelStorage
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.*
 import org.springframework.ai.anthropic.AnthropicChatModel
 import org.springframework.ai.anthropic.AnthropicChatOptions
 import org.springframework.ai.anthropic.api.AnthropicApi
+import org.springframework.ai.chat.messages.MessageType
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.tool.annotation.Tool
 import org.springframework.ai.tool.annotation.ToolParam
@@ -78,13 +80,13 @@ fun main(args: Array<String>) {
         .defaultOptions(
             AnthropicChatOptions.builder()
                 .model("glm-5")
-                .maxTokens(131072)
+                .maxTokens(128 * 1024)
                 .temperature(0.2)
                 .build()
         )
         .build();
 
-    Agent(
+    val job = Agent(
         ModelProvider(
             object : ModelStorage {
                 override fun getModel(id: String): LlmClient {
@@ -96,10 +98,24 @@ fun main(args: Array<String>) {
                 }
             }
         )).query(
-        RequestInput(
-            model = "xx",
-            message = "Find and fix the bug in /home/utils.py",
+        prompt = Prompt(
+            input = listOf(
+                RequestItem.Message(
+                    id = "",
+                    role = MessageType.USER,
+                    content = "你好, 杭州天气怎么样。仔细思考后给我一份游玩规划",
+                    endTurn = false,
+                    phase = None
+                )
+            ),
+            parallelToolCalls = true,
             tools = listOf(Tools())
+        ), options = QueryOptions(
+            turnContext = TurnContext("1", "gpt-5.4")
         )
     )
+
+    runBlocking {
+        delay(1000 * 200)
+    }
 }
