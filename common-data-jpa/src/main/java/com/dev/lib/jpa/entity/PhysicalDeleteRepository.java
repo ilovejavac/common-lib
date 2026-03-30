@@ -1,6 +1,7 @@
 package com.dev.lib.jpa.entity;
 
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.jpa.TransactionHelper;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;
 
@@ -16,12 +17,12 @@ public class PhysicalDeleteRepository<T extends JpaEntity> {
 
     public void delete(T entity) {
 
-        getImpl().hardDelete(entity);
+        TransactionHelper.run(() -> getImpl().hardDelete(entity));
     }
 
     public void deleteById(Long id) {
 
-        getImpl().hardDeleteById(id);
+        TransactionHelper.run(() -> getImpl().hardDeleteById(id));
     }
 
     public void deleteAll(Iterable<? extends T> entities) {
@@ -36,12 +37,12 @@ public class PhysicalDeleteRepository<T extends JpaEntity> {
 
     public long delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return getImpl().hardDelete(dslQuery, expressions);
+        return TransactionHelper.call(() -> getImpl().hardDelete(dslQuery, expressions));
     }
 
     public long delete(BooleanExpression... expressions) {
 
-        return getImpl().hardDelete(null, expressions);
+        return TransactionHelper.call(() -> getImpl().hardDelete(null, expressions));
     }
 
 }

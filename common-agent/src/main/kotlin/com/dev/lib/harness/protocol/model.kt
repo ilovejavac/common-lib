@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.reactive.asFlow
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.ToolResponseMessage
+import org.springframework.ai.chat.metadata.Usage
 import reactor.core.publisher.Flux
 import java.util.concurrent.ConcurrentHashMap
 
@@ -50,6 +51,7 @@ sealed interface ResponseEvent {
 
     data class Completed(
         val lastAssistantMessage: Option<String>,
+        val tokenUsage: Option<Usage>,
         override val seq: Int
     ) : ResponseEvent
 }
@@ -64,6 +66,7 @@ class SaaResponseEventAdapter(
     private var completedSent = false
     private val pendingToolCalls = ConcurrentHashMap.newKeySet<String>()
     private var lastAssistantMessage: Option<String> = None
+    private var usage: Option<Usage> = None
 
     suspend fun sampling(block: suspend (ResponseEvent) -> Unit) {
         flux.asFlow().filterIsInstance<StreamingOutput<*>>().collect {
@@ -81,21 +84,23 @@ class SaaResponseEventAdapter(
         when (out.outputType) {
             OutputType.AGENT_MODEL_STREAMING -> {
                 val msg = out.message()
-                if (msg is AssistantMessage) {
-                    val thinking = msg.metadata["reasoningContent"]?.toString()?.takeIf { it.isNotBlank() }
-                    if (thinking != null) {
-                        emit(ResponseEvent.ReasoningContentDelta(turnId, thinking, seq++))
-                        return
-                    }
 
-                    val delta = msg.text?.takeIf { it.isNotBlank() } ?: return
-                    emit(ResponseEvent.OutputTextDelta(turnId, delta, seq++))
+                if (msg is AssistantMessage) {
+                    val (hasThinking, delta) = msg.resolveStreamingDelta() ?: return
+                    emit(
+                        if (hasThinking) {
+                            ResponseEvent.ReasoningContentDelta(turnId, delta, seq++)
+                        } else {
+                            ResponseEvent.OutputTextDelta(turnId, delta, seq++)
+                        }
+                    )
                 }
             }
 
             OutputType.AGENT_MODEL_FINISHED -> {
                 val msg = out.message()
                 if (msg is AssistantMessage) {
+                    usage = Some(out.tokenUsage())
                     msg.text?.takeIf { it.isNotBlank() }.let {
                         lastAssistantMessage = Some(it!!)
                     }
@@ -150,7 +155,26 @@ class SaaResponseEventAdapter(
     private suspend fun emitCompleted(emit: suspend (ResponseEvent) -> Unit) {
         if (!completedSent) {
             completedSent = true
-            emit(ResponseEvent.Completed(lastAssistantMessage, seq++))
+            emit(ResponseEvent.Completed(lastAssistantMessage, usage, seq++))
+        }
+    }
+
+    private fun AssistantMessage.resolveStreamingDelta(): Pair<Boolean, String>? {
+        val textDelta = text?.takeIf { it.isNotBlank() }
+        val thoughtSignaturesDelta = metadata["thoughtSignatures"]?.toString()?.takeIf { it.isNotBlank() }
+        val reasoningContentDelta = metadata["reasoningContent"]?.toString()?.takeIf { it.isNotBlank() }
+
+        val thinkingDelta = when {
+            metadata.containsKey("signature") && textDelta != null -> textDelta
+            thoughtSignaturesDelta != null -> thoughtSignaturesDelta
+            reasoningContentDelta != null -> reasoningContentDelta
+            else -> null
+        }
+
+        return when {
+            thinkingDelta != null -> true to thinkingDelta
+            textDelta != null -> false to textDelta
+            else -> null
         }
     }
 }

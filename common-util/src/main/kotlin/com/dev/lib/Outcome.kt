@@ -1,8 +1,5 @@
 package com.dev.lib
 
-import java.util.function.Consumer
-import kotlin.reflect.KClass
-
 sealed class Outcome<out T, out E> {
 
     fun isOk(): Boolean = this is Ok<*>

@@ -9,7 +9,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Entity
@@ -35,7 +37,7 @@ public class DictType extends JpaEntity {
     private EntityStatus status;
 
     @OneToMany(mappedBy = "dictType", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<DictItemEntity> items = new ArrayList<>();
+    private Set<DictItemEntity> items = new LinkedHashSet<>();
 
     public void addItem(DictItemEntity item) {
 

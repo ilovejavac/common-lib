@@ -16,16 +16,21 @@ import com.querydsl.core.Tuple;
 import com.querydsl.core.types.*;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.BooleanPath;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberPath;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.jpa.HibernateHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.support.JpaEntityInformation;
 import org.springframework.data.jpa.repository.support.QuerydslJpaPredicateExecutor;
@@ -46,7 +51,9 @@ import java.util.stream.Stream;
 
 public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository<T, Long> implements BaseRepository<T> {
 
-    private static final int BATCH_SIZE = 512;
+    private static final int DEFAULT_BATCH_SIZE = 1024;
+
+    private static final Expression<Long> WINDOW_TOTAL_EXPRESSION = Expressions.numberTemplate(Long.class, "count(*) over()");
 
     private static final Map<Class<?>, List<Field>> CASCADE_FIELDS_CACHE = new ConcurrentHashMap<>(128);
 
@@ -62,9 +69,13 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private final BooleanPath deletedPath;
 
+    private final NumberPath<Long> idPath;
+
     private final Class<T> entityClass;
 
     private final boolean hasCascadeFields;
+
+    private final int batchSize;
 
     public BaseRepositoryImpl(JpaEntityInformation<T, Long> entityInformation, EntityManager em) {
 
@@ -78,7 +89,34 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
                 entityInformation, em, SimpleEntityPathResolver.INSTANCE, null
         );
         this.deletedPath = resolvePath("deleted", BooleanPath.class);
+        this.idPath = pathBuilder.getNumber("id", Long.class);
         this.hasCascadeFields = !getCascadeFields(path.getType()).isEmpty();
+        this.batchSize = resolveConfiguredBatchSize(em);
+    }
+
+    private int resolveConfiguredBatchSize(EntityManager em) {
+
+        Object configured = em.getEntityManagerFactory().getProperties().get("hibernate.jdbc.batch_size");
+        return normalizeBatchSize(configured, DEFAULT_BATCH_SIZE);
+    }
+
+    private int normalizeBatchSize(Object configured, int defaultValue) {
+
+        if (configured == null) {
+            return defaultValue;
+        }
+
+        int value;
+        if (configured instanceof Number number) {
+            value = number.intValue();
+        } else {
+            try {
+                value = Integer.parseInt(configured.toString());
+            } catch (Exception ignored) {
+                value = defaultValue;
+            }
+        }
+        return Math.max(1, value);
     }
 
     // ==================== Getter ====================
@@ -94,6 +132,12 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     }
 
     // ==================== 公开接口方法（默认上下文）====================
+
+    @Override
+    public T ref(Long id) {
+
+        return entityManager.getReference(entityClass, id);
+    }
 
     @Override
     public Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions) {
@@ -176,11 +220,22 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         }
 
         if (select == null && resultClass == entityClass) {
-            return (Page<D>) pageFullEntity(ctx, dslQuery, expressions);
+            return (Page<D>) pageFullEntityWithWindowCount(ctx, dslQuery, expressions);
         }
 
-        List<D> content = doQuery(ctx, select, resultClass, dslQuery, expressions, null);
-        long    total   = count(ctx, dslQuery, expressions);
+        List<D> content;
+        long total;
+        try {
+            WindowPageResult<D> pageResult = doQueryWithWindowCount(ctx, select, resultClass, dslQuery, expressions);
+            content = pageResult.content();
+            total = pageResult.total();
+        } catch (RuntimeException ex) {
+            if (!shouldFallbackToLegacyPage(ex)) {
+                throw ex;
+            }
+            content = doQuery(ctx, select, resultClass, dslQuery, expressions, null);
+            total = count(ctx, dslQuery, expressions);
+        }
         return new PageImpl<>(content, dslQuery.toPageable(null), total);
     }
 
@@ -223,29 +278,60 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     @Transactional(rollbackFor = Exception.class)
     public <S extends T> List<S> saveAll(Iterable<S> entities) {
 
-        List<S> list = new ArrayList<>();
+        if (entities == null) {
+            return Collections.emptyList();
+        }
+
+        boolean appendToResult = true;
+        List<S> result;
+        if (entities instanceof List<S> source) {
+            result = source;
+            appendToResult = false;
+        } else {
+            result = new ArrayList<>();
+        }
+        List<S> writeBatch = new ArrayList<>(batchSize);
 
         for (S entity : entities) {
+            if (entity == null) {
+                continue;
+            }
             listener.prePersist(entity);
-            list.add(entity);
+            writeBatch.add(entity);
+            if (appendToResult) {
+                result.add(entity);
+            }
+
+            if (writeBatch.size() >= batchSize) {
+                persistSaveBatch(writeBatch);
+                writeBatch.clear();
+            }
         }
 
-        if (list.isEmpty()) {
-            return list;
+        if (!writeBatch.isEmpty()) {
+            persistSaveBatch(writeBatch);
         }
 
-        // 有级联关系走 JPA
-        if (hasCascadeFields) {
-            return super.saveAll(list);
-        }
-
-        batchInsertNative(list);
-
-        return list;
+        return result;
     }
 
+    private <S extends T> void persistSaveBatch(List<S> batch) {
 
-    private <S extends T> void batchInsertNative(List<S> entities) {
+        if (batch.isEmpty()) {
+            return;
+        }
+
+        if (hasCascadeFields) {
+            super.saveAll(batch);
+            entityManager.flush();
+            entityManager.clear();
+            return;
+        }
+
+        batchInsertNative(batch, batchSize);
+    }
+
+    private <S extends T> void batchInsertNative(List<S> entities, int effectiveBatchSize) {
 
         EntityMeta meta = EntityMetaCache.get(entityClass);
 
@@ -256,14 +342,17 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 int count = 0;
                 for (S entity : entities) {
+                    if (entity == null) {
+                        continue;
+                    }
                     meta.setParameters(ps, entity);
                     ps.addBatch();
 
-                    if (++count % BATCH_SIZE == 0) {
+                    if (++count % effectiveBatchSize == 0) {
                         ps.executeBatch();
                     }
                 }
-                if (count % BATCH_SIZE != 0) {
+                if (count % effectiveBatchSize != 0) {
                     ps.executeBatch();
                 }
             }
@@ -312,6 +401,85 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         return tuples.stream().map(t -> select.toDto(t, resultClass)).toList();
     }
 
+    @SuppressWarnings("unchecked")
+    private <D> WindowPageResult<D> doQueryWithWindowCount(
+            QueryContext ctx,
+            SelectBuilder<T> select,
+            Class<D> resultClass,
+            DslQuery<T> dslQuery,
+            BooleanExpression[] expressions) {
+
+        Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
+
+        Expression<?>[] selectExprs = select.buildExpressions(pathBuilder);
+        Expression<?>[] queryExprs = Arrays.copyOf(selectExprs, selectExprs.length + 1);
+        queryExprs[selectExprs.length] = WINDOW_TOTAL_EXPRESSION;
+
+        JPAQuery<Tuple> query = queryFactory.select(queryExprs).from(path);
+
+        Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
+        if (predicate != null) {
+            query.where(predicate);
+        }
+
+        if (ctx.hasLock()) {
+            query.setLockMode(ctx.getLockMode());
+        }
+
+        if (dslQuery != null) {
+            applySort(query, dslQuery);
+            applyLimit(query, dslQuery);
+        }
+
+        List<Tuple> tuples = query.fetch();
+
+        if (tuples.isEmpty()) {
+            return new WindowPageResult<>(Collections.emptyList(), count(ctx, dslQuery, expressions));
+        }
+
+        List<D> content;
+        if (resultClass == entityClass) {
+            content = (List<D>) tuples.stream().map(select::toEntity).toList();
+        } else {
+            content = tuples.stream().map(t -> select.toDto(t, resultClass)).toList();
+        }
+
+        long total = resolveWindowTotal(tuples, WINDOW_TOTAL_EXPRESSION, () -> count(ctx, dslQuery, expressions));
+        return new WindowPageResult<>(content, total);
+    }
+
+    static long resolveWindowTotal(List<Tuple> tuples, Expression<Long> totalExpression, java.util.function.LongSupplier countFallback) {
+
+        if (tuples == null || tuples.isEmpty()) {
+            return countFallback.getAsLong();
+        }
+
+        Long total = tuples.getFirst().get(totalExpression);
+        if (total != null) {
+            return total;
+        }
+        return countFallback.getAsLong();
+    }
+
+    static boolean shouldFallbackToLegacyPage(Throwable ex) {
+
+        for (Throwable current = ex; current != null; current = current.getCause()) {
+            String message = current.getMessage();
+            if (message == null) {
+                continue;
+            }
+            String normalized = message.toLowerCase(Locale.ROOT);
+            if (normalized.contains("window")
+                || normalized.contains("over(")
+                || normalized.contains("count(*) over()")
+                || normalized.contains("syntax")
+                || normalized.contains("parse")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * 执行部分字段流式查询
      */
@@ -329,7 +497,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             query.where(predicate);
         }
 
-        query.setHint(HibernateHints.HINT_FETCH_SIZE, BATCH_SIZE * 2);
+        query.setHint(HibernateHints.HINT_FETCH_SIZE, batchSize * 2);
 
         if (dslQuery != null) {
             applySort(query, dslQuery);
@@ -339,6 +507,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             return (Stream<D>) query.stream().map(select::toEntity);
         }
         return query.stream().map(t -> select.toDto(t, resultClass));
+    }
+
+    private record WindowPageResult<D>(List<D> content, long total) {
     }
 
     // ==================== 全字段查询（优化路径）====================
@@ -389,12 +560,47 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         return querydslExecutor.findAll(predicate, dslQuery.toPageable(getAllowFields(dslQuery)));
     }
 
+    private Page<T> pageFullEntityWithWindowCount(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        try {
+            return doPageFullEntityWithWindowCount(ctx, dslQuery, expressions);
+        } catch (RuntimeException ex) {
+            if (!shouldFallbackToLegacyPage(ex)) {
+                throw ex;
+            }
+            return pageFullEntity(ctx, dslQuery, expressions);
+        }
+    }
+
+    private Page<T> doPageFullEntityWithWindowCount(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
+        Pageable pageable = dslQuery.toPageable(getAllowFields(dslQuery));
+
+        JPAQuery<Tuple> query = queryFactory.select(path, WINDOW_TOTAL_EXPRESSION).from(path);
+        if (predicate != null) {
+            query.where(predicate);
+        }
+
+        applySort(query, pageable.getSort());
+        query.offset(pageable.getOffset());
+        query.limit(pageable.getPageSize());
+
+        List<Tuple> tuples = query.fetch();
+        List<T> content = tuples.stream()
+                .map(tuple -> tuple.get(path))
+                .filter(Objects::nonNull)
+                .toList();
+        long total = resolveWindowTotal(tuples, WINDOW_TOTAL_EXPRESSION, () -> count(ctx, dslQuery, expressions));
+        return new PageImpl<>(content, pageable, total);
+    }
+
     private Stream<T> streamFullEntity(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
 
         JPAQuery<T> query = queryFactory.selectFrom(path).where(predicate);
-        query.setHint(HibernateHints.HINT_FETCH_SIZE, BATCH_SIZE * 2);
+        query.setHint(HibernateHints.HINT_FETCH_SIZE, batchSize * 2);
 
         if (dslQuery != null) {
             applySort(query, dslQuery);
@@ -420,15 +626,8 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         }
 
         if (hasCascadeFields) {
-            Predicate   fullPredicate = buildPredicate(ctx, dslQuery, expressions);
-            JPAQuery<T> query         = queryFactory.selectFrom(path).where(fullPredicate);
-            if (dslQuery != null) {
-                applySort(query, dslQuery);
-            }
-            List<T> entities = query.fetch();
-            if (!entities.isEmpty()) {
-                cascadeSoftDeleteBatch(entities);
-            }
+            Predicate fullPredicate = buildPredicate(ctx, dslQuery, expressions);
+            softDeleteByPredicateInChunks(fullPredicate);
         } else {
             BooleanBuilder where = new BooleanBuilder();
             if (ctx.getDeletedFilter() == QueryContext.DeletedFilter.EXCLUDE_DELETED) {
@@ -483,33 +682,43 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         if (entities == null) return;
 
-        List<Long> ids = new ArrayList<>();
+        List<Long> ids = new ArrayList<>(batchSize);
         for (T entity : entities) {
-            if (entity != null && entity.getId() != null) {
-                ids.add(entity.getId());
+            if (entity == null || entity.getId() == null) {
+                continue;
+            }
+            ids.add(entity.getId());
+            if (ids.size() >= batchSize) {
+                softDeleteByIds(ids);
+                ids.clear();
             }
         }
 
-        if (ids.isEmpty()) return;
+        if (!ids.isEmpty()) {
+            softDeleteByIds(ids);
+        }
+    }
 
-        if (!hasCascadeFields) {
-            for (int i = 0; i < ids.size(); i += BATCH_SIZE) {
-                List<Long> batch = ids.subList(i, Math.min(i + BATCH_SIZE, ids.size()));
-                batchSoftDelete(pathBuilder.getNumber("id", Long.class).in(batch));
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteAllById(Iterable<? extends Long> ids) {
+
+        if (ids == null) return;
+
+        List<Long> batchIds = new ArrayList<>(batchSize);
+        for (Long id : ids) {
+            if (id == null) {
+                continue;
             }
-            return;
+            batchIds.add(id);
+            if (batchIds.size() >= batchSize) {
+                softDeleteByIds(batchIds);
+                batchIds.clear();
+            }
         }
 
-        for (int i = 0; i < ids.size(); i += BATCH_SIZE) {
-            List<Long> batch = ids.subList(i, Math.min(i + BATCH_SIZE, ids.size()));
-
-            List<T> toDelete = queryFactory.selectFrom(path)
-                    .where(pathBuilder.getNumber("id", Long.class).in(batch))
-                    .where(deletedPath.eq(false))
-                    .fetch();
-            if (!toDelete.isEmpty()) {
-                cascadeSoftDeleteBatch(toDelete);
-            }
+        if (!batchIds.isEmpty()) {
+            softDeleteByIds(batchIds);
         }
     }
 
@@ -517,15 +726,70 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     @Transactional(rollbackFor = Exception.class)
     public void deleteAll() {
 
-        if (hasCascadeFields) {
-            List<T> all = queryFactory.selectFrom(path)
-                    .where(deletedPath.eq(false))
-                    .fetch();
-            if (!all.isEmpty()) {
-                cascadeSoftDeleteBatch(all);
+        Long lastId = null;
+        while (true) {
+            List<Long> ids = fetchActiveIdsAfter(lastId);
+            if (ids.isEmpty()) {
+                break;
             }
-        } else {
-            batchSoftDelete(null);
+            softDeleteByIds(ids);
+            lastId = ids.getLast();
+        }
+    }
+
+    private void softDeleteByIds(List<Long> ids) {
+
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+
+        if (!hasCascadeFields) {
+            batchSoftDelete(idPath.in(ids));
+            return;
+        }
+
+        List<T> toDelete = queryFactory.selectFrom(path)
+                .where(idPath.in(ids))
+                .where(deletedPath.eq(false))
+                .fetch();
+        if (!toDelete.isEmpty()) {
+            cascadeSoftDeleteBatch(toDelete);
+        }
+    }
+
+    private List<Long> fetchActiveIdsAfter(Long lastId) {
+
+        JPAQuery<Long> idQuery = queryFactory.select(idPath)
+                .from(path)
+                .where(deletedPath.eq(false));
+        if (lastId != null) {
+            idQuery.where(idPath.gt(lastId));
+        }
+        return idQuery.orderBy(idPath.asc())
+                .limit(batchSize)
+                .fetch();
+    }
+
+    private void softDeleteByPredicateInChunks(Predicate fullPredicate) {
+
+        Long lastId = null;
+        while (true) {
+            JPAQuery<Long> idQuery = queryFactory.select(idPath)
+                    .from(path)
+                    .where(fullPredicate);
+            if (lastId != null) {
+                idQuery.where(idPath.gt(lastId));
+            }
+
+            List<Long> ids = idQuery.orderBy(idPath.asc())
+                    .limit(batchSize)
+                    .fetch();
+            if (ids.isEmpty()) {
+                break;
+            }
+
+            softDeleteByIds(ids);
+            lastId = ids.getLast();
         }
     }
 
@@ -572,8 +836,8 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
             PathBuilder<?> builder = createPathBuilder(clazz);
 
-            for (int i = 0; i < ids.size(); i += BATCH_SIZE) {
-                List<Long> batch = ids.subList(i, Math.min(i + BATCH_SIZE, ids.size()));
+            for (int i = 0; i < ids.size(); i += batchSize) {
+                List<Long> batch = ids.subList(i, Math.min(i + batchSize, ids.size()));
 
                 queryFactory.update(builder)
                         .set(builder.getBoolean("deleted"), true)
@@ -619,32 +883,46 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         if (entities == null) return;
 
-        List<Long> ids = new ArrayList<>();
+        List<Long> ids = new ArrayList<>(batchSize);
         for (T entity : entities) {
             if (entity != null && entity.getId() != null) {
                 ids.add(entity.getId());
             }
+            if (ids.size() >= batchSize) {
+                executeHardDeleteBatch(ids);
+                ids.clear();
+            }
         }
 
-        TransactionHelper.run(() -> {
-            batchHardDeleteById(ids);
-        });
+        if (!ids.isEmpty()) {
+            executeHardDeleteBatch(ids);
+        }
     }
 
     void hardDeleteAllById(Iterable<Long> ids) {
 
         if (ids == null) return;
 
-        List<Long> list = new ArrayList<>();
+        List<Long> list = new ArrayList<>(batchSize);
         for (Long id : ids) {
             if (id != null) {
                 list.add(id);
             }
+            if (list.size() >= batchSize) {
+                executeHardDeleteBatch(list);
+                list.clear();
+            }
         }
 
-        TransactionHelper.run(() -> {
-            batchHardDeleteById(list);
-        });
+        if (!list.isEmpty()) {
+            executeHardDeleteBatch(list);
+        }
+    }
+
+    private void executeHardDeleteBatch(List<Long> ids) {
+
+        List<Long> batch = List.copyOf(ids);
+        TransactionHelper.run(() -> batchHardDeleteById(batch));
     }
 
     void batchHardDeleteById(List<Long> list) {
@@ -653,10 +931,10 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             return;
         }
 
-        for (int i = 0; i < list.size(); i += BATCH_SIZE) {
-            List<Long> batch = list.subList(i, Math.min(i + BATCH_SIZE, list.size()));
+        for (int i = 0; i < list.size(); i += batchSize) {
+            List<Long> batch = list.subList(i, Math.min(i + batchSize, list.size()));
             queryFactory.delete(path)
-                    .where(pathBuilder.getNumber("id", Long.class).in(batch))
+                    .where(idPath.in(batch))
                     .execute();
         }
 
@@ -743,6 +1021,11 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     private void applySort(JPAQuery<?> query, DslQuery<T> dslQuery) {
 
         Sort sort = dslQuery.toSort(getAllowFields(dslQuery));
+        applySort(query, sort);
+    }
+
+    private void applySort(JPAQuery<?> query, Sort sort) {
+
         if (sort.isUnsorted()) return;
 
         for (Sort.Order order : sort) {

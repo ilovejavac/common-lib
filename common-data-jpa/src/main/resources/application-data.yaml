@@ -21,7 +21,7 @@ spring:
         highlight_sql: false
         use_sql_comments: false
         jdbc:
-          batch_size: 128
+          batch_size: 1024
           fetch_size: 128
           time_zone: Asia/Shanghai
           batch_versioned_data: true

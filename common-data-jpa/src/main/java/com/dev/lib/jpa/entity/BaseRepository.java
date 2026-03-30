@@ -93,4 +93,6 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
     default PhysicalDeleteRepository<T> physicalDelete() {
         return new PhysicalDeleteRepository<>(this);
     }
+
+    T ref(Long id);
 }

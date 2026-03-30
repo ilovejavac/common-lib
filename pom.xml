@@ -14,7 +14,7 @@
 
     <groupId>com.dev.lib</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.4.4</version>
+    <version>1.4.5</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -79,54 +79,11 @@
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
 
-        <lib.version>1.4.4</lib.version>
+        <lib.version>1.4.5</lib.version>
         <skipTests>true</skipTests>
     </properties>
 
     <profiles>
-        <profile>
-            <id>mysql</id>
-            <properties>
-                <db.driver>com.mysql.cj.jdbc.Driver</db.driver>
-                <db.dialect>org.hibernate.dialect.MySQLDialect</db.dialect>
-            </properties>
-            <dependencies>
-                <dependency>
-                    <groupId>com.mysql</groupId>
-                    <artifactId>mysql-connector-j</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-
-        <profile>
-            <id>pgsql</id>
-            <properties>
-                <db.driver>org.postgresql.Driver</db.driver>
-                <db.dialect>org.hibernate.dialect.PostgreSQLDialect</db.dialect>
-            </properties>
-            <dependencies>
-                <dependency>
-                    <groupId>org.postgresql</groupId>
-                    <artifactId>postgresql</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-
-        <profile>
-            <id>dm</id>
-            <properties>
-                <db.driver>dm.jdbc.driver.DmDriver</db.driver>
-                <db.dialect>org.hibernate.community.dialect.DmDialect</db.dialect>
-            </properties>
-            <dependencies>
-                <dependency>
-                    <groupId>com.dameng</groupId>
-                    <artifactId>DmJdbcDriver18</artifactId>
-                    <version>${dm.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-
         <!-- 有 Kotlin 源码时激活 -->
         <profile>
             <id>with-kotlin</id>

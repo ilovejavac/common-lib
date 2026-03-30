@@ -5,6 +5,7 @@ import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.domain.service.virtual.storage.VfsFileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +39,7 @@ public class SysFileCowService {
     private static final int VERSIONS_TO_DELETE = 5;
     private static final long DELAY_DELETE_MINUTES = 5L;
 
-    private final VfsFileStorageService storageService;
+    private final ObjectProvider<VfsFileStorageService> storageServiceProvider;
     private final AppStorageProperties storageProperties;
 
     // ==================== 写入操作（COW）====================
@@ -61,7 +62,7 @@ public class SysFileCowService {
         }
 
         String oldStoragePath = file.getStoragePath();
-        String newStoragePath = storageService.upload(contentStream, fileName, null);
+        String newStoragePath = storageService().upload(contentStream, fileName, null);
 
         // 应用 COW 逻辑
         applyCOW(file, oldStoragePath, newStoragePath, size);
@@ -86,7 +87,7 @@ public class SysFileCowService {
         }
 
         String oldStoragePath = file.getStoragePath();
-        String newStoragePath = storageService.appendAndUpload(
+        String newStoragePath = storageService().appendAndUpload(
                 file.getStoragePath(),
                 contentBytes,
                 fileName
@@ -158,7 +159,7 @@ public class SysFileCowService {
                     MAX_OLD_VERSIONS, VERSIONS_TO_DELETE);
 
             List<String> toDelete = oldPaths.subList(0, VERSIONS_TO_DELETE);
-            storageService.deleteAll(new ArrayList<>(toDelete));
+            storageService().deleteAll(new ArrayList<>(toDelete));
             toDelete.clear();
         }
 
@@ -201,7 +202,7 @@ public class SysFileCowService {
 
         log.info("Cleaning up {} old versions for file: {}", file.getOldStoragePaths().size(), file.getVirtualPath());
 
-        storageService.deleteAll(new ArrayList<>(file.getOldStoragePaths()));
+        storageService().deleteAll(new ArrayList<>(file.getOldStoragePaths()));
         file.setOldStoragePaths(null);
         file.setDeleteAfter(null);
     }
@@ -226,5 +227,14 @@ public class SysFileCowService {
 
         // 管理旧版本
         manageOldVersions(file, oldStoragePath);
+    }
+
+    private VfsFileStorageService storageService() {
+
+        VfsFileStorageService storageService = storageServiceProvider.getIfAvailable();
+        if (storageService == null) {
+            throw new IllegalStateException("VfsFileStorageService not available");
+        }
+        return storageService;
     }
 }

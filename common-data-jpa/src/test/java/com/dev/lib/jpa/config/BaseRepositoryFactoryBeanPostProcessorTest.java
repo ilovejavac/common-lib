@@ -1,0 +1,58 @@
+package com.dev.lib.jpa.config;
+
+import com.dev.lib.jpa.entity.BaseRepository;
+import com.dev.lib.jpa.entity.BaseRepositoryImpl;
+import com.dev.lib.jpa.entity.JpaEntity;
+import org.junit.jupiter.api.Test;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.support.JpaRepositoryFactoryBean;
+import org.springframework.data.repository.core.support.RepositoryFactoryBeanSupport;
+
+import java.lang.reflect.Field;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class BaseRepositoryFactoryBeanPostProcessorTest {
+
+    @Test
+    void shouldSetBaseRepositoryImplForBaseRepository() throws Exception {
+
+        BaseRepositoryFactoryBeanPostProcessor processor = new BaseRepositoryFactoryBeanPostProcessor();
+        JpaRepositoryFactoryBean<DemoBaseRepository, DemoEntity, Long> factoryBean =
+                new JpaRepositoryFactoryBean<>(DemoBaseRepository.class);
+
+        processor.postProcessBeforeInitialization(factoryBean, "demoBaseRepository");
+
+        assertThat(readRepositoryBaseClass(factoryBean)).contains(BaseRepositoryImpl.class);
+    }
+
+    @Test
+    void shouldNotChangePlainJpaRepository() throws Exception {
+
+        BaseRepositoryFactoryBeanPostProcessor processor = new BaseRepositoryFactoryBeanPostProcessor();
+        JpaRepositoryFactoryBean<DemoPlainRepository, DemoEntity, Long> factoryBean =
+                new JpaRepositoryFactoryBean<>(DemoPlainRepository.class);
+
+        processor.postProcessBeforeInitialization(factoryBean, "demoPlainRepository");
+
+        assertThat(readRepositoryBaseClass(factoryBean)).isEmpty();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Optional<Class<?>> readRepositoryBaseClass(Object factoryBean) throws Exception {
+
+        Field field = RepositoryFactoryBeanSupport.class.getDeclaredField("repositoryBaseClass");
+        field.setAccessible(true);
+        return (Optional<Class<?>>) field.get(factoryBean);
+    }
+
+    interface DemoBaseRepository extends BaseRepository<DemoEntity> {
+    }
+
+    interface DemoPlainRepository extends JpaRepository<DemoEntity, Long> {
+    }
+
+    static class DemoEntity extends JpaEntity {
+    }
+}

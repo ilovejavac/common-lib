@@ -11,6 +11,7 @@ import com.dev.lib.storage.domain.service.virtual.repository.VfsFileRepository;
 import com.dev.lib.storage.domain.service.virtual.storage.VfsFileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +45,7 @@ public class VfsCoreDirectoryService {
     private final VfsPathResolver pathResolver;
     private final StorageServiceNameProvider serviceNameProvider;
     private final VfsFileStorageService storageService;
-    private final VfsFileService fileService;
+    private final ObjectProvider<VfsFileService> fileServiceProvider;
 
     // ========== 目录创建 ==========
 
@@ -223,7 +224,7 @@ public class VfsCoreDirectoryService {
             fileRepository.delete(file);
         } else {
             // 删除文件
-            fileService.delete(ctx, file.getVirtualPath());
+            fileService().delete(ctx, file.getVirtualPath());
         }
     }
 
@@ -425,5 +426,14 @@ public class VfsCoreDirectoryService {
         node.setExtension(file.getExtension());
         node.setModifiedAt(file.getUpdatedAt());
         return node;
+    }
+
+    private VfsFileService fileService() {
+
+        VfsFileService fileService = fileServiceProvider.getIfAvailable();
+        if (fileService == null) {
+            throw new IllegalStateException("VfsFileService not available");
+        }
+        return fileService;
     }
 }
