@@ -81,7 +81,7 @@ class RabbitMQTemplate(
 
             message.headers.forEach { (k, v) -> props.headers[k] = v }
 
-            message.ttl?.let { props.expiration = it.toString() }
+            message.ttl?.let { props.setExpiration(it.toString()) }
             message.priority?.let { props.priority = it }
             message.delay?.let { props.headers["x-delay"] = it }
             message.deadLetter?.let {

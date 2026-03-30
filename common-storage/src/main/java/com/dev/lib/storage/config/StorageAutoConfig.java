@@ -1,7 +1,7 @@
 package com.dev.lib.storage.config;
 
 import com.dev.lib.jpa.entity.BaseRepositoryImpl;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;

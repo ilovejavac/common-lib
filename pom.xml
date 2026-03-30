@@ -8,13 +8,13 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.8</version>
+        <version>4.1.0-M4</version>
         <relativePath/>
     </parent>
 
     <groupId>com.dev.lib</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.4.5</version>
+    <version>1.5.0-Re</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -48,14 +48,14 @@
     </modules>
 
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>25</java.version>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
 
         <!-- Spring -->
-        <spring-boot.version>3.5.8</spring-boot.version>
-        <spring-cloud.version>2025.0.0</spring-cloud.version>
-        <spring-cloud-alibaba.version>2025.0.0.0</spring-cloud-alibaba.version>
+        <spring-boot.version>4.1.0-M4</spring-boot.version>
+        <spring-cloud.version>2025.1.1</spring-cloud.version>
+        <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
 
         <!-- Database -->
         <mysql.version>8.2.0</mysql.version>
@@ -67,7 +67,7 @@
         <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
 
         <!-- Others -->
-        <sa-token.version>1.44.0</sa-token.version>
+        <sa-token.version>1.45.0</sa-token.version>
         <dubbo.version>3.3.6</dubbo.version>
         <redisson.version>3.52.0</redisson.version>
         <opensearch.version>2.0.5</opensearch.version>
@@ -79,7 +79,7 @@
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
 
-        <lib.version>1.4.5</lib.version>
+        <lib.version>1.5.0-Re</lib.version>
         <skipTests>true</skipTests>
     </properties>
 
@@ -204,14 +204,6 @@
                 <groupId>com.alibaba.cloud</groupId>
                 <artifactId>spring-cloud-alibaba-dependencies</artifactId>
                 <version>${spring-cloud-alibaba.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-bom</artifactId>
-                <version>1.10.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -488,6 +480,17 @@
 
     <repositories>
         <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
             <id>aliyun-central</id>
             <name>Aliyun Central</name>
             <url>https://maven.aliyun.com/repository/central</url>
@@ -512,6 +515,17 @@
 
     <pluginRepositories>
         <pluginRepository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+        <pluginRepository>
             <id>aliyun-plugin</id>
             <url>https://maven.aliyun.com/repository/central</url>
         </pluginRepository>
@@ -523,6 +537,8 @@
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <configuration>
+                    <useDaemon>false</useDaemon>
+                    <jdkHome>${java.home}</jdkHome>
                     <jvmTarget>${java.version}</jvmTarget>
                     <args>
                         <arg>-Xjsr305=strict</arg>
@@ -559,6 +575,8 @@
                             <goal>kapt</goal>
                         </goals>
                         <configuration>
+                            <jdkHome>${java.home}</jdkHome>
+                            <jvmTarget>${java.version}</jvmTarget>
                             <sourceDirs>
                                 <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
                             </sourceDirs>

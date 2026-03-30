@@ -3,6 +3,7 @@ package com.dev.lib.notify.config;
 import com.dev.lib.notify.interceptor.ClientIdInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -13,6 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 @EnableConfigurationProperties(SseProperties.class)
 @RequiredArgsConstructor
+@ComponentScan(basePackages = "com.dev.lib.notify")
 public class WebNotifyConfig implements WebMvcConfigurer {
 
     private final ClientIdInterceptor clientIdInterceptor;

@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.dev.lib</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.4.5</version>
+        <version>1.5.0-Re</version>
     </parent>
 
     <artifactId>common-data-search</artifactId>
@@ -26,7 +26,7 @@
         <dependency>
             <groupId>org.opensearch.client</groupId>
             <artifactId>opensearch-java</artifactId>
-            <version>3.3.0</version>
+            <version>3.8.0</version>
         </dependency>
 
         <dependency>

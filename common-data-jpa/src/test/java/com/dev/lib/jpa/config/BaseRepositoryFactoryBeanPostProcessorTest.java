@@ -36,7 +36,8 @@ class BaseRepositoryFactoryBeanPostProcessorTest {
 
         processor.postProcessBeforeInitialization(factoryBean, "demoPlainRepository");
 
-        assertThat(readRepositoryBaseClass(factoryBean)).isEmpty();
+        assertThat(readRepositoryBaseClass(factoryBean))
+                .satisfies(baseClass -> assertThat(baseClass.orElse(null)).isNotEqualTo(BaseRepositoryImpl.class));
     }
 
     @SuppressWarnings("unchecked")
@@ -44,7 +45,17 @@ class BaseRepositoryFactoryBeanPostProcessorTest {
 
         Field field = RepositoryFactoryBeanSupport.class.getDeclaredField("repositoryBaseClass");
         field.setAccessible(true);
-        return (Optional<Class<?>>) field.get(factoryBean);
+        Object value = field.get(factoryBean);
+        if (value == null) {
+            return Optional.empty();
+        }
+        if (value instanceof Optional<?> optional) {
+            return (Optional<Class<?>>) optional;
+        }
+        if (value instanceof Class<?> clazz) {
+            return Optional.of(clazz);
+        }
+        throw new IllegalStateException("Unexpected repositoryBaseClass type: " + value.getClass().getName());
     }
 
     interface DemoBaseRepository extends BaseRepository<DemoEntity> {

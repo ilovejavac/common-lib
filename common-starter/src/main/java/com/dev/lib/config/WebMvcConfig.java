@@ -1,6 +1,6 @@
 package com.dev.lib.config;
 
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
+import com.fasterxml.jackson.databind.Module;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -8,9 +8,8 @@ import org.springframework.context.annotation.Configuration;
 public class WebMvcConfig {
 
     @Bean
-    public Jackson2ObjectMapperBuilderCustomizer webJacksonCustomizer() {
+    public Module populateFieldJacksonModule() {
 
-        PopulateFieldBeanSerializerModifier modifier = new PopulateFieldBeanSerializerModifier();
-        return builder -> builder.postConfigurer(mapper -> mapper.registerModule(modifier.asModule()));
+        return new PopulateFieldBeanSerializerModifier().asModule();
     }
 }

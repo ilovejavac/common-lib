@@ -51,7 +51,7 @@ class KafkaMQAutoConfiguration {
     @Bean
     fun kafkaListenerContainerFactory(consumerFactory: ConsumerFactory<String, Any>): ConcurrentKafkaListenerContainerFactory<String, Any> {
         val factory = ConcurrentKafkaListenerContainerFactory<String, Any>()
-        factory.consumerFactory = consumerFactory
+        factory.setConsumerFactory(consumerFactory)
         factory.containerProperties.ackMode = ContainerProperties.AckMode.MANUAL
         return factory
     }

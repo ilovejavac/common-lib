@@ -2,10 +2,8 @@ package com.dev.lib.config;
 
 import com.dev.lib.util.Jsons;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
-import org.springframework.boot.jackson.JsonComponentModule;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,8 +11,6 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JacksonSupportTest {
-
-    private final Jackson2ObjectMapperBuilderCustomizer customizer = new JacksonConfig().jacksonCustomizer();
 
     private final ObjectMapper objectMapper = buildMapper();
 
@@ -56,10 +52,7 @@ class JacksonSupportTest {
 
     private ObjectMapper buildMapper() {
 
-        Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
-        builder.modulesToInstall(new JsonComponentModule());
-        customizer.customize(builder);
-        return builder.createXmlMapper(false).build();
+        return JacksonConfig.configure(JsonMapper.builder().build());
     }
 
     enum Status {

@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 
 RUN apk add --no-cache bash tzdata && rm -rf /var/cache/apk/*
 RUN addgroup -S spring && adduser -S spring -G spring

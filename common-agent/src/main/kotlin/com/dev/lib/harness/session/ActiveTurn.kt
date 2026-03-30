@@ -52,7 +52,7 @@ class ActiveTurn(
 
     suspend fun spawnTask(context: TurnContext, input: UserInput, task: AgentTask) {
         state.lock { state = TurnState.RUNNING }
-        task.run(input, context, session)
+        task.run(input, context)
 
         tasks[context.submissionId] = task
     }
@@ -69,7 +69,7 @@ class ActiveTurn(
     }
 
     private fun buildTurnContext(input: UserInput): TurnContext {
-
+        throw UnsupportedOperationException("buildTurnContext is not implemented yet")
     }
 
     suspend fun handleAnswer(userInput: UserInput.Answer) {

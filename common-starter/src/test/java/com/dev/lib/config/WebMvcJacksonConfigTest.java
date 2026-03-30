@@ -3,10 +3,9 @@ package com.dev.lib.config;
 import com.dev.lib.web.serialize.PopulateContextHolder;
 import com.dev.lib.web.serialize.PopulateField;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.util.Map;
 import java.util.Set;
@@ -47,12 +46,9 @@ class WebMvcJacksonConfigTest {
 
     private ObjectMapper buildMapper() {
 
-        Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
-        Jackson2ObjectMapperBuilderCustomizer commonCustomizer = new JacksonConfig().jacksonCustomizer();
-        Jackson2ObjectMapperBuilderCustomizer webCustomizer = new WebMvcConfig().webJacksonCustomizer();
-        commonCustomizer.customize(builder);
-        webCustomizer.customize(builder);
-        return builder.build();
+        ObjectMapper mapper = JacksonConfig.configure(JsonMapper.builder().build());
+        mapper.registerModule(new WebMvcConfig().populateFieldJacksonModule());
+        return mapper;
     }
 
     static class SamplePayload {
