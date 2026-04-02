@@ -12,6 +12,7 @@ class ActiveTurn(
 ) {
     private var state = TurnState.IDEL
     private val tasks: MutableMap<String, AgentTask> = mutableMapOf()
+
     private val pendingUserInput: MutableList<UserInput> = mutableListOf()
 
     private val _stateMutex = Mutex()

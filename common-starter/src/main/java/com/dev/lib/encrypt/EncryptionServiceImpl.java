@@ -60,7 +60,7 @@ public class EncryptionServiceImpl implements EncryptionService {
     private String encryptWithVersion(String plainText, EncryptVersion version) {
 
         String encrypted = factory.getStrategy(version).encrypt(plainText);
-        return version + ":" + encrypted;
+        return version.getMsg() + ":" + encrypted;
     }
 
 }

@@ -10,9 +10,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
-import java.math.BigDecimal;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
@@ -28,11 +30,20 @@ public class RSAEncryptionStrategy implements Encryptor, InitializingBean {
 
     private final AppSecurityProperties securityProperties;
 
-    private static final String ALGORITHM = "RSA";
+    private static final String KEY_ALGORITHM = "RSA";
 
-    private static final int    KEY_SIZE  = 2048;
+    private static final String CIPHER_TRANSFORMATION = "RSA/ECB/OAEPPadding";
 
-    private PublicKey  publicKey;
+    private static final int KEY_SIZE = 2048;
+
+    private static final OAEPParameterSpec OAEP_SHA256_SPEC = new OAEPParameterSpec(
+            "SHA-256",
+            "MGF1",
+            MGF1ParameterSpec.SHA256,
+            PSource.PSpecified.DEFAULT
+    );
+
+    private PublicKey publicKey;
 
     private PrivateKey privateKey;
 
@@ -45,7 +56,7 @@ public class RSAEncryptionStrategy implements Encryptor, InitializingBean {
 
         if (publicKeyStr != null && privateKeyStr != null) {
             // 解析已有密钥
-            KeyFactory keyFactory = KeyFactory.getInstance(ALGORITHM);
+            KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORITHM);
 
             byte[]             publicKeyBytes = Base64.getDecoder().decode(publicKeyStr);
             X509EncodedKeySpec publicKeySpec  = new X509EncodedKeySpec(publicKeyBytes);
@@ -56,7 +67,7 @@ public class RSAEncryptionStrategy implements Encryptor, InitializingBean {
             this.privateKey = keyFactory.generatePrivate(privateKeySpec);
         } else {
             // 方案2: 动态生成密钥对(首次使用)
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance(KEY_ALGORITHM);
             keyGen.initialize(KEY_SIZE);
             KeyPair keyPair = keyGen.generateKeyPair();
             this.publicKey = keyPair.getPublic();
@@ -84,10 +95,11 @@ public class RSAEncryptionStrategy implements Encryptor, InitializingBean {
     public String encrypt(String plainText) {
 
         try {
-            Cipher cipher = Cipher.getInstance(ALGORITHM);
+            Cipher cipher = Cipher.getInstance(CIPHER_TRANSFORMATION);
             cipher.init(
                     Cipher.ENCRYPT_MODE,
-                    publicKey
+                    publicKey,
+                    OAEP_SHA256_SPEC
             );
             byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(encrypted);
@@ -103,10 +115,11 @@ public class RSAEncryptionStrategy implements Encryptor, InitializingBean {
     public String decrypt(String cipherText) {
 
         try {
-            Cipher cipher = Cipher.getInstance(ALGORITHM);
+            Cipher cipher = Cipher.getInstance(CIPHER_TRANSFORMATION);
             cipher.init(
                     Cipher.DECRYPT_MODE,
-                    privateKey
+                    privateKey,
+                    OAEP_SHA256_SPEC
             );
             byte[] decoded   = Base64.getDecoder().decode(cipherText);
             byte[] decrypted = cipher.doFinal(decoded);
