@@ -1,8 +1,7 @@
 package com.dev.lib.config;
 
 import com.dev.lib.util.Jsons;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -12,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class JacksonSupportTest {
 
-    private final ObjectMapper objectMapper = buildMapper();
+    private final JsonMapper mapper = buildMapper();
 
     @Test
     void shouldSerializeUsingExpectedCommonRules() throws Exception {
@@ -23,7 +22,7 @@ class JacksonSupportTest {
         payload.largeId = 9007199254740992L;
         payload.status = Status.ENABLED;
 
-        String json = objectMapper.writeValueAsString(payload);
+        String json = mapper.writeValueAsString(payload);
 
         assertThat(json).contains("\"amount\":12.300000");
         assertThat(json).contains("\"createdAt\":\"2026-03-11 12:05:06\"");
@@ -50,9 +49,11 @@ class JacksonSupportTest {
         assertThat(restored.createdAt).isEqualTo(Instant.parse("2026-03-11T04:05:06Z"));
     }
 
-    private ObjectMapper buildMapper() {
+    private JsonMapper buildMapper() {
 
-        return JacksonConfig.configure(JsonMapper.builder().build());
+        JsonMapper.Builder builder = JsonMapper.builder();
+        JacksonSupport.configure(builder);
+        return builder.build();
     }
 
     enum Status {

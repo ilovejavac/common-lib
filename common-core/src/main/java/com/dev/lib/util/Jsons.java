@@ -1,16 +1,15 @@
 package com.dev.lib.util;
 
 import com.dev.lib.config.JacksonSupport;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DefaultTyping;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,51 +18,36 @@ import java.util.Map;
 
 public final class Jsons {
 
-    private static final ObjectMapper MAPPER = buildMapper();
+    private static final JsonMapper MAPPER = buildMapper();
 
-    private static final ObjectMapper POLYMORPHIC_MAPPER = buildPolymorphicMapper();
+    private static final JsonMapper POLYMORPHIC_MAPPER = buildPolymorphicMapper();
 
     private Jsons() {
     }
 
-    private static ObjectMapper buildMapper() {
+    private static JsonMapper buildMapper() {
 
-        ObjectMapper objectMapper = JsonMapper.builder().build();
-        JacksonSupport.configure(objectMapper);
-        return objectMapper;
+        JsonMapper.Builder builder = JsonMapper.builder();
+        JacksonSupport.configure(builder);
+        return builder.build();
     }
 
-    private static ObjectMapper buildPolymorphicMapper() {
+    private static JsonMapper buildPolymorphicMapper() {
 
-        ObjectMapper objectMapper = copyMapper();
-        objectMapper.activateDefaultTyping(
-                LaissezFaireSubTypeValidator.instance,
-                ObjectMapper.DefaultTyping.NON_FINAL,
-                JsonTypeInfo.As.PROPERTY
+        JsonMapper.Builder builder = MAPPER.rebuild();
+        builder.activateDefaultTypingAsProperty(
+                BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build(),
+                DefaultTyping.NON_FINAL,
+                "@class"
         );
-        return objectMapper;
-    }
-
-    public static ObjectMapper mapper() {
-
-        return MAPPER;
-    }
-
-    public static ObjectMapper copyMapper() {
-
-        return MAPPER.copy();
-    }
-
-    public static ObjectMapper polymorphicMapper() {
-
-        return POLYMORPHIC_MAPPER;
+        return builder.build();
     }
 
     public static String toJson(Object value) {
 
         try {
             return MAPPER.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Failed to serialize object to JSON", e);
         }
     }
@@ -72,7 +56,7 @@ public final class Jsons {
 
         try {
             return MAPPER.writeValueAsBytes(value);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Failed to serialize object to JSON bytes", e);
         }
     }
@@ -91,7 +75,7 @@ public final class Jsons {
 
         try {
             return MAPPER.readValue(json, type);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Failed to deserialize JSON to " + type.getName(), e);
         }
     }
@@ -100,7 +84,7 @@ public final class Jsons {
 
         try {
             return MAPPER.readValue(json, typeReference);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Failed to deserialize JSON by TypeReference", e);
         }
     }
@@ -109,7 +93,7 @@ public final class Jsons {
 
         try {
             return MAPPER.readValue(json, javaType);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Failed to deserialize JSON by JavaType", e);
         }
     }
@@ -128,7 +112,7 @@ public final class Jsons {
 
         try {
             return MAPPER.readValue(json, Object.class);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Failed to deserialize JSON to Object", e);
         }
     }
@@ -137,7 +121,7 @@ public final class Jsons {
 
         try {
             return MAPPER.readTree(json);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Failed to read JSON tree", e);
         }
     }

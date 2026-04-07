@@ -2,23 +2,24 @@ package com.dev.lib.config;
 
 import com.dev.lib.web.serialize.PopulateContextHolder;
 import com.dev.lib.web.serialize.PopulateField;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.PropertyName;
-import com.fasterxml.jackson.databind.SerializationConfig;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.cfg.MapperConfig;
-import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
-import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
-import com.fasterxml.jackson.databind.introspect.VirtualAnnotatedMember;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
-import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
-import com.fasterxml.jackson.databind.ser.VirtualBeanPropertyWriter;
-import com.fasterxml.jackson.databind.util.Annotations;
-import com.fasterxml.jackson.databind.util.SimpleBeanPropertyDefinition;
 import org.springframework.util.ReflectionUtils;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.BeanDescription;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.JacksonModule;
+import tools.jackson.databind.PropertyName;
+import tools.jackson.databind.SerializationConfig;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.cfg.MapperConfig;
+import tools.jackson.databind.introspect.AnnotatedClass;
+import tools.jackson.databind.introspect.BeanPropertyDefinition;
+import tools.jackson.databind.introspect.VirtualAnnotatedMember;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.databind.ser.BeanPropertyWriter;
+import tools.jackson.databind.ser.ValueSerializerModifier;
+import tools.jackson.databind.ser.VirtualBeanPropertyWriter;
+import tools.jackson.databind.util.Annotations;
+import tools.jackson.databind.util.SimpleBeanPropertyDefinition;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PopulateFieldBeanSerializerModifier extends BeanSerializerModifier {
+public class PopulateFieldBeanSerializerModifier extends ValueSerializerModifier {
 
     private static final Set<String> EXCLUDE_FIELDS = Set.of("reversion", "deleted");
 
@@ -36,7 +37,7 @@ public class PopulateFieldBeanSerializerModifier extends BeanSerializerModifier 
     @Override
     public List<BeanPropertyWriter> changeProperties(
             SerializationConfig config,
-            BeanDescription beanDesc,
+            BeanDescription.Supplier beanDesc,
             List<BeanPropertyWriter> beanProperties
     ) {
 
@@ -53,7 +54,7 @@ public class PopulateFieldBeanSerializerModifier extends BeanSerializerModifier 
         return writers;
     }
 
-    public SimpleModule asModule() {
+    public JacksonModule asModule() {
 
         SimpleModule module = new SimpleModule("common-lib-web-jackson");
         module.setSerializerModifier(this);
@@ -62,7 +63,7 @@ public class PopulateFieldBeanSerializerModifier extends BeanSerializerModifier 
 
     private BeanPropertyWriter buildPopulateWriter(
             SerializationConfig config,
-            BeanDescription beanDesc,
+            BeanDescription.Supplier beanDesc,
             FieldMeta meta
     ) {
 
@@ -129,7 +130,7 @@ public class PopulateFieldBeanSerializerModifier extends BeanSerializerModifier 
         }
 
         @Override
-        protected Object value(Object bean, JsonGenerator gen, SerializerProvider prov) throws Exception {
+        protected Object value(Object bean, JsonGenerator gen, SerializationContext prov) throws Exception {
 
             if (field == null) {
                 return null;

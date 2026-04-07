@@ -1,8 +1,7 @@
 package com.dev.lib.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import org.springframework.context.annotation.Primary;
+import org.springframework.boot.jackson.autoconfigure.JsonFactoryBuilderCustomizer;
+import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,17 +9,14 @@ import org.springframework.context.annotation.Configuration;
 public class JacksonConfig {
 
     @Bean
-    @Primary
-    public ObjectMapper objectMapper() {
+    public JsonFactoryBuilderCustomizer commonJsonFactoryBuilderCustomizer() {
 
-        ObjectMapper objectMapper = JsonMapper.builder().build();
-        JacksonSupport.configure(objectMapper);
-        return objectMapper;
+        return JacksonSupport::configure;
     }
 
-    public static ObjectMapper configure(ObjectMapper objectMapper) {
+    @Bean
+    public JsonMapperBuilderCustomizer commonJsonMapperBuilderCustomizer() {
 
-        JacksonSupport.configure(objectMapper);
-        return objectMapper;
+        return JacksonSupport::configure;
     }
 }

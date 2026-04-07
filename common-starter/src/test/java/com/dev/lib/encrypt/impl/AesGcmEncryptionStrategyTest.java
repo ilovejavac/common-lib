@@ -27,7 +27,7 @@ class AesGcmEncryptionStrategyTest {
     }
 
     @Test
-    void shouldPrefixCiphertextWith16ByteIv() {
+    void shouldPrefixCiphertextWith12ByteIv() {
 
         AppSecurityProperties properties = new AppSecurityProperties();
         properties.setSecret(Base64.getEncoder().encodeToString(new byte[32]));
@@ -38,7 +38,7 @@ class AesGcmEncryptionStrategyTest {
         String plainText = "iv-check";
         byte[] combined = Base64.getDecoder().decode(strategy.encrypt(plainText));
 
-        assertEquals(16 + plainText.length() + 16, combined.length);
+        assertEquals(12 + plainText.length() + 16, combined.length);
     }
 
     @Test

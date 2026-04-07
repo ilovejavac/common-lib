@@ -3,8 +3,10 @@ package com.dev.lib.encrypt.impl;
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.encrypt.Encryptor;
 import com.dev.lib.entity.encrypt.EncryptVersion;
+import com.dev.lib.entity.id.IDWorker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -20,13 +22,14 @@ import java.util.Base64;
 @Component
 @RequiredArgsConstructor
 // openssl rand -base64 32
+@ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "aes")
 public class AesGcmEncryptionStrategy implements Encryptor, InitializingBean {
 
     private final AppSecurityProperties securityProperties;
 
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128;
-    private static final int IV_LENGTH = 16;
+    private static final int IV_LENGTH = 12;
     private static final int KEY_LENGTH = 256; // bits
 
     private SecretKeySpec secretKey;
