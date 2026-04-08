@@ -1,18 +1,14 @@
 package com.dev.lib.jpa;
 
 import com.dev.lib.jpa.config.BaseRepositoryFactoryBeanPostProcessor;
-import com.dev.lib.jpa.entity.BaseRepositoryImpl;
+import com.dev.lib.jpa.config.CommonJpaPackageRegistrar;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.boot.persistence.autoconfigure.EntityScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.context.annotation.Import;
 
-@Configuration
-@EntityScan("com.dev.lib")
-@EnableJpaRepositories(
-        basePackages = "com.dev.lib",
-        repositoryBaseClass = BaseRepositoryImpl.class
-)
+@AutoConfiguration(before = DataJpaRepositoriesAutoConfiguration.class)
+@Import(CommonJpaPackageRegistrar.class)
 public class CommonJpaAutoConfig {
 
     @Bean

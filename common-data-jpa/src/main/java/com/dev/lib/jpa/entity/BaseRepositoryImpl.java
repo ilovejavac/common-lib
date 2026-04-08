@@ -518,16 +518,14 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
 
+        JPAQuery<T> query = queryFactory.selectFrom(path)
+                .where(predicate);
+
         if (ctx.hasLock()) {
-            List<T> result = queryFactory.selectFrom(path)
-                    .where(predicate)
-                    .setLockMode(ctx.getLockMode())
-                    .limit(1)
-                    .fetch();
-            return result.stream().findFirst();
+            query.setLockMode(ctx.getLockMode());
         }
 
-        return querydslExecutor.findOne(predicate);
+        return Optional.ofNullable(query.fetchFirst());
     }
 
     private List<T> loadsFullEntity(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {

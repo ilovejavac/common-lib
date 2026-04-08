@@ -1,20 +1,34 @@
-FROM eclipse-temurin:25-jre-alpine
+FROM eclipse-temurin:25-jre-noble
 
-RUN apk add --no-cache bash tzdata && rm -rf /var/cache/apk/*
-RUN addgroup -S spring && adduser -S spring -G spring
-RUN mkdir -p /app/log && chown -R spring:spring /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system --gid 10001 spring \
+    && useradd --system --uid 10001 --gid spring --create-home --home-dir /home/spring spring \
+    && mkdir -p /app/log \
+    && chown -R 10001:10001 /app /home/spring
 
 WORKDIR /app
 
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
-
+COPY --chown=10001:10001 entrypoint.sh /app/entrypoint.sh
 ARG JAR_FILE
-COPY ./$JAR_FILE app.jar
+COPY --chown=10001:10001 ${JAR_FILE} /app/app.jar
+
+RUN chmod +x /app/entrypoint.sh
 
 ENV TZ=Asia/Shanghai \
-    LANG=zh_CN.UTF-8
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 
-USER spring
+USER 10001
 
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+#-Xms1g
+#-Xmx3g
+#-XX:MaxMetaspaceSize=256m
+#-XX:+HeapDumpOnOutOfMemoryError
+#-XX:HeapDumpPath=/app/log/heapdump.hprof
+#-XX:-OmitStackTraceInFastThrow
+#-Xlog:gc*:file=/app/log/gc_%p_%t.log:time,level,tags:filecount=5,filesize=20M
