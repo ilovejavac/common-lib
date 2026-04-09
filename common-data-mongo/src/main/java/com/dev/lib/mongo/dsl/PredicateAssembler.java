@@ -243,7 +243,7 @@ public final class PredicateAssembler {
     private static Predicate buildWithPrecedence(List<ExpressionItem> items) {
 
         if (items.isEmpty()) return null;
-        if (items.size() == 1) return items.get(0).expression;
+        if (items.size() == 1) return items.getFirst().expression;
 
         // 按 OR 分组，实现 AND 优先级高于 OR
         List<List<ExpressionItem>> andGroups    = new ArrayList<>();
@@ -273,7 +273,7 @@ public final class PredicateAssembler {
         }
 
         if (groupPredicates.isEmpty()) return null;
-        if (groupPredicates.size() == 1) return groupPredicates.get(0);
+        if (groupPredicates.size() == 1) return groupPredicates.getFirst();
 
         BooleanBuilder result = new BooleanBuilder();
         for (Predicate pred : groupPredicates) {

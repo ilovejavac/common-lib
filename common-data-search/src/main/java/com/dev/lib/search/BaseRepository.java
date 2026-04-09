@@ -7,7 +7,6 @@ import com.dev.lib.search.dsl.PredicateAssembler;
 import com.dev.lib.search.dsl.SortBuilder;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
-import com.dev.lib.util.StringUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -33,6 +32,8 @@ import java.util.stream.StreamSupport;
 @Slf4j
 @SuppressWarnings("all")
 public abstract class BaseRepository<T extends SearchEntity> {
+
+    private static final int BATCH_SIZE = 256;
 
     @Resource
     protected OpenSearchClient client;
@@ -89,34 +90,30 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
         List<S> list = toList(entities);
         if (list.isEmpty()) return list;
-        list.forEach(entity -> {
+
+        List<BulkOperation> batch = new ArrayList<>(BATCH_SIZE + 1);
+        for (S entity : list) {
             if (entity.isNew()) {
                 prePersist(entity);
             } else {
                 preUpdate(entity);
             }
-        });
-        List<BulkOperation> operations = list.stream()
-                .map(entity -> BulkOperation.of(op -> op
-                        .index(idx -> idx
-                                .index(indexName())
-                                .id(entity.getBizId())
-                                .document(entity)
-                        )
-                ))
-                .toList();
-        try {
-            BulkResponse response = client.bulk(b -> b
-                    .operations(operations)
-                    .refresh(refresh())
-            );
-            if (response.errors()) {
-                log.error("批量保存部分失败");
+            batch.add(BulkOperation.of(op -> op
+                    .index(idx -> idx
+                            .index(indexName())
+                            .id(entity.getBizId())
+                            .document(entity)
+                    )
+            ));
+            if (batch.size() >= BATCH_SIZE) {
+                executeBulk(batch);
+                batch.clear();
             }
-            return list;
-        } catch (IOException e) {
-            throw new RuntimeException("批量保存失败", e);
         }
+        if (!batch.isEmpty()) {
+            executeBulk(batch);
+        }
+        return list;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -253,17 +250,19 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
     public void deleteAllById(Iterable<? extends String> ids) {
 
-        List<? extends String> idList = toList(ids);
-        if (idList.isEmpty()) return;
-        List<BulkOperation> operations = idList.stream()
-                .map(id -> BulkOperation.of(op -> op
-                        .delete(d -> d.index(indexName()).id(String.valueOf(id)))
-                ))
-                .toList();
-        try {
-            client.bulk(b -> b.operations(operations).refresh(refresh()));
-        } catch (IOException e) {
-            throw new RuntimeException("批量删除失败", e);
+        List<BulkOperation> batch = new ArrayList<>(BATCH_SIZE + 1);
+        for (String id : ids) {
+            if (id == null) continue;
+            batch.add(BulkOperation.of(op -> op
+                    .delete(d -> d.index(indexName()).id(id))
+            ));
+            if (batch.size() >= BATCH_SIZE) {
+                executeBulk(batch);
+                batch.clear();
+            }
+        }
+        if (!batch.isEmpty()) {
+            executeBulk(batch);
         }
     }
 
@@ -504,28 +503,32 @@ public abstract class BaseRepository<T extends SearchEntity> {
         if (dslQuery == null && extraQueries.length == 0) {
             return Query.of(q -> q.matchAll(m -> m));
         }
+
         Collection<QueryFieldMerger.FieldMetaValue> fields = null;
         if (dslQuery != null) {
-            List<QueryFieldMerger.FieldMetaValue>        self     = QueryFieldMerger.resolve(dslQuery);
-            Map<String, QueryFieldMerger.FieldMetaValue> fieldMap = new HashMap<>();
-            for (QueryFieldMerger.FieldMetaValue fv : self) {
-                fieldMap.put(
-                        StringUtils.format("{}-{}", fv.getFieldMeta().targetField(), fv.getFieldMeta().queryType()),
-                        fv
-                );
+            List<QueryFieldMerger.FieldMetaValue> self     = QueryFieldMerger.resolve(dslQuery);
+            List<QueryFieldMerger.FieldMetaValue> external = dslQuery.getExternalFields();
+
+            if (external.isEmpty()) {
+                fields = self;
+            } else {
+                // external 覆盖 self（同 targetField-queryType 时 external 优先）
+                Map<String, QueryFieldMerger.FieldMetaValue> fieldMap = new HashMap<>(self.size() + external.size());
+                for (QueryFieldMerger.FieldMetaValue fv : self) {
+                    fieldMap.put(mergeKey(fv), fv);
+                }
+                for (QueryFieldMerger.FieldMetaValue fv : external) {
+                    fieldMap.put(mergeKey(fv), fv);
+                }
+                fields = fieldMap.values();
             }
-            dslQuery.getExternalFields().forEach(it ->
-                                                         fieldMap.put(
-                                                                 StringUtils.format(
-                                                                         "{}-{}",
-                                                                         it.getFieldMeta().targetField(),
-                                                                         it.getFieldMeta().queryType()
-                                                                 ),
-                                                                 it
-                                                         ));
-            fields = fieldMap.values();
         }
         return PredicateAssembler.assemble(dslQuery, fields, extraQueries);
+    }
+
+    private static String mergeKey(QueryFieldMerger.FieldMetaValue fmv) {
+
+        return fmv.getFieldMeta().targetField() + "-" + fmv.getFieldMeta().queryType();
     }
 
     private static final Map<Class<?>, Map<String, Class<?>>> FIELD_TYPE_CACHE = new ConcurrentHashMap<>();
@@ -537,6 +540,21 @@ public abstract class BaseRepository<T extends SearchEntity> {
                         Arrays.stream(clazz.getDeclaredFields())
                                 .collect(Collectors.toMap(Field::getName, Field::getType))
         );
+    }
+
+    private void executeBulk(List<BulkOperation> operations) {
+
+        try {
+            BulkResponse response = client.bulk(b -> b
+                    .operations(operations)
+                    .refresh(refresh())
+            );
+            if (response.errors()) {
+                log.error("批量操作部分失败");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("批量操作失败", e);
+        }
     }
 
     private <E> List<E> toList(Iterable<E> iterable) {

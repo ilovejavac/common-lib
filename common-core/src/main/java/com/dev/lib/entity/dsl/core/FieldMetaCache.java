@@ -13,11 +13,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * 字段元数据缓存
@@ -42,6 +40,8 @@ public class FieldMetaCache {
 
     private static final Map<Class<?>, ClassMeta> CACHE = new ConcurrentHashMap<>(512);
 
+    private static final Map<Class<?>, List<FieldMeta>> FIELD_METAS_CACHE = new ConcurrentHashMap<>(256);
+
     public static ClassMeta getMeta(Class<?> queryClass) {
 
         return CACHE.computeIfAbsent(
@@ -53,26 +53,32 @@ public class FieldMetaCache {
     private static ClassMeta buildMeta(Class<?> queryClass) {
 
         Class<?> entityClass = resolveEntityClass(queryClass);
+        Set<String> entityFieldNames = Arrays.stream(entityClass.getDeclaredFields())
+                .map(Field::getName)
+                .collect(Collectors.toUnmodifiableSet());
         return new ClassMeta(
                 entityClass,
                 resolveFieldMeta(
                         queryClass,
                         entityClass
-                )
+                ),
+                entityFieldNames
         );
     }
 
     public static List<FieldMeta> resolveFieldMeta(Class<?> queryClass) {
 
-        Class<?> entityClass = null;
-        try {
-            entityClass = resolveEntityClass(queryClass);
-        } catch (Exception ignored) {
-        }
-        return resolveFieldMeta(
-                queryClass,
-                entityClass
-        );
+        return FIELD_METAS_CACHE.computeIfAbsent(queryClass, clazz -> {
+            Class<?> entityClass = null;
+            try {
+                entityClass = resolveEntityClass(clazz);
+            } catch (Exception ignored) {
+            }
+            return resolveFieldMeta(
+                    clazz,
+                    entityClass
+            );
+        });
     }
 
     public static List<FieldMeta> resolveFieldMeta(Class<?> queryClass, Class<?> entityClass) {
@@ -370,7 +376,7 @@ public class FieldMetaCache {
         SUB_QUERY
     }
 
-    public record ClassMeta(Class<?> entityClass, List<FieldMeta> fields) {}
+    public record ClassMeta(Class<?> entityClass, List<FieldMeta> fields, Set<String> entityFieldNames) {}
 
     /**
      * 字段元数据

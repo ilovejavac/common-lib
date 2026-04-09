@@ -58,6 +58,14 @@ public final class ExpressionBuilder {
             }
             case IS_NULL -> pathBuilder.get(field).isNull();
             case IS_NOT_NULL -> pathBuilder.get(field).isNotNull();
+            case BETWEEN -> {
+                if (value instanceof Object[] arr && arr.length == 2
+                        && arr[0] instanceof Comparable && arr[1] instanceof Comparable) {
+                    yield pathBuilder.getComparable(field, (Class<Comparable>) arr[0].getClass())
+                            .between((Comparable) arr[0], (Comparable) arr[1]);
+                }
+                yield null;
+            }
             default -> null;
         };
     }

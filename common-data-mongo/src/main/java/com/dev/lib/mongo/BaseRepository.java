@@ -11,48 +11,73 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.data.repository.NoRepositoryBean;
 
-import java.lang.reflect.Field;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @NoRepositoryBean
 public interface BaseRepository<T extends MongoEntity>
         extends MongoRepository<T, String>, QuerydslPredicateExecutor<T> {
 
+    int BATCH_SIZE = 256;
+
+    // ==================== 批量写入（分批）====================
+
+    @Override
+    default <S extends T> List<S> saveAll(Iterable<S> entities) {
+
+        List<S> result = new ArrayList<>();
+        List<S> insertBatch = new ArrayList<>(BATCH_SIZE + 1);
+
+        for (S entity : entities) {
+            if (entity == null) continue;
+            if (entity.isNew()) {
+                insertBatch.add(entity);
+                if (insertBatch.size() >= BATCH_SIZE) {
+                    result.addAll(insert(insertBatch));
+                    insertBatch = new ArrayList<>(BATCH_SIZE + 1);
+                }
+            } else {
+                result.add(save(entity));
+            }
+        }
+        if (!insertBatch.isEmpty()) {
+            result.addAll(insert(insertBatch));
+        }
+        return result;
+    }
+
+    @Override
+    default void deleteAllById(Iterable<? extends String> ids) {
+
+        for (String id : ids) {
+            if (id != null) {
+                deleteById(id);
+            }
+        }
+    }
+
+    // ==================== DSL 查询 ====================
+
     default Optional<T> load(DslQuery<T> query, BooleanExpression... expressions) {
 
-        return findOne(toPredicate(
-                query,
-                expressions
-        ));
+        Predicate predicate = toPredicate(query, expressions);
+        var sort = query != null ? query.toSort(getAllowedFields(query)) : org.springframework.data.domain.Sort.unsorted();
+        return findBy(predicate, q -> q.sortBy(sort).first());
     }
 
     default List<T> loads(DslQuery<T> query, BooleanExpression... expressions) {
 
-        Predicate predicate = toPredicate(
-                query,
-                expressions
-        );
+        Predicate predicate = toPredicate(query, expressions);
 
         if (query != null && query.getLimit() != null) {
-            return findAll(
-                    predicate,
-                    query.toPageable(getAllowedFields(query))
-            ).getContent();
+            return findAll(predicate, query.toPageable(getAllowedFields(query))).getContent();
         }
 
         Iterable<T> result = query != null
-                             ? findAll(
-                predicate,
-                query.toSort(getAllowedFields(query))
-        )
+                             ? findAll(predicate, query.toSort(getAllowedFields(query)))
                              : findAll(predicate);
 
-        return StreamSupport.stream(
-                result.spliterator(),
-                false
-        ).collect(Collectors.toList());
+        return StreamSupport.stream(result.spliterator(), false).toList();
     }
 
     default Page<T> page(DslQuery<T> query, BooleanExpression... expressions) {
@@ -82,49 +107,49 @@ public interface BaseRepository<T extends MongoEntity>
         ));
     }
 
+    default void delete(DslQuery<T> query, BooleanExpression... expressions) {
+
+        Predicate predicate = toPredicate(query, expressions);
+        Iterable<T> entities = findAll(predicate);
+        deleteAll(entities);
+    }
+
     private Predicate toPredicate(DslQuery<T> query, BooleanExpression... expressions) {
 
         if (query == null) {
-            return PredicateAssembler.assemble(
-                    null,
-                    null,
-                    expressions
-            );
+            return PredicateAssembler.assemble(null, null, expressions);
         }
 
-        List<QueryFieldMerger.FieldMetaValue>        fields   = QueryFieldMerger.resolve(query);
-        Map<String, QueryFieldMerger.FieldMetaValue> fieldMap = new HashMap<>();
+        List<QueryFieldMerger.FieldMetaValue> self     = QueryFieldMerger.resolve(query);
+        List<QueryFieldMerger.FieldMetaValue> external = query.getExternalFields();
 
-        for (QueryFieldMerger.FieldMetaValue fv : fields) {
-            String key = fv.getFieldMeta().targetField() + "-" + fv.getFieldMeta().queryType();
-            fieldMap.put(
-                    key,
-                    fv
-            );
+        Collection<QueryFieldMerger.FieldMetaValue> merged;
+        if (external.isEmpty()) {
+            merged = self;
+        } else {
+            // external 覆盖 self（同 targetField-queryType 时 external 优先）
+            Map<String, QueryFieldMerger.FieldMetaValue> fieldMap = new HashMap<>(self.size() + external.size());
+            for (QueryFieldMerger.FieldMetaValue fv : self) {
+                fieldMap.put(mergeKey(fv), fv);
+            }
+            for (QueryFieldMerger.FieldMetaValue fv : external) {
+                fieldMap.put(mergeKey(fv), fv);
+            }
+            merged = fieldMap.values();
         }
 
-        query.getExternalFields().forEach(fv -> {
-            String key = fv.getFieldMeta().targetField() + "-" + fv.getFieldMeta().queryType();
-            fieldMap.put(
-                    key,
-                    fv
-            );
-        });
+        return PredicateAssembler.assemble(query, merged, expressions);
+    }
 
-        return PredicateAssembler.assemble(
-                query,
-                fieldMap.values(),
-                expressions
-        );
+    private static String mergeKey(QueryFieldMerger.FieldMetaValue fmv) {
+
+        return fmv.getFieldMeta().targetField() + "-" + fmv.getFieldMeta().queryType();
     }
 
     private Set<String> getAllowedFields(DslQuery<T> query) {
 
         if (query == null) return Collections.emptySet();
-        Class<?> entityClass = FieldMetaCache.getMeta(query.getClass()).entityClass();
-        return Arrays.stream(entityClass.getDeclaredFields())
-                .map(Field::getName)
-                .collect(Collectors.toSet());
+        return FieldMetaCache.getMeta(query.getClass()).entityFieldNames();
     }
 
 }

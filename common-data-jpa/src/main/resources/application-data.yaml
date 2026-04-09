@@ -17,11 +17,11 @@ spring:
         type:
           preferred_java_type_jdbc_code_for_enum: 24
         default_batch_fetch_size: 128
-        format_sql: false
-        highlight_sql: false
+        format_sql: true
+        highlight_sql: true
         use_sql_comments: false
         jdbc:
-          batch_size: 1024
+          batch_size: 256
           fetch_size: 128
           time_zone: Asia/Shanghai
           batch_versioned_data: true

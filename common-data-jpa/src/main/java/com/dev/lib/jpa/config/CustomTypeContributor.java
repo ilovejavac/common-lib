@@ -28,10 +28,16 @@ public class CustomTypeContributor implements TypeContributor {
         // 数值类型
         typeContributions.contributeJavaType(CustomBigDecimalJavaType.INSTANCE);
         typeContributions.contributeJavaType(CustomBigIntegerJavaType.INSTANCE);
+        typeContributions.contributeJavaType(CustomDoubleJavaType.INSTANCE);
+        typeContributions.contributeJavaType(CustomFloatJavaType.INSTANCE);
+
+        // 二进制类型
+        typeContributions.contributeJavaType(CustomByteArrayJavaType.INSTANCE);
 
         // 时间类型
         typeContributions.contributeJavaType(CustomInstantJavaType.INSTANCE);
         typeContributions.contributeJavaType(CustomLocalDateTimeJavaType.INSTANCE);
+        typeContributions.contributeJavaType(CustomDurationJavaType.INSTANCE);
     }
 
 }
