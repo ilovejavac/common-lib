@@ -46,7 +46,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     private static final Expression<Long> WINDOW_TOTAL_EXPRESSION = Expressions.numberTemplate(
             Long.class,
             "count(*) over()"
-    );
+    ).as("__total__");
 
     private static final Map<Class<?>, List<Field>> CASCADE_FIELDS_CACHE = new ConcurrentHashMap<>(128);
 
