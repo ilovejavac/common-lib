@@ -6,8 +6,6 @@ import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
 import com.dev.lib.jpa.entity.dsl.SelectBuilder;
 import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
-import com.dev.lib.jpa.entity.insert.EntityMeta;
-import com.dev.lib.jpa.entity.insert.EntityMetaCache;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -20,7 +18,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import org.hibernate.Hibernate;
-import org.hibernate.Session;
 import org.hibernate.jpa.HibernateHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -35,7 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
-import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -253,8 +249,6 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         return querydslExecutor.exists(buildPredicate(ctx, dslQuery, expressions));
     }
 
-    BaseEntityListener listener = new BaseEntityListener();
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public <S extends T> List<S> saveAll(Iterable<S> entities) {
@@ -263,81 +257,31 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             return Collections.emptyList();
         }
 
-        boolean appendToResult = true;
-        List<S> result;
-        if (entities instanceof List<S> source) {
-            result = source;
-            appendToResult = false;
-        } else {
-            result = new ArrayList<>();
-        }
-        List<S> writeBatch = new ArrayList<>(batchSize + 1);
-
+        List<S> result = new ArrayList<>();
+        int     count  = 0;
         for (S entity : entities) {
             if (entity == null) {
                 continue;
             }
-            listener.prePersist(entity);
-            writeBatch.add(entity);
-            if (appendToResult) {
+            if (entity.isNew()) {
+                entityManager.persist(entity);
                 result.add(entity);
+            } else {
+                result.add(entityManager.merge(entity));
             }
-
-            if (writeBatch.size() >= batchSize) {
-                persistSaveBatch(writeBatch);
-                writeBatch.clear();
+            count++;
+            if (count % batchSize == 0) {
+                entityManager.flush();
+                entityManager.clear();
             }
         }
 
-        if (!writeBatch.isEmpty()) {
-            persistSaveBatch(writeBatch);
+        if (count > 0) {
+            entityManager.flush();
+            entityManager.clear();
         }
 
         return result;
-    }
-
-    private <S extends T> void persistSaveBatch(List<S> batch) {
-
-        if (batch.isEmpty()) {
-            return;
-        }
-
-        if (hasCascadeFields) {
-            super.saveAll(batch);
-            entityManager.flush();
-            entityManager.clear();
-            return;
-        }
-
-        batchInsertNative(batch, batchSize);
-    }
-
-    private <S extends T> void batchInsertNative(List<S> entities, int effectiveBatchSize) {
-
-        EntityMeta meta = EntityMetaCache.get(entityClass);
-
-        String sql = meta.getInsertSql();
-
-        Session session = entityManager.unwrap(Session.class);
-        session.doWork(connection -> {
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                int count = 0;
-                for (S entity : entities) {
-                    if (entity == null) {
-                        continue;
-                    }
-                    meta.setParameters(ps, entity);
-                    ps.addBatch();
-
-                    if (++count % effectiveBatchSize == 0) {
-                        ps.executeBatch();
-                    }
-                }
-                if (count % effectiveBatchSize != 0) {
-                    ps.executeBatch();
-                }
-            }
-        });
     }
 
     // ==================== 内部查询实现 ====================
@@ -426,7 +370,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         }
 
         Object[] array = tuples.getFirst().toArray();
-        Object last = array[array.length - 1];
+        Object   last  = array[array.length - 1];
         if (last instanceof Number num) {
             return num.longValue();
         }
@@ -461,7 +405,11 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
 
-        JPAQuery<Tuple> query = createTupleQuery(buildPredicate(ctx, dslQuery, expressions), select.buildExpressions(pathBuilder), dslQuery);
+        JPAQuery<Tuple> query = createTupleQuery(
+                buildPredicate(ctx, dslQuery, expressions),
+                select.buildExpressions(pathBuilder),
+                dslQuery
+        );
         query.setHint(HibernateHints.HINT_FETCH_SIZE, batchSize * 2);
 
         return mapTupleStream(query.stream(), select, resultClass);

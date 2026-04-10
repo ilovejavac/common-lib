@@ -185,9 +185,9 @@
     <logger name="org.springframework.aop" level="WARN" additivity="false"/>
 
     <!-- Hibernate/JPA 噪声 -->
-    <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR" additivity="false"/>
-    <logger name="org.hibernate.engine.internal" level="WARN" additivity="false"/>
-    <logger name="org.hibernate.validator" level="WARN" additivity="false"/>
+<!--    <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR" additivity="false"/>-->
+<!--    <logger name="org.hibernate.engine.internal" level="WARN" additivity="false"/>-->
+<!--    <logger name="org.hibernate.validator" level="WARN" additivity="false"/>-->
 
     <!-- Redisson 客户端噪声 -->
     <logger name="org.redisson" level="WARN" additivity="false"/>

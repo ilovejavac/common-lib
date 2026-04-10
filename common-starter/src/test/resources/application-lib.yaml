@@ -1,0 +1,5 @@
+common:
+  lib:
+    auto-import-test:
+      only-in-lib: loaded
+      override: common-lib

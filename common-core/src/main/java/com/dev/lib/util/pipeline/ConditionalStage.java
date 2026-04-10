@@ -20,19 +20,21 @@ import java.util.function.Predicate;
  */
 public class ConditionalStage<I, C extends PipeLineContext<O>, O> implements PipelineStage<I, C, O> {
 
-    private final List<Branch<I, C, O>>  branches;
+    private final List<Branch<I, C, O>> branches;
 
     private final PipelineStage<I, C, O> otherwise;
 
     private ConditionalStage(List<Branch<I, C, O>> branches, PipelineStage<I, C, O> otherwise) {
-        this.branches  = branches;
+
+        this.branches = branches;
         this.otherwise = otherwise;
     }
 
     @Override
     public void execute(I input, C ctx) {
+
         for (Branch<I, C, O> branch : branches) {
-            if (branch.condition().test(ctx)) {
+            if (branch.condition != null && branch.condition().test(ctx)) {
                 branch.stage().execute(input, ctx);
                 return;
             }
@@ -44,6 +46,7 @@ public class ConditionalStage<I, C extends PipeLineContext<O>, O> implements Pip
 
     public static <I, C extends PipeLineContext<O>, O> Builder<I, C, O> when(
             Predicate<C> condition, PipelineStage<I, C, O> stage) {
+
         return new Builder<I, C, O>().when(condition, stage);
     }
 
@@ -54,18 +57,22 @@ public class ConditionalStage<I, C extends PipeLineContext<O>, O> implements Pip
         private final List<Branch<I, C, O>> branches = new ArrayList<>();
 
         public Builder<I, C, O> when(Predicate<C> condition, PipelineStage<I, C, O> stage) {
+
             branches.add(new Branch<>(condition, stage));
             return this;
         }
 
         public ConditionalStage<I, C, O> otherwise(PipelineStage<I, C, O> stage) {
+
             return new ConditionalStage<>(branches, stage);
         }
 
         @Override
         public void execute(I input, C ctx) {
+
             new ConditionalStage<>(branches, null).execute(input, ctx);
         }
+
     }
 
     // --- Internal ---
