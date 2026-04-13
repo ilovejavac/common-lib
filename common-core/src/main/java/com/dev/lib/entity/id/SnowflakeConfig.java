@@ -1,116 +1,28 @@
 package com.dev.lib.entity.id;
 
-import com.dev.lib.config.properties.AppSnowFlakeProperties;
-import jakarta.annotation.PreDestroy;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
-
+/**
+ * Snowflake 配置类。
+ *
+ * <p>静态初始化块在类加载时（JVM 启动早期）自动从 YAML 读取配置并初始化
+ * {@link SnowflakeDistributeId}，因此 {@link IDWorker} 无需等待 Spring 容器
+ * 就可以安全调用，彻底消除初始化顺序问题。</p>
+ */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class SnowflakeConfig implements InitializingBean {
+public class SnowflakeConfig {
 
-    private final AppSnowFlakeProperties snowFlakeProperties;
-
-    private static final String LOCK_KEY_PREFIX = "snowflake:worker:";
-
-    private static final int MAX_RETRY_TIMES = 3;
-
-    private static final long RETRY_DELAY_MS = 1000L;
-
-    //    private final RedissonClient redissonClient;
     @Getter
-    private static SnowflakeDistributeId worker;
+    private static final SnowflakeDistributeId worker;
 
-    private long acquiredWorkerId = -1;
-
-    private long acquiredDatacenterId = -1;
-
-    @Override
-    public void afterPropertiesSet() throws Exception {
-
-        log.info("=".repeat(60));
-        log.info("Initializing Snowflake");
-        log.info("=".repeat(60));
-
-        try {
-            long datacenterId = getDatacenterId();
-            long workerId     = acquireWorkerId(datacenterId);
-
-            acquiredWorkerId = workerId;
-            acquiredDatacenterId = datacenterId;
-
-            worker = SnowflakeDistributeId.getInstance(workerId, datacenterId);
-
-            log.info("✓ Snowflake initialized!");
-            log.info("  WorkerId: {}", workerId);
-            log.info("  DatacenterId: {}", datacenterId);
-        } catch (Exception e) {
-            log.error("✗ Failed to initialize Snowflake!", e);
-            throw new RuntimeException("Snowflake initialization failed", e);
-        }
+    static {
+        long workerId = SnowflakeConfigLoader.getInstance().getWorkerId();
+        worker = SnowflakeDistributeId.getInstance(workerId);
+        log.info("[Snowflake] Initialized — workerId={}", workerId);
     }
 
-    private long getDatacenterId() {
-
-        return Math.clamp(Optional.ofNullable(snowFlakeProperties.getDataCenterId()).orElse(0), 0, 15);
-    }
-
-    private long acquireWorkerId(long datacenterId) {
-//        Exception lastException = null;
-//
-//        for (int attempt = 0; attempt < MAX_RETRY_TIMES; attempt++) {
-//            try {
-//                for (long workerId = 0; workerId <= 15; workerId++) {
-//                    String lockKey = LOCK_KEY_PREFIX + datacenterId + ":" + workerId;
-//                    RLock lock = redissonClient.getLock(lockKey);
-//
-//                    if (lock.tryLock(0, TimeUnit.SECONDS)) {
-//                        workerLock = lock;
-//                        log.info("✓ Acquired workerId={} (attempt {}/{})", workerId, attempt + 1, MAX_RETRY_TIMES);
-//                        return workerId;
-//                    }
-//                }
-//
-//                log.warn("All worker IDs occupied (attempt {}/{})", attempt + 1, MAX_RETRY_TIMES);
-//
-//            } catch (Exception e) {
-//                lastException = e;
-//                log.error("Failed to acquire workerId (attempt {}/{})", attempt + 1, MAX_RETRY_TIMES, e);
-//            }
-//
-//            if (attempt < MAX_RETRY_TIMES - 1) {
-//                try {
-//                    Thread.sleep(RETRY_DELAY_MS);
-//                } catch (InterruptedException ie) {
-//                    Thread.currentThread().interrupt();
-//                    throw new RuntimeException("Interrupted while retrying", ie);
-//                }
-//            }
-//        }
-//
-//        throw new RuntimeException("Failed to acquire worker ID after " + MAX_RETRY_TIMES + " attempts", lastException);
-        return Math.clamp(Optional.ofNullable(snowFlakeProperties.getWorkerId()).orElse(0), 0, 15);
-    }
-
-    @PreDestroy
-    public void destroy() {
-
-        log.info("Shutting down Snowflake, releasing workerId...");
-//
-//        try {
-//            if (workerLock != null && workerLock.isHeldByCurrentThread()) {
-//                workerLock.unlock();
-//                log.info("✓ Released workerId={}", acquiredWorkerId);
-//            }
-//        } catch (Exception e) {
-//            log.error("Failed to release workerId", e);
-//        }
-    }
-
+    private SnowflakeConfig() {}
 }

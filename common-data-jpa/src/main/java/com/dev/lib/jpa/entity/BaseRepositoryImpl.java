@@ -214,7 +214,11 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             if (!shouldFallbackToLegacyPage(ex)) {
                 throw ex;
             }
-            content = doQuery(predicate, select, resultClass, dslQuery, null);
+            JPAQuery<Tuple> fallbackQuery = createTupleQuery(predicate, select.buildExpressions(pathBuilder), dslQuery);
+            if (dslQuery != null) {
+                applyLimit(fallbackQuery, dslQuery);
+            }
+            content = mapTuples(fallbackQuery.fetch(), select, resultClass);
             total = countByPredicate(predicate);
         }
         return new PageImpl<>(content, dslQuery.toPageable(null), total);
@@ -292,17 +296,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     @SuppressWarnings("unchecked")
     private <D> List<D> doQuery(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression[] expressions, Integer limit) {
 
-        return doQuery(buildPredicate(ctx, dslQuery, expressions), select, resultClass, dslQuery, limit);
-    }
-
-    /**
-     * 执行部分字段查询（复用已构建的 predicate）
-     */
-    private <D> List<D> doQuery(Predicate predicate, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, Integer limit) {
-
         Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
 
-        JPAQuery<Tuple> query = createTupleQuery(predicate, select.buildExpressions(pathBuilder), dslQuery);
+        JPAQuery<Tuple> query = createTupleQuery(ctx, select.buildExpressions(pathBuilder), dslQuery, expressions);
 
         if (dslQuery != null && limit == null) {
             applyLimit(query, dslQuery);
@@ -425,6 +421,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         JPAQuery<Tuple> query = createTupleQuery(buildPredicate(ctx, dslQuery, expressions), selectExprs, dslQuery);
         if (ctx.hasLock()) {
             query.setLockMode(ctx.getLockMode());
+            if (ctx.isSkipLocked()) {
+                query.setHint("org.hibernate.lockMode", "UPGRADE_SKIPLOCKED");
+            }
         }
         return query;
     }
@@ -465,16 +464,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private Optional<T> loadFullEntity(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        Predicate predicate = buildPredicate(ctx, dslQuery, expressions);
-
-        JPAQuery<T> query = queryFactory.selectFrom(path).where(predicate);
-        if (ctx.hasLock()) {
-            query.setLockMode(ctx.getLockMode());
-        }
-        if (dslQuery != null) {
-            applySort(query, dslQuery);
-        }
-        return Optional.ofNullable(query.fetchFirst());
+        return Optional.ofNullable(
+                createEntityQuery(buildPredicate(ctx, dslQuery, expressions), ctx, dslQuery).fetchFirst()
+        );
     }
 
     private List<T> loadsFullEntity(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
@@ -548,6 +540,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         if (ctx.hasLock()) {
             query.setLockMode(ctx.getLockMode());
+            if (ctx.isSkipLocked()) {
+                query.setHint("org.hibernate.lockMode", "UPGRADE_SKIPLOCKED");
+            }
         }
         if (dslQuery != null) {
             applySort(query, dslQuery);

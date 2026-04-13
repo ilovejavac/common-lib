@@ -5,10 +5,8 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.PathBuilder;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.ServiceLoader;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 插件链
@@ -21,6 +19,8 @@ public class QueryPluginChain {
     private static final QueryPluginChain INSTANCE = new QueryPluginChain();
 
     private final List<QueryPlugin> plugins = new ArrayList<>();
+
+    private final Map<Class<? extends JpaEntity>, List<QueryPlugin>> supportsCache = new ConcurrentHashMap<>(128);
 
     private QueryPluginChain() {
         // SPI 加载
@@ -40,6 +40,7 @@ public class QueryPluginChain {
 
         plugins.add(plugin);
         plugins.sort(Comparator.comparingInt(QueryPlugin::getOrder));
+        supportsCache.clear();
     }
 
     /**
@@ -47,13 +48,25 @@ public class QueryPluginChain {
      */
     public BooleanExpression apply(PathBuilder<?> path, Class<? extends JpaEntity> entityClass) {
 
-        BooleanExpression result = null;
-        for (QueryPlugin plugin : plugins) {
-            if (plugin.supports(entityClass)) {
-                BooleanExpression expr = plugin.apply(path, entityClass);
-                if (expr != null) {
-                    result = result == null ? expr : result.and(expr);
+        List<QueryPlugin> matched = supportsCache.computeIfAbsent(entityClass, clazz -> {
+            List<QueryPlugin> result = new ArrayList<>();
+            for (QueryPlugin plugin : plugins) {
+                if (plugin.supports(clazz)) {
+                    result.add(plugin);
                 }
+            }
+            return result;
+        });
+
+        if (matched.isEmpty()) {
+            return null;
+        }
+
+        BooleanExpression result = null;
+        for (QueryPlugin plugin : matched) {
+            BooleanExpression expr = plugin.apply(path, entityClass);
+            if (expr != null) {
+                result = result == null ? expr : result.and(expr);
             }
         }
         return result;

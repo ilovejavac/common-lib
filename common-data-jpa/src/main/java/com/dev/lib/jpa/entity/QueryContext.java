@@ -8,6 +8,8 @@ public class QueryContext {
 
     private LockModeType  lockMode;
 
+    private boolean skipLocked = false;
+
     private DeletedFilter deletedFilter = DeletedFilter.EXCLUDE_DELETED;
 
     public enum DeletedFilter {
@@ -30,6 +32,12 @@ public class QueryContext {
     public QueryContext lockForShare() {
 
         this.lockMode = LockModeType.PESSIMISTIC_READ;
+        return this;
+    }
+
+    public QueryContext skipLocked() {
+
+        this.skipLocked = true;
         return this;
     }
 

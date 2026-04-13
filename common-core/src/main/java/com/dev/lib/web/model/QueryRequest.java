@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -62,6 +63,7 @@ public class QueryRequest<T> {
      * 排序规则列表
      */
     @Valid
+    @Size(max = 10)
     private List<Order> orderBy;
 
     /**
@@ -72,7 +74,7 @@ public class QueryRequest<T> {
     @AllArgsConstructor
     public static class Order {
 
-        @NotBlank
+        @NotBlank(message = "排序字段不能为空")
         private String property;
 
         private Sort.Direction direction;

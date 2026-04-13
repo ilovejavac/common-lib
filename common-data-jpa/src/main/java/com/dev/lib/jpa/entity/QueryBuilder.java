@@ -44,6 +44,12 @@ public class QueryBuilder<T extends JpaEntity> {
         return this;
     }
 
+    public QueryBuilder<T> skipLocked() {
+
+        context.skipLocked();
+        return this;
+    }
+
     public QueryBuilder<T> withDeleted() {
 
         context.withDeleted();

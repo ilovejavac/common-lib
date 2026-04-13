@@ -6,7 +6,7 @@ import com.dev.lib.entity.dsl.core.RelationInfo;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.dsl.*;
 import com.querydsl.jpa.JPAExpressions;
-import com.querydsl.jpa.JPQLQuery;
+import com.querydsl.jpa.JPQLSubQuery;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -104,16 +104,10 @@ public class SubQueryBuilder {
 
         // 根据查询类型构建不同的子查询
         return switch (queryType) {
-            case EXISTS -> buildSelfExistsQuery(subPath, filterCondition);
-            case NOT_EXISTS -> buildSelfNotExistsQuery(subPath, filterCondition);
-            case IN -> buildSelfInQuery(parentPath, subPath, filterCondition, select, parentField);
-            case NOT_IN -> buildSelfNotInQuery(
-                    parentPath,
-                    subPath,
-                    filterCondition,
-                    select,
-                    parentField
-            );
+            case EXISTS -> buildExistsQuery(subPath, filterCondition, false);
+            case NOT_EXISTS -> buildExistsQuery(subPath, filterCondition, true);
+            case IN -> buildSelfInQuery(parentPath, subPath, filterCondition, select, parentField, false);
+            case NOT_IN -> buildSelfInQuery(parentPath, subPath, filterCondition, select, parentField, true);
             default -> buildSelfScalarQuery(
                     parentPath,
                     subPath,
@@ -125,71 +119,25 @@ public class SubQueryBuilder {
     }
 
     /**
-     * 同表 EXISTS 子查询
-     */
-    private static BooleanExpression buildSelfExistsQuery(
-            PathBuilder<?> subPath,
-            BooleanExpression condition
-    ) {
-
-        JPQLQuery<?> subQuery = JPAExpressions
-                .selectOne()
-                .from(subPath)
-                .where(condition);
-        return subQuery.exists();
-    }
-
-    /**
-     * 同表 NOT EXISTS 子查询
-     */
-    private static BooleanExpression buildSelfNotExistsQuery(
-            PathBuilder<?> subPath,
-            BooleanExpression condition
-    ) {
-
-        JPQLQuery<?> subQuery = JPAExpressions
-                .selectOne()
-                .from(subPath)
-                .where(condition);
-        return subQuery.notExists();
-    }
-
-    /**
-     * 同表 IN 子查询
+     * 同表 IN / NOT IN 子查询
      */
     private static BooleanExpression buildSelfInQuery(
             PathBuilder<?> parentPath,
             PathBuilder<?> subPath,
             BooleanExpression condition,
             String select,
-            String parentField
+            String parentField,
+            boolean negate
     ) {
 
-        JPQLQuery<?> subQuery = JPAExpressions
+        JPQLSubQuery<?> subQuery = JPAExpressions
                 .select(subPath.get(select))
                 .from(subPath)
                 .where(condition);
 
-        return parentPath.get(parentField).in(subQuery);
-    }
-
-    /**
-     * 同表 NOT IN 子查询
-     */
-    private static BooleanExpression buildSelfNotInQuery(
-            PathBuilder<?> parentPath,
-            PathBuilder<?> subPath,
-            BooleanExpression condition,
-            String select,
-            String parentField
-    ) {
-
-        JPQLQuery<?> subQuery = JPAExpressions
-                .select(subPath.get(select))
-                .from(subPath)
-                .where(condition);
-
-        return parentPath.get(parentField).notIn(subQuery);
+        return negate
+                ? parentPath.get(parentField).notIn(subQuery)
+                : parentPath.get(parentField).in(subQuery);
     }
 
     /**
@@ -225,7 +173,7 @@ public class SubQueryBuilder {
 
         // 构建子查询
         Expression<?> selectExpr = subPath.get(select);
-        JPQLQuery<?> subQuery = JPAExpressions
+        JPQLSubQuery<?> subQuery = JPAExpressions
                 .select(selectExpr)
                 .from(subPath)
                 .where(finalCondition);
@@ -262,16 +210,9 @@ public class SubQueryBuilder {
         Expression<Comparable> aggregateExpr = desc ? innerOrderPath.max() : innerOrderPath.min();
 
         // 构建内层子查询（取最大/最小值）
-        JPQLQuery<Comparable> innerSubQuery = JPAExpressions
+        JPQLSubQuery<Comparable> innerSubQuery = JPAExpressions
                 .select(aggregateExpr)
                 .from(innerPath);
-
-        // 如果外层有条件，内层也需要相同条件
-        // 注意：这里简化处理，实际可能需要复制条件到内层
-        if (condition != null) {
-            // 内层条件需要替换别名，这里简化为不加条件
-            // 复杂场景可能需要条件克隆
-        }
 
         BooleanExpression latestCondition = orderPath.eq(innerSubQuery);
 
@@ -324,20 +265,10 @@ public class SubQueryBuilder {
 
         // 根据查询类型构建子查询
         return switch (queryType) {
-            case EXISTS -> buildExistsQuery(subPath, fullCondition);
-            case NOT_EXISTS -> buildNotExistsQuery(subPath, fullCondition);
-            case IN -> buildInQuery(
-                    parentPath,
-                    subPath,
-                    fullCondition,
-                    subQueryMeta
-            );
-            case NOT_IN -> buildNotInQuery(
-                    parentPath,
-                    subPath,
-                    fullCondition,
-                    subQueryMeta
-            );
+            case EXISTS -> buildExistsQuery(subPath, fullCondition, false);
+            case NOT_EXISTS -> buildExistsQuery(subPath, fullCondition, true);
+            case IN -> buildInQuery(parentPath, subPath, fullCondition, subQueryMeta, false);
+            case NOT_IN -> buildInQuery(parentPath, subPath, fullCondition, subQueryMeta, true);
             default -> buildScalarQuery(
                     parentPath,
                     subPath,
@@ -392,7 +323,7 @@ public class SubQueryBuilder {
 
             BooleanExpression expr = ExpressionBuilder.build(
                     subPath,
-                    meta.targetField(),
+                    meta.targetFieldParts(),
                     Optional.ofNullable(meta.queryType()).orElse(QueryType.EQ),
                     value
             );
@@ -411,26 +342,15 @@ public class SubQueryBuilder {
 
     private static BooleanExpression buildExistsQuery(
             PathBuilder<?> subPath,
-            BooleanExpression condition
+            BooleanExpression condition,
+            boolean negate
     ) {
 
-        JPQLQuery<?> subQuery = JPAExpressions
+        JPQLSubQuery<?> subQuery = JPAExpressions
                 .selectOne()
                 .from(subPath)
                 .where(condition);
-        return subQuery.exists();
-    }
-
-    private static BooleanExpression buildNotExistsQuery(
-            PathBuilder<?> subPath,
-            BooleanExpression condition
-    ) {
-
-        JPQLQuery<?> subQuery = JPAExpressions
-                .selectOne()
-                .from(subPath)
-                .where(condition);
-        return subQuery.notExists();
+        return negate ? subQuery.notExists() : subQuery.exists();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -438,15 +358,14 @@ public class SubQueryBuilder {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * IN 子查询
-     * <p>
-     * SQL: parent.field IN (SELECT sub.selectField FROM sub WHERE ...)
+     * IN / NOT IN 子查询
      */
     private static BooleanExpression buildInQuery(
             PathBuilder<?> parentPath,
             PathBuilder<?> subPath,
             BooleanExpression condition,
-            FieldMeta subQueryMeta
+            FieldMeta subQueryMeta,
+            boolean negate
     ) {
 
         String select         = subQueryMeta.select();
@@ -456,34 +375,14 @@ public class SubQueryBuilder {
                 subQueryMeta.relationInfo()
         );
 
-        JPQLQuery<?> subQuery = JPAExpressions
+        JPQLSubQuery<?> subQuery = JPAExpressions
                 .select(subPath.get(subSelectField))
                 .from(subPath)
                 .where(condition);
 
-        return parentPath.get(parentField).in(subQuery);
-    }
-
-    private static BooleanExpression buildNotInQuery(
-            PathBuilder<?> parentPath,
-            PathBuilder<?> subPath,
-            BooleanExpression condition,
-            FieldMeta subQueryMeta
-    ) {
-
-        String select         = subQueryMeta.select();
-        String parentField    = resolveParentField(select);
-        String subSelectField = resolveSubSelectField(
-                select,
-                subQueryMeta.relationInfo()
-        );
-
-        JPQLQuery<?> subQuery = JPAExpressions
-                .select(subPath.get(subSelectField))
-                .from(subPath)
-                .where(condition);
-
-        return parentPath.get(parentField).notIn(subQuery);
+        return negate
+                ? parentPath.get(parentField).notIn(subQuery)
+                : parentPath.get(parentField).in(subQuery);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -509,7 +408,8 @@ public class SubQueryBuilder {
             // 没有 select 字段，退化为 EXISTS
             return buildExistsQuery(
                     subPath,
-                    condition
+                    condition,
+                    false
             );
         }
 
@@ -536,7 +436,7 @@ public class SubQueryBuilder {
         }
 
         Expression<?> selectExpr = subPath.get(subSelectField);
-        JPQLQuery<?> subQuery = JPAExpressions
+        JPQLSubQuery<?> subQuery = JPAExpressions
                 .select(selectExpr)
                 .from(subPath)
                 .where(finalCondition);
@@ -605,7 +505,7 @@ public class SubQueryBuilder {
     private static BooleanExpression buildComparisonExpression(
             PathBuilder<?> parentPath,
             String parentField,
-            JPQLQuery<?> subQuery,
+            JPQLSubQuery<?> subQuery,
             QueryType queryType
     ) {
 

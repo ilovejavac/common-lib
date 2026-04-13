@@ -6,6 +6,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.DefaultTyping;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ObjectReader;
 import tools.jackson.databind.ObjectWriter;
 import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;

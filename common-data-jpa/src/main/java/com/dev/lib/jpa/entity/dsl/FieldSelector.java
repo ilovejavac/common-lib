@@ -5,9 +5,13 @@ import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
 public class FieldSelector<T> {
+
+    private static final Map<SFunction<?, ?>, Class<?>> RETURN_TYPE_CACHE = new ConcurrentHashMap<>();
 
     private final String path;
     private final Class<?> fieldType;
@@ -42,12 +46,14 @@ public class FieldSelector<T> {
         return NestedSelectBuilder.of(fn);
     }
     private static Class<?> getReturnType(SFunction<?, ?> fn) {
-        try {
-            String methodName = fn.getSerializedLambda().getImplMethodName();
-            Class<?> entityClass = fn.getEntityClass();
-            return entityClass.getMethod(methodName).getReturnType();
-        } catch (Exception e) {
-            return Object.class;
-        }
+        return RETURN_TYPE_CACHE.computeIfAbsent(fn, f -> {
+            try {
+                String methodName = f.getSerializedLambda().getImplMethodName();
+                Class<?> entityClass = f.getEntityClass();
+                return entityClass.getMethod(methodName).getReturnType();
+            } catch (Exception e) {
+                return Object.class;
+            }
+        });
     }
 }

@@ -11,7 +11,31 @@
       "Bash(mvn clean test:*)",
       "Bash(javap:*)",
       "Bash(mvn dependency:tree:*)",
-      "Bash(mvn clean install:*)"
+      "Bash(mvn clean install:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(java:*)",
+      "Read(//c/Users/Administrator/.m2/repository/org/springframework/data/spring-data-jpa/4.1.0-M2//**)",
+      "Bash(jar tf:*)",
+      "Bash(grep -v \"\\\\$\")",
+      "Bash(mvn help:effective-pom -pl common-core -N)",
+      "Bash(mvn help:evaluate -Dexpression=jackson-bom.version -q -DforceStdout)",
+      "WebSearch",
+      "WebFetch(domain:mvnrepository.com)",
+      "WebFetch(domain:repo1.maven.org)",
+      "WebFetch(domain:search.maven.org)",
+      "Bash(mvn help:effective-pom -N -q)",
+      "Bash(gpg --version)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(where python:*)",
+      "Bash(py --version)",
+      "Bash(where py:*)",
+      "Bash(py:*)",
+      "Bash(mvn help:effective-pom -pl common-cloud -q)",
+      "Bash(grep -rn \"name>\\\\|description>\" E:/dev/common-lib/*/pom.xml)",
+      "Bash(mvn help:effective-pom -pl common-util,common-mq,common-mq-rabbit -q)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

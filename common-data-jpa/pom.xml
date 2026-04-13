@@ -4,23 +4,24 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.dev.lib</groupId>
+        <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.5.4-Re</version>
+        <version>1.0.1-Re</version>
     </parent>
 
     <artifactId>common-data-jpa</artifactId>
+    <name>${project.artifactId}</name>
+    <description>A common library module for Spring Boot microservices</description>
 
     <dependencies>
         <dependency>
-            <groupId>com.querydsl</groupId>
+            <groupId>io.github.openfeign.querydsl</groupId>
             <artifactId>querydsl-jpa</artifactId>
-            <classifier>jakarta</classifier>
         </dependency>
         <dependency>
-            <groupId>com.querydsl</groupId>
+            <groupId>io.github.openfeign.querydsl</groupId>
             <artifactId>querydsl-apt</artifactId>
-            <classifier>jakarta</classifier>
+            <classifier>jpa</classifier>
         </dependency>
 
         <dependency>
@@ -32,12 +33,12 @@
             <artifactId>hibernate-community-dialects</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.dev.lib</groupId>
+            <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-core</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>com.dev.lib</groupId>
+            <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-starter</artifactId>
             <scope>test</scope>
         </dependency>

@@ -4,12 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.dev.lib</groupId>
+        <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.5.4-Re</version>
+        <version>1.0.1-Re</version>
     </parent>
 
     <artifactId>common-data-search</artifactId>
+    <name>${project.artifactId}</name>
+    <description>A common library module for Spring Boot microservices</description>
 
     <dependencies>
         <dependency>
@@ -30,7 +32,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.dev.lib</groupId>
+            <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-core</artifactId>
         </dependency>
     </dependencies>

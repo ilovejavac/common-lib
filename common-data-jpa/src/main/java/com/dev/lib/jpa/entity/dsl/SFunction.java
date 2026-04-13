@@ -12,6 +12,8 @@ public interface SFunction<T, R> extends Function<T, R>, Serializable {
 
     Map<SFunction<?, ?>, SerializedLambda> LAMBDA_CACHE = new ConcurrentHashMap<>();
 
+    Map<SFunction<?, ?>, Class<?>> CLASS_CACHE = new ConcurrentHashMap<>();
+
     default SerializedLambda getSerializedLambda() {
 
         return LAMBDA_CACHE.computeIfAbsent(
@@ -45,20 +47,20 @@ public interface SFunction<T, R> extends Function<T, R>, Serializable {
             return methodName;
         }
 
-        System.out.println(methodName);
-
         throw new IllegalStateException("不是标准 getter: " + methodName);
     }
 
     @SuppressWarnings("unchecked")
     default Class<T> getEntityClass() {
 
-        try {
-            String className = getSerializedLambda().getImplClass().replace('/', '.');
-            return (Class<T>) Class.forName(className);
-        } catch (Exception e) {
-            throw new IllegalStateException("无法解析实体类", e);
-        }
+        return (Class<T>) CLASS_CACHE.computeIfAbsent(this, fn -> {
+            try {
+                String className = fn.getSerializedLambda().getImplClass().replace('/', '.');
+                return Class.forName(className);
+            } catch (Exception e) {
+                throw new IllegalStateException("无法解析实体类", e);
+            }
+        });
     }
 
 }

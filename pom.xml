@@ -12,10 +12,37 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.dev.lib</groupId>
+    <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.5.4-Re</version>
+    <version>1.0.1-Re</version>
     <packaging>pom</packaging>
+
+    <name>common-lib</name>
+    <description>A common library for Spring Boot microservices</description>
+    <url>https://github.com/ilovejavac/common-lib</url>
+
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>ilovejavac</id>
+            <name>ilovejavac</name>
+            <url>https://github.com/ilovejavac</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/ilovejavac/common-lib.git</connection>
+        <developerConnection>scm:git:ssh://github.com/ilovejavac/common-lib.git</developerConnection>
+        <url>https://github.com/ilovejavac/common-lib</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <modules>
         <module>common-starter</module>
@@ -75,11 +102,13 @@
         <oss.version>3.17.4</oss.version>
         <eclipse-collections.version>13.0.0</eclipse-collections.version>
         <jwt.version>0.12.6</jwt.version>
+        <openfeign-querydsl.version>7.1</openfeign-querydsl.version>
 
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
 
-        <lib.version>1.5.4-Re</lib.version>
+        <lib.groupId>io.github.ilovejavac</lib.groupId>
+        <lib.version>1.0.1-Re</lib.version>
         <skipTests>true</skipTests>
     </properties>
 
@@ -158,21 +187,21 @@
                                     <version>${lombok-mapstruct-binding.version}</version>
                                 </path>
                                 <path>
-                                    <groupId>com.querydsl</groupId>
+                                    <groupId>io.github.openfeign.querydsl</groupId>
                                     <artifactId>querydsl-apt</artifactId>
-                                    <version>${querydsl.version}</version>
-                                    <classifier>jakarta</classifier>
+                                    <version>${openfeign-querydsl.version}</version>
+                                    <classifier>jpa</classifier>
                                 </path>
                                 <path>
-                                    <groupId>com.querydsl</groupId>
+                                    <groupId>io.github.openfeign.querydsl</groupId>
                                     <artifactId>querydsl-apt</artifactId>
                                     <classifier>general</classifier>
-                                    <version>${querydsl.version}</version>
+                                    <version>${openfeign-querydsl.version}</version>
                                 </path>
                                 <path>
-                                    <groupId>com.querydsl</groupId>
+                                    <groupId>io.github.openfeign.querydsl</groupId>
                                     <artifactId>querydsl-mongodb</artifactId>
-                                    <version>${querydsl.version}</version>
+                                    <version>${openfeign-querydsl.version}</version>
                                 </path>
                                 <path>
                                     <groupId>jakarta.persistence</groupId>
@@ -215,23 +244,27 @@
                 <version>${mapstruct-plus.version}</version>
             </dependency>
 
-            <!-- QueryDSL -->
+            <!-- QueryDSL (OpenFeign fork) -->
             <dependency>
-                <groupId>com.querydsl</groupId>
+                <groupId>io.github.openfeign.querydsl</groupId>
                 <artifactId>querydsl-jpa</artifactId>
-                <version>${querydsl.version}</version>
-                <classifier>jakarta</classifier>
+                <version>${openfeign-querydsl.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.querydsl</groupId>
+                <groupId>io.github.openfeign.querydsl</groupId>
                 <artifactId>querydsl-apt</artifactId>
-                <version>${querydsl.version}</version>
-                <classifier>jakarta</classifier>
+                <version>${openfeign-querydsl.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.querydsl</groupId>
+                <groupId>io.github.openfeign.querydsl</groupId>
+                <artifactId>querydsl-apt</artifactId>
+                <version>${openfeign-querydsl.version}</version>
+                <classifier>jpa</classifier>
+            </dependency>
+            <dependency>
+                <groupId>io.github.openfeign.querydsl</groupId>
                 <artifactId>querydsl-mongodb</artifactId>
-                <version>${querydsl.version}</version>
+                <version>${openfeign-querydsl.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>org.mongodb</groupId>
@@ -274,132 +307,132 @@
 
             <!-- Internal modules -->
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-starter</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-util</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-core</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-data-jpa</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-data-jpa-tenant</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-data-mongo</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-data-search</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-local-task-message</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-dict</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-schedule</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-storage</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-cache</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-excel</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-agent</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-security-sa</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-web-notify</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-security</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-security-jwt</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-mq-rabbit</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-mq-rocketmq</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-mq-kafka</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-cloud</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-cloud-consul</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-cloud-nacos</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-bash</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.dev.lib</groupId>
+                <groupId>${lib.groupId}</groupId>
                 <artifactId>common-mq</artifactId>
                 <version>${lib.version}</version>
             </dependency>
@@ -532,7 +565,87 @@
     </pluginRepositories>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <configuration>
+                        <doclint>none</doclint>
+                        <failOnError>false</failOnError>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals><goal>jar</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <goals><goal>jar-no-fork</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>common-lib</publishingServerId>
+                    <autoPublish>false</autoPublish>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <doclint>none</doclint>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.7</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals><goal>sign</goal></goals>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
@@ -597,21 +710,21 @@
                                     <version>${lombok-mapstruct-binding.version}</version>
                                 </path>
                                 <path>
-                                    <groupId>com.querydsl</groupId>
+                                    <groupId>io.github.openfeign.querydsl</groupId>
                                     <artifactId>querydsl-apt</artifactId>
-                                    <version>${querydsl.version}</version>
-                                    <classifier>jakarta</classifier>
+                                    <version>${openfeign-querydsl.version}</version>
+                                    <classifier>jpa</classifier>
                                 </path>
                                 <path>
-                                    <groupId>com.querydsl</groupId>
+                                    <groupId>io.github.openfeign.querydsl</groupId>
                                     <artifactId>querydsl-apt</artifactId>
                                     <classifier>general</classifier>
-                                    <version>${querydsl.version}</version>
+                                    <version>${openfeign-querydsl.version}</version>
                                 </path>
                                 <path>
-                                    <groupId>com.querydsl</groupId>
+                                    <groupId>io.github.openfeign.querydsl</groupId>
                                     <artifactId>querydsl-mongodb</artifactId>
-                                    <version>${querydsl.version}</version>
+                                    <version>${openfeign-querydsl.version}</version>
                                 </path>
                                 <path>
                                     <groupId>jakarta.persistence</groupId>

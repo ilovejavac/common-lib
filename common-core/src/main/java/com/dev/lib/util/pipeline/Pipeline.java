@@ -15,11 +15,9 @@ import java.util.function.BiPredicate;
 @Slf4j
 @SuppressWarnings("all")
 @RequiredArgsConstructor
-public class Pipeline<I, C extends PipeLineContext<O>, O> {
+public final class Pipeline<I, C extends PipeLineContext<O>, O> {
 
     private final ImmutableList<PipelineStage<I, C, O>> stages;
-
-    private final ImmutableList<PipelineRefiner<C, O>>  refiners;
 
     private final PipelineInterceptor<I, C, O>          interceptor;
 
@@ -75,18 +73,6 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
             if (ctx.isTerminated()) break;
         }
 
-        for (PipelineRefiner<C, O> refiner : refiners) {
-            try {
-                refiner.refine(ctx);
-            } catch (Exception e) {
-                if (errorHandler == null) throw e;
-                if (!errorHandler.test(
-                        e,
-                        ctx
-                )) break;
-            }
-        }
-
         return Optional.ofNullable(ctx.getOutput()).orElse(defaultResult);
     }
 
@@ -94,8 +80,6 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
     public static class Builder<I, C extends PipeLineContext<O>, O> {
 
         private final List<PipelineStage<I, C, O>> stages = Lists.mutable.empty();
-
-        private final List<PipelineRefiner<C, O>>  refiners = Lists.mutable.empty();
 
         private       O                            defaultResult;
 
@@ -109,21 +93,9 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
             return this;
         }
 
-        public Builder<I, C, O> refine(PipelineRefiner<C, O> refiner) {
-
-            refiners.add(refiner);
-            return this;
-        }
-
         public Builder<I, C, O> stages(List<? extends PipelineStage<I, C, O>> stages) {
 
             this.stages.addAll(stages);
-            return this;
-        }
-
-        public Builder<I, C, O> refiners(List<? extends PipelineRefiner<C, O>> refiners) {
-
-            this.refiners.addAll(refiners);
             return this;
         }
 
@@ -153,7 +125,6 @@ public class Pipeline<I, C extends PipeLineContext<O>, O> {
 
             Pipeline<I, C, O> p = new Pipeline<>(
                     Lists.immutable.ofAll(stages),
-                    Lists.immutable.ofAll(refiners),
                     interceptor,
                     errorHandler
             );

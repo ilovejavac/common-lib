@@ -18,7 +18,9 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PredicateAssembler {
 
@@ -26,12 +28,17 @@ public class PredicateAssembler {
 
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T extends JpaEntity> EntityPathBase<T> getEntityPath(Class<?> clazz) {
+    private static final Map<Class<?>, PathBuilder<?>> PATH_BUILDER_CACHE = new ConcurrentHashMap<>(128);
 
-        return (EntityPathBase<T>) EntityPathManager.getEntityPath(
-                FieldMetaCache.getMeta(clazz).entityClass()
-        );
+    @SuppressWarnings("unchecked")
+    private static <E extends JpaEntity> PathBuilder<E> getPathBuilder(Class<?> queryClass) {
+
+        return (PathBuilder<E>) PATH_BUILDER_CACHE.computeIfAbsent(queryClass, clazz -> {
+            EntityPathBase<?> entityPath = EntityPathManager.getEntityPath(
+                    FieldMetaCache.getMeta(clazz).entityClass()
+            );
+            return new PathBuilder<>(entityPath.getType(), entityPath.getMetadata());
+        });
     }
 
     /**
@@ -46,11 +53,7 @@ public class PredicateAssembler {
         BooleanBuilder builder = new BooleanBuilder();
 
         if (query != null) {
-            EntityPathBase<E> entityPath = getEntityPath(query.getClass());
-            PathBuilder<E> pathBuilder = new PathBuilder<>(
-                    entityPath.getType(),
-                    entityPath.getMetadata()
-            );
+            PathBuilder<E> pathBuilder = getPathBuilder(query.getClass());
 
             // ========== 原有逻辑 ==========
             if (!CollectionUtils.isEmpty(fields)) {
@@ -87,7 +90,7 @@ public class PredicateAssembler {
                 case CONDITION -> {
                     BooleanExpression expr = ExpressionBuilder.build(
                             pathBuilder,
-                            fm.targetField(),
+                            fm.targetFieldParts(),
                             Optional.ofNullable(fm.queryType()).orElse(QueryType.EQ),
                             value
                     );

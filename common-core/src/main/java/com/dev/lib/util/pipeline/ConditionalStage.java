@@ -18,7 +18,7 @@ import java.util.function.Predicate;
  *                 .when(ctx -> ctx.isY(), dNode)
  * </pre>
  */
-public class ConditionalStage<I, C extends PipeLineContext<O>, O> implements PipelineStage<I, C, O> {
+public final class ConditionalStage<I, C extends PipeLineContext<O>, O> implements PipelineStage<I, C, O> {
 
     private final List<Branch<I, C, O>> branches;
 
@@ -31,7 +31,7 @@ public class ConditionalStage<I, C extends PipeLineContext<O>, O> implements Pip
     }
 
     @Override
-    public void execute(I input, C ctx) {
+    public void  execute(I input, C ctx) {
 
         for (Branch<I, C, O> branch : branches) {
             if (branch.condition != null && branch.condition().test(ctx)) {

@@ -4,12 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.dev.lib</groupId>
+        <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.5.4-Re</version>
+        <version>1.0.1-Re</version>
     </parent>
 
     <artifactId>common-util</artifactId>
+    <name>${project.artifactId}</name>
+    <description>A common library module for Spring Boot microservices</description>
 
     <dependencies>
         <dependency>
@@ -21,4 +23,24 @@
             <artifactId>kotlinx-coroutines-slf4j</artifactId>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>empty-javadoc-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>jar</goal></goals>
+                        <configuration>
+                            <classifier>javadoc</classifier>
+                            <classesDirectory>${project.build.directory}/apidocs</classesDirectory>
+                            <skipIfEmpty>false</skipIfEmpty>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

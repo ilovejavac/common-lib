@@ -4,7 +4,6 @@ import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.dsl.PathBuilder;
 import lombok.Getter;
-import org.apache.el.util.ReflectionUtil;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Constructor;
@@ -20,6 +19,9 @@ public class SelectBuilder<T> {
     private final Class<T> entityClass;
     private final List<FieldSelector<T>> selectors = new ArrayList<>();
     private final Map<String, Expression<?>> pathExpressions = new LinkedHashMap<>();
+
+    /** buildExpressions 后缓存，避免 toObject 每行重建 */
+    private String[] selectorPaths;
 
     @SafeVarargs
     public SelectBuilder(Class<T> entityClass, SFunction<T, ?>... fields) {
@@ -48,10 +50,11 @@ public class SelectBuilder<T> {
     public Expression<?>[] buildExpressions(PathBuilder<?> rootPath) {
         pathExpressions.clear();
 
-        for (FieldSelector<T> selector : selectors) {
-            String path = selector.getPath();
-            Expression<?> expr = buildPathExpression(rootPath, path);
-            pathExpressions.put(path, expr);
+        selectorPaths = new String[selectors.size()];
+        for (int i = 0; i < selectors.size(); i++) {
+            String path = selectors.get(i).getPath();
+            selectorPaths[i] = path;
+            pathExpressions.put(path, buildPathExpression(rootPath, path));
         }
 
         return pathExpressions.values().toArray(Expression[]::new);
@@ -80,18 +83,13 @@ public class SelectBuilder<T> {
     private <D> D toObject(Tuple tuple, Class<D> targetClass) {
         ClassFieldCache cache = getFieldCache(targetClass);
 
-        // 收集值
+        // 按索引取值，O(1)
         Map<String, Object> values = new LinkedHashMap<>();
-        Expression<?>[] expressions = pathExpressions.values().toArray(Expression[]::new);
-
-        int index = 0;
-        for (FieldSelector<T> selector : selectors) {
-            String path = selector.getPath();
-            Object value = tuple.get(expressions[index]);
+        for (int i = 0; i < selectorPaths.length; i++) {
+            Object value = tuple.get(i, Object.class);
             if (value != null) {
-                values.put(path, value);
+                values.put(selectorPaths[i], value);
             }
-            index++;
         }
 
         // 尝试无参构造 + 反射赋值
@@ -104,11 +102,14 @@ public class SelectBuilder<T> {
         return createWithAllArgs(targetClass, cache, values);
     }
 
+    @SuppressWarnings("unchecked")
     private <D> D tryCreateWithNoArg(Class<D> targetClass, ClassFieldCache cache, Map<String, Object> values) {
+        if (cache.noArgConstructor == null) {
+            return null;
+        }
+
         try {
-            Constructor<D> constructor = targetClass.getDeclaredConstructor();
-            ReflectionUtils.makeAccessible(constructor);
-            D instance = constructor.newInstance();
+            D instance = (D) cache.noArgConstructor.newInstance();
 
             for (Map.Entry<String, Object> entry : values.entrySet()) {
                 String path = entry.getKey();
@@ -138,8 +139,6 @@ public class SelectBuilder<T> {
             }
 
             return instance;
-        } catch (NoSuchMethodException e) {
-            return null;
         } catch (Exception e) {
             throw new IllegalStateException("对象创建失败: " + targetClass.getName(), e);
         }
@@ -147,29 +146,23 @@ public class SelectBuilder<T> {
 
     @SuppressWarnings("unchecked")
     private <D> D createWithAllArgs(Class<D> targetClass, ClassFieldCache cache, Map<String, Object> values) {
-        Constructor<?>[] constructors = targetClass.getDeclaredConstructors();
+        if (cache.allArgsConstructor == null) {
+            throw new IllegalStateException("找不到构造函数: " + targetClass.getName());
+        }
 
-        // 找参数最多的构造函数
-        Constructor<?> bestConstructor = Arrays.stream(constructors)
-                .max(Comparator.comparingInt(Constructor::getParameterCount))
-                .orElseThrow(() -> new IllegalStateException("找不到构造函数: " + targetClass.getName()));
-
-        bestConstructor.setAccessible(true);
-
-        java.lang.reflect.Parameter[] params = bestConstructor.getParameters();
+        java.lang.reflect.Parameter[] params = cache.allArgsConstructor.getParameters();
         Object[] args = new Object[params.length];
 
         for (int i = 0; i < params.length; i++) {
             String paramName = params[i].getName();
             Class<?> paramType = params[i].getType();
 
-            // 查找匹配的值
             Object value = findValueForParam(paramName, values);
             args[i] = convertValue(value, paramType);
         }
 
         try {
-            return (D) bestConstructor.newInstance(args);
+            return (D) cache.allArgsConstructor.newInstance(args);
         } catch (Exception e) {
             throw new IllegalStateException("构造函数调用失败: " + targetClass.getName(), e);
         }
@@ -290,14 +283,29 @@ public class SelectBuilder<T> {
 
     private static class ClassFieldCache {
         private final Map<String, Field> fieldMap = new HashMap<>();
+        private final Constructor<?> noArgConstructor;
+        private final Constructor<?> allArgsConstructor;
 
         ClassFieldCache(Class<?> clazz) {
             for (Class<?> c = clazz; c != null && c != Object.class; c = c.getSuperclass()) {
                 for (Field f : c.getDeclaredFields()) {
-                    f.setAccessible(true);
+                    ReflectionUtils.makeAccessible(f);
                     fieldMap.putIfAbsent(f.getName(), f);
                 }
             }
+
+            Constructor<?> noArg = null;
+            try {
+                noArg = clazz.getDeclaredConstructor();
+                ReflectionUtils.makeAccessible(noArg);
+            } catch (NoSuchMethodException ignored) {
+            }
+            this.noArgConstructor = noArg;
+
+            this.allArgsConstructor = Arrays.stream(clazz.getDeclaredConstructors())
+                    .max(Comparator.comparingInt(Constructor::getParameterCount))
+                    .map(c -> { c.setAccessible(true); return c; })
+                    .orElse(null);
         }
 
         Field getField(String name) {

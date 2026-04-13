@@ -392,6 +392,8 @@ public class FieldMetaCache {
         // CONDITION 字段
         private final String targetField;
 
+        private final String[] targetFieldParts;
+
         private final QueryType queryType;
 
         // GROUP 字段
@@ -424,6 +426,7 @@ public class FieldMetaCache {
             this.metaType = metaType;
             this.operator = operator;
             this.targetField = targetField;
+            this.targetFieldParts = targetField != null ? targetField.split("\\.") : null;
             this.queryType = queryType;
             this.nestedMetas = nestedMetas;
             this.relationInfo = relationInfo;
@@ -558,6 +561,11 @@ public class FieldMetaCache {
         public String targetField() {
 
             return targetField;
+        }
+
+        public String[] targetFieldParts() {
+
+            return targetFieldParts;
         }
 
         public QueryType queryType() {

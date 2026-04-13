@@ -85,9 +85,6 @@ public class ServerResponse<T> implements Serializable {
 
     public static ServerResponse<Void> fail(Integer code, String message) {
 
-        if (1_000_000 < code || code < 100_000) {
-            throw new RuntimeException("异常 code 不符合标准[ABBCCC]");
-        }
         return fail(code, message, null);
     }
 
@@ -96,7 +93,7 @@ public class ServerResponse<T> implements Serializable {
         ServerResponse<T> result = new ServerResponse<>();
 
         result.setCode(code);
-        result.setMessage("server failed");
+        result.setMessage("Response failed");
         result.setError(message);
         result.setData(data);
 
@@ -108,7 +105,7 @@ public class ServerResponse<T> implements Serializable {
         ServerResponse<T> result = new ServerResponse<>();
 
         result.setCode(code);
-        result.setMessage("request failed");
+        result.setMessage("Invalid request");
         result.setError(message);
         result.setData(data);
 

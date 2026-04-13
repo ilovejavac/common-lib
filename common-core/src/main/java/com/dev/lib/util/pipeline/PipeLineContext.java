@@ -9,7 +9,7 @@ public abstract class PipeLineContext<O> {
 
     private boolean terminated = false;
 
-    public void terminate() {
+    public final void terminate() {
 
         this.terminated = true;
     }

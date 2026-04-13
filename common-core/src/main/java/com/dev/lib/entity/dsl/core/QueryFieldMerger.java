@@ -3,9 +3,9 @@ package com.dev.lib.entity.dsl.core;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 public class QueryFieldMerger {
 
@@ -20,13 +20,14 @@ public class QueryFieldMerger {
         }
 
         List<FieldMetaCache.FieldMeta> sourceMetas = FieldMetaCache.resolveFieldMeta(query.getClass());
-        return sourceMetas.stream()
-                .map(meta -> new FieldMetaValue(
-                        meta.getValue(query),
-                        meta
-                ))
-                .filter(it -> Objects.nonNull(it.getValue()))
-                .toList();
+        List<FieldMetaValue> result = new ArrayList<>(sourceMetas.size());
+        for (FieldMetaCache.FieldMeta meta : sourceMetas) {
+            Object value = meta.getValue(query);
+            if (value != null) {
+                result.add(new FieldMetaValue(value, meta));
+            }
+        }
+        return result;
     }
 
     @Data
