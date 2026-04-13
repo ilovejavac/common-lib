@@ -14,7 +14,7 @@
 
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.0.1-Re</version>
+    <version>1.0.2-rc</version>
     <packaging>pom</packaging>
 
     <name>common-lib</name>
@@ -79,6 +79,9 @@
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
 
+        <tomcat.version>11.0.21</tomcat.version>
+        <jackson-bom.version>3.1.2</jackson-bom.version>
+
         <!-- Spring -->
         <spring-boot.version>4.1.0-M4</spring-boot.version>
         <spring-cloud.version>2025.1.1</spring-cloud.version>
@@ -108,7 +111,7 @@
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
 
         <lib.groupId>io.github.ilovejavac</lib.groupId>
-        <lib.version>1.0.1-Re</lib.version>
+        <lib.version>1.0.2-rc</lib.version>
         <skipTests>true</skipTests>
     </properties>
 

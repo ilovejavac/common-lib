@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.0.1-Re</version>
+        <version>1.0.2-rc</version>
     </parent>
 
     <artifactId>common-util</artifactId>
