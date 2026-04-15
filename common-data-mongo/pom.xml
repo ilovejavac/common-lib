@@ -6,11 +6,11 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.0.2-rc</version>
+        <version>1.1.0-rc.0</version>
     </parent>
 
     <artifactId>common-data-mongo</artifactId>
-    <name>${project.artifactId}</name>
+    <name>common-data-mongo</name>
     <description>A common library module for Spring Boot microservices</description>
 
     <dependencies>

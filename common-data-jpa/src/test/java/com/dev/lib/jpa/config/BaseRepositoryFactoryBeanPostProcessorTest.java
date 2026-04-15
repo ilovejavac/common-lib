@@ -28,13 +28,25 @@ class BaseRepositoryFactoryBeanPostProcessorTest {
     }
 
     @Test
-    void shouldNotChangePlainJpaRepository() throws Exception {
+    void shouldSetBaseRepositoryImplForJpaRepositoryOnJpaEntity() throws Exception {
 
         BaseRepositoryFactoryBeanPostProcessor processor = new BaseRepositoryFactoryBeanPostProcessor();
         JpaRepositoryFactoryBean<DemoPlainRepository, DemoEntity, Long> factoryBean =
                 new JpaRepositoryFactoryBean<>(DemoPlainRepository.class);
 
         processor.postProcessBeforeInitialization(factoryBean, "demoPlainRepository");
+
+        assertThat(readRepositoryBaseClass(factoryBean)).contains(BaseRepositoryImpl.class);
+    }
+
+    @Test
+    void shouldNotChangeJpaRepositoryForNonJpaEntity() throws Exception {
+
+        BaseRepositoryFactoryBeanPostProcessor processor = new BaseRepositoryFactoryBeanPostProcessor();
+        JpaRepositoryFactoryBean<ExternalPlainRepository, ExternalEntity, Long> factoryBean =
+                new JpaRepositoryFactoryBean<>(ExternalPlainRepository.class);
+
+        processor.postProcessBeforeInitialization(factoryBean, "externalPlainRepository");
 
         assertThat(readRepositoryBaseClass(factoryBean))
                 .satisfies(baseClass -> assertThat(baseClass.orElse(null)).isNotEqualTo(BaseRepositoryImpl.class));
@@ -64,6 +76,12 @@ class BaseRepositoryFactoryBeanPostProcessorTest {
     interface DemoPlainRepository extends JpaRepository<DemoEntity, Long> {
     }
 
+    interface ExternalPlainRepository extends JpaRepository<ExternalEntity, Long> {
+    }
+
     static class DemoEntity extends JpaEntity {
+    }
+
+    static class ExternalEntity {
     }
 }

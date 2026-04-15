@@ -17,32 +17,44 @@ public class PhysicalDeleteRepository<T extends JpaEntity> {
 
     public void delete(T entity) {
 
-        TransactionHelper.run(() -> getImpl().hardDelete(entity));
+        BaseRepositoryImpl<T> impl = getImpl();
+        TransactionHelper.runWithEntityManagerFactory(impl.getEntityManagerFactory(), () -> impl.hardDelete(entity));
     }
 
     public void deleteById(Long id) {
 
-        TransactionHelper.run(() -> getImpl().hardDeleteById(id));
+        BaseRepositoryImpl<T> impl = getImpl();
+        TransactionHelper.runWithEntityManagerFactory(impl.getEntityManagerFactory(), () -> impl.hardDeleteById(id));
     }
 
     public void deleteAll(Iterable<? extends T> entities) {
 
-        getImpl().hardDeleteAll(entities);
+        BaseRepositoryImpl<T> impl = getImpl();
+        TransactionHelper.runWithEntityManagerFactory(impl.getEntityManagerFactory(), () -> impl.hardDeleteAll(entities));
     }
 
     public void deleteAllById(Iterable<Long> ids) {
 
-        getImpl().hardDeleteAllById(ids);
+        BaseRepositoryImpl<T> impl = getImpl();
+        TransactionHelper.runWithEntityManagerFactory(impl.getEntityManagerFactory(), () -> impl.hardDeleteAllById(ids));
     }
 
     public long delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return TransactionHelper.call(() -> getImpl().hardDelete(dslQuery, expressions));
+        BaseRepositoryImpl<T> impl = getImpl();
+        return TransactionHelper.callWithEntityManagerFactory(
+                impl.getEntityManagerFactory(),
+                () -> impl.hardDelete(dslQuery, expressions)
+        );
     }
 
     public long delete(BooleanExpression... expressions) {
 
-        return TransactionHelper.call(() -> getImpl().hardDelete(null, expressions));
+        BaseRepositoryImpl<T> impl = getImpl();
+        return TransactionHelper.callWithEntityManagerFactory(
+                impl.getEntityManagerFactory(),
+                () -> impl.hardDelete(null, expressions)
+        );
     }
 
 }

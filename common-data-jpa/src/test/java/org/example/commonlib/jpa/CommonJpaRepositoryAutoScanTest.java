@@ -1,5 +1,6 @@
 package org.example.commonlib.jpa;
 
+import com.dev.lib.jpa.TransactionHelper;
 import com.dev.lib.jpa.entity.audit.AuditRepo;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -31,6 +32,7 @@ class CommonJpaRepositoryAutoScanTest {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(AuditRepo.class);
             assertThat(context).hasSingleBean(BusinessOrderRepo.class);
+            assertThat(context).hasSingleBean(TransactionHelper.class);
         });
     }
 

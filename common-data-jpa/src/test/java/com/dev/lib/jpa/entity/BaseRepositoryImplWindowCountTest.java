@@ -10,8 +10,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class BaseRepositoryImplWindowCountTest {
 
@@ -19,8 +17,7 @@ class BaseRepositoryImplWindowCountTest {
     void shouldUseWindowTotalWhenPresent() {
 
         Expression<Long> totalExpression = Expressions.numberTemplate(Long.class, "count(*) over()");
-        Tuple tuple = mock(Tuple.class);
-        when(tuple.get(totalExpression)).thenReturn(23L);
+        Tuple tuple = new TotalTuple(totalExpression, 23L);
 
         AtomicInteger fallbackCalls = new AtomicInteger();
         LongSupplier fallback = () -> {
@@ -51,11 +48,25 @@ class BaseRepositoryImplWindowCountTest {
     }
 
     @Test
+    void shouldFallbackWhenFullEntityTupleIsEmpty() {
+
+        AtomicInteger fallbackCalls = new AtomicInteger();
+        LongSupplier fallback = () -> {
+            fallbackCalls.incrementAndGet();
+            return 13L;
+        };
+
+        long total = BaseRepositoryImpl.resolveWindowTotalFromTuples(List.of(), fallback);
+
+        assertThat(total).isEqualTo(13L);
+        assertThat(fallbackCalls.get()).isEqualTo(1);
+    }
+
+    @Test
     void shouldFallbackWhenWindowTotalIsNull() {
 
         Expression<Long> totalExpression = Expressions.numberTemplate(Long.class, "count(*) over()");
-        Tuple tuple = mock(Tuple.class);
-        when(tuple.get(totalExpression)).thenReturn(null);
+        Tuple tuple = new TotalTuple(totalExpression, null);
 
         AtomicInteger fallbackCalls = new AtomicInteger();
         LongSupplier fallback = () -> {
@@ -83,5 +94,33 @@ class BaseRepositoryImplWindowCountTest {
         RuntimeException ex = new RuntimeException("Null pointer while mapping dto");
 
         assertThat(BaseRepositoryImpl.shouldFallbackToLegacyPage(ex)).isFalse();
+    }
+
+    private record TotalTuple(Expression<Long> expression, Long total) implements Tuple {
+
+        @Override
+        public <T> T get(int index, Class<T> type) {
+
+            return index == 0 && total != null ? type.cast(total) : null;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T get(Expression<T> expr) {
+
+            return expression.equals(expr) ? (T) total : null;
+        }
+
+        @Override
+        public int size() {
+
+            return 1;
+        }
+
+        @Override
+        public Object[] toArray() {
+
+            return new Object[]{total};
+        }
     }
 }
