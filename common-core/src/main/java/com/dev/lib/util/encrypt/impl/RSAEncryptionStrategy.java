@@ -1,7 +1,7 @@
-package com.dev.lib.encrypt.impl;
+package com.dev.lib.util.encrypt.impl;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
-import com.dev.lib.encrypt.Encryptor;
+import com.dev.lib.util.encrypt.Encryptor;
 import com.dev.lib.entity.encrypt.EncryptVersion;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

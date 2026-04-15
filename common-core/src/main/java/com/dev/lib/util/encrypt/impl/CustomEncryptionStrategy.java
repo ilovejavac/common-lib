@@ -1,7 +1,7 @@
-package com.dev.lib.encrypt.impl;
+package com.dev.lib.util.encrypt.impl;
 
-import com.dev.lib.encrypt.CustomEncryptor;
-import com.dev.lib.encrypt.Encryptor;
+import com.dev.lib.util.encrypt.CustomEncryptor;
+import com.dev.lib.util.encrypt.Encryptor;
 import com.dev.lib.entity.encrypt.EncryptVersion;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;

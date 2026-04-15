@@ -1,4 +1,4 @@
-package com.dev.lib.encrypt.impl;
+package com.dev.lib.util.encrypt.impl;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
 import org.junit.jupiter.api.Test;

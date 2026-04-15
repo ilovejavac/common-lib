@@ -1,6 +1,6 @@
-package com.dev.lib.encrypt.factory;
+package com.dev.lib.util.encrypt.factory;
 
-import com.dev.lib.encrypt.Encryptor;
+import com.dev.lib.util.encrypt.Encryptor;
 import com.dev.lib.entity.encrypt.EncryptVersion;
 import com.dev.lib.exceptions.BizException;
 import lombok.extern.slf4j.Slf4j;

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.github.ilovejavac</groupId>
+        <artifactId>common-lib</artifactId>
+        <version>1.0.2-rc</version>
+    </parent>
+
+    <artifactId>common-security-aes</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.ilovejavac</groupId>
+            <artifactId>common-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.ilovejavac</groupId>
+            <artifactId>common-core</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

@@ -4,17 +4,17 @@
     <!-- ========== 变量定义 ========== -->
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="/"/>
     <springProperty scope="context" name="SPRING_PROFILE" source="spring.profiles.active" defaultValue="dev"/>
-    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="./log"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="log"/>
     <springProperty scope="context" name="LOGSTASH_HOST" source="app.logstash.host" defaultValue="localhost:5044"/>
 
     <property name="LOG_FILE" value="${APP_NAME}"/>
 
     <!-- 日志输出格式 -->
     <property name="CONSOLE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n%ex{3}"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n%ex{20}"/>
 
     <property name="FILE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n%ex{3}"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n%ex{20}"/>
 
     <!-- ========== 控制台输出 ========== -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

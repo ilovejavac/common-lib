@@ -1,4 +1,4 @@
-package com.dev.lib.encrypt;
+package com.dev.lib.util.encrypt;
 
 public interface CustomEncryptor {
 

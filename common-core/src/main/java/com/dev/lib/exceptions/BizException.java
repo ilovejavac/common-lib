@@ -1,5 +1,6 @@
 package com.dev.lib.exceptions;
 
+import com.dev.lib.web.model.CodeEnums;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -30,6 +31,13 @@ public class BizException extends RuntimeException {
         this.i18n = true;
         this.args = args.length > 0 ? args : null;
         return this;
+    }
+
+    public static <E extends CodeEnums> void notNull(Object o, E e) {
+
+        if (o == null) {
+            throw new BizException(e.getCode(), e.getMessage());
+        }
     }
 
 }

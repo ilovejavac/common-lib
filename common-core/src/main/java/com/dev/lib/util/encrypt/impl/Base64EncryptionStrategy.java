@@ -1,6 +1,6 @@
-package com.dev.lib.encrypt.impl;
+package com.dev.lib.util.encrypt.impl;
 
-import com.dev.lib.encrypt.Encryptor;
+import com.dev.lib.util.encrypt.Encryptor;
 import com.dev.lib.entity.encrypt.EncryptVersion;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
