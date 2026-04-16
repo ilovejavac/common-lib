@@ -4,7 +4,6 @@ import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.ConditionIgnore;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
-import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
@@ -116,10 +115,7 @@ public class FieldMetaCache {
                 parsed
         );
         QueryType queryType = resolveQueryType(
-                condition,
-                parsed
-        );
-        LogicalOperator operator = resolveOperator(
+                field,
                 condition,
                 parsed
         );
@@ -140,8 +136,7 @@ public class FieldMetaCache {
             case CONDITION -> FieldMeta.condition(
                     field,
                     targetField,
-                    queryType,
-                    operator
+                    queryType
             );
 
             case GROUP -> null;
@@ -159,7 +154,6 @@ public class FieldMetaCache {
                     );
                     yield FieldMeta.subQuery(
                             field,
-                            operator,
                             queryType,
                             relationInfo,
                             filterMetas,
@@ -209,7 +203,6 @@ public class FieldMetaCache {
                     );
                     yield FieldMeta.selfSubQuery(
                             field,
-                            operator,
                             queryType,
                             entityClass,
                             filterMetas,
@@ -257,6 +250,7 @@ public class FieldMetaCache {
 
         // 2. 查询类型是 EXISTS / NOT_EXISTS → 子查询
         QueryType type = resolveQueryType(
+                field,
                 condition,
                 parsed
         );
@@ -309,23 +303,16 @@ public class FieldMetaCache {
         return parsed.targetField();
     }
 
-    private static QueryType resolveQueryType(Condition condition, QueryFieldParser.ParsedField parsed) {
+    private static QueryType resolveQueryType(Field field, Condition condition, QueryFieldParser.ParsedField parsed) {
 
         if (condition != null && condition.type() != QueryType.EMPTY) {
             return condition.type();
         }
-        return parsed.queryType();
-    }
-
-    private static LogicalOperator resolveOperator(Condition condition, QueryFieldParser.ParsedField parsed) {
-        // 后缀优先（更直观），注解可覆盖
-        if (parsed.operator() == LogicalOperator.OR) {
-            return LogicalOperator.OR;
+        QueryType parsedType = parsed.queryType();
+        if (parsedType == QueryType.EQ && Collection.class.isAssignableFrom(field.getType())) {
+            return QueryType.IN;
         }
-        if (condition != null) {
-            return condition.operator();
-        }
-        return LogicalOperator.AND;
+        return parsedType;
     }
 
     private static boolean shouldSkip(Field field) {
@@ -335,7 +322,6 @@ public class FieldMetaCache {
                 || field.getName().equals("entityPath")
                 || field.getName().equals("externalFields")
                 || field.getName().equals("pageRequest")
-                || field.getName().equals("selfOperator")
                 || Modifier.isStatic(field.getModifiers());
     }
 
@@ -377,8 +363,6 @@ public class FieldMetaCache {
 
         private final FieldMetaType metaType;
 
-        private final LogicalOperator operator;
-
         // CONDITION 字段
         private final String targetField;
 
@@ -405,7 +389,7 @@ public class FieldMetaCache {
 
         private final String parentField;
 
-        private FieldMeta(Field field, FieldMetaType metaType, LogicalOperator operator,
+        private FieldMeta(Field field, FieldMetaType metaType,
                           String targetField, QueryType queryType,
                           List<FieldMeta> nestedMetas,
                           RelationInfo relationInfo, List<FieldMeta> filterMetas,
@@ -414,7 +398,6 @@ public class FieldMetaCache {
 
             this.field = field;
             this.metaType = metaType;
-            this.operator = operator;
             this.targetField = targetField;
             this.targetFieldParts = targetField != null ? targetField.split("\\.") : null;
             this.queryType = queryType;
@@ -428,13 +411,11 @@ public class FieldMetaCache {
             this.parentField = parentField;
         }
 
-        public static FieldMeta condition(Field field, String targetField,
-                                          QueryType queryType, LogicalOperator operator) {
+        public static FieldMeta condition(Field field, String targetField, QueryType queryType) {
 
             return new FieldMeta(
                     field,
                     FieldMetaType.CONDITION,
-                    operator,
                     targetField,
                     queryType,
                     null,
@@ -448,12 +429,11 @@ public class FieldMetaCache {
             );
         }
 
-        public static FieldMeta group(Field field, LogicalOperator operator, List<FieldMeta> nestedMetas) {
+        public static FieldMeta group(Field field, List<FieldMeta> nestedMetas) {
 
             return new FieldMeta(
                     field,
                     FieldMetaType.GROUP,
-                    operator,
                     null,
                     null,
                     nestedMetas,
@@ -470,14 +450,13 @@ public class FieldMetaCache {
         /**
          * 关联子查询（OneToMany, ManyToOne, ManyToMany, OneToOne）
          */
-        public static FieldMeta subQuery(Field field, LogicalOperator operator, QueryType queryType,
+        public static FieldMeta subQuery(Field field, QueryType queryType,
                                          RelationInfo relationInfo, List<FieldMeta> filterMetas,
                                          String select, String orderBy, boolean desc) {
 
             return new FieldMeta(
                     field,
                     FieldMetaType.SUB_QUERY,
-                    operator,
                     null,
                     queryType,
                     null,
@@ -499,14 +478,13 @@ public class FieldMetaCache {
          * @param select            子查询 SELECT 字段
          * @param parentField       主表比较字段
          */
-        public static FieldMeta selfSubQuery(Field field, LogicalOperator operator, QueryType queryType,
+        public static FieldMeta selfSubQuery(Field field, QueryType queryType,
                                              Class<?> targetEntityClass, List<FieldMeta> filterMetas,
                                              String select, String orderBy, boolean desc, String parentField) {
 
             return new FieldMeta(
                     field,
                     FieldMetaType.SUB_QUERY,
-                    operator,
                     null,
                     queryType,
                     null,
@@ -541,11 +519,6 @@ public class FieldMetaCache {
         public FieldMetaType metaType() {
 
             return metaType;
-        }
-
-        public LogicalOperator operator() {
-
-            return operator;
         }
 
         public String targetField() {

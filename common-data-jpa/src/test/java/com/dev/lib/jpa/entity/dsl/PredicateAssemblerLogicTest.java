@@ -44,20 +44,6 @@ class PredicateAssemblerLogicTest {
     }
 
     @Test
-    void shouldTreatOrSuffixAsAnd() {
-
-        QueryWithOrSuffix query = new QueryWithOrSuffix();
-        query.c1Or = "C1";
-        query.c2 = "C2";
-
-        Predicate predicate = assemble(query);
-
-        List<String> groups = toCanonicalGroups(predicate);
-
-        assertThat(groups).containsExactly("testJpaEntity.c1&testJpaEntity.c2");
-    }
-
-    @Test
     void shouldIgnoreGroupQuery() {
 
         QueryWithGroup query = new QueryWithGroup();
@@ -71,9 +57,9 @@ class PredicateAssemblerLogicTest {
     @Test
     void shouldUseAndOnlyInsideSelfSubQuery() {
 
-        QuerySelfSubOr query = new QuerySelfSubOr();
-        query.subExistsSub = new SubFilterOr();
-        query.subExistsSub.c1Or = "C1";
+        QuerySelfSub query = new QuerySelfSub();
+        query.subExistsSub = new SubFilter();
+        query.subExistsSub.c1 = "C1";
         query.subExistsSub.c2 = "C2";
 
         Predicate predicate = assemble(query);
@@ -92,9 +78,9 @@ class PredicateAssemblerLogicTest {
 
         QuerySelfSubNestedGroup query = new QuerySelfSubNestedGroup();
         query.subExistsSub = new SubFilterNested();
-        query.subExistsSub.innerOr = new InnerGroup();
-        query.subExistsSub.innerOr.c2Or = "C2";
-        query.subExistsSub.innerOr.c3 = "C3";
+        query.subExistsSub.inner = new InnerGroup();
+        query.subExistsSub.inner.c2 = "C2";
+        query.subExistsSub.inner.c3 = "C3";
 
         Predicate predicate = assemble(query);
         SubQueryExpression<?> subQueryExpression = findFirstSubQueryExpression((Expression<?>) predicate);
@@ -229,8 +215,8 @@ class PredicateAssemblerLogicTest {
 
         QueryLogicWithSub query = new QueryLogicWithSub();
         query.setC1("C1");
-        SubFilterOr sub = new SubFilterOr();
-        sub.c1Or = "S1";
+        SubFilter sub = new SubFilter();
+        sub.c1 = "S1";
         sub.c2 = "S2";
         query.setSubExistsSub(sub);
         query.where().use(QueryLogicWithSub::getSubExistsSub);
@@ -251,8 +237,8 @@ class PredicateAssemblerLogicTest {
 
         QueryLogicWithSub query = new QueryLogicWithSub();
         query.setC1("C1");
-        SubFilterOr sub = new SubFilterOr();
-        sub.c1Or = "S1";
+        SubFilter sub = new SubFilter();
+        sub.c1 = "S1";
         sub.c2 = "S2";
         query.setSubExistsSub(sub);
         query.where().use(QueryLogicWithSub::getC1);
@@ -290,6 +276,20 @@ class PredicateAssemblerLogicTest {
         List<String> groups = toCanonicalGroups(predicate);
 
         assertThat(groups).containsExactlyInAnyOrder("testJpaEntity.c1", "testJpaEntity.goods.bizId");
+    }
+
+    @Test
+    void shouldUseInWhenCollectionFieldHasNoTypeSuffix() {
+
+        QueryCollectionDefaultIn query = new QueryCollectionDefaultIn();
+        query.setC1(List.of("A", "B"));
+
+        Predicate predicate = assemble(query);
+        assertThat(predicate).isInstanceOf(Operation.class);
+
+        Operation<?> operation = (Operation<?>) predicate;
+        assertThat(operation.getOperator()).isEqualTo(Ops.IN);
+        assertThat(operation.getArg(0).toString()).isEqualTo("testJpaEntity.c1");
     }
 
     private static Predicate assemble(DslQuery<TestJpaEntity> query) {
@@ -375,13 +375,6 @@ class QueryFlat extends DslQuery<TestJpaEntity> {
     public String c3;
 }
 
-class QueryWithOrSuffix extends DslQuery<TestJpaEntity> {
-
-    public String c1Or;
-
-    public String c2;
-}
-
 class QueryWithGroup extends DslQuery<TestJpaEntity> {
 
     public GroupFilter group;
@@ -392,14 +385,14 @@ class GroupFilter {
     public String c1;
 }
 
-class QuerySelfSubOr extends DslQuery<TestJpaEntity> {
+class QuerySelfSub extends DslQuery<TestJpaEntity> {
 
-    public SubFilterOr subExistsSub;
+    public SubFilter subExistsSub;
 }
 
-class SubFilterOr {
+class SubFilter {
 
-    public String c1Or;
+    public String c1;
 
     public String c2;
 }
@@ -411,12 +404,12 @@ class QuerySelfSubNestedGroup extends DslQuery<TestJpaEntity> {
 
 class SubFilterNested {
 
-    public InnerGroup innerOr;
+    public InnerGroup inner;
 }
 
 class InnerGroup {
 
-    public String c2Or;
+    public String c2;
 
     public String c3;
 }
@@ -504,7 +497,7 @@ class QueryLogicWithSub extends DslQuery<TestJpaEntity> {
 
     private String c1;
 
-    private SubFilterOr subExistsSub;
+    private SubFilter subExistsSub;
 
     public String getC1() {
 
@@ -516,14 +509,29 @@ class QueryLogicWithSub extends DslQuery<TestJpaEntity> {
         this.c1 = c1;
     }
 
-    public SubFilterOr getSubExistsSub() {
+    public SubFilter getSubExistsSub() {
 
         return subExistsSub;
     }
 
-    public void setSubExistsSub(SubFilterOr subExistsSub) {
+    public void setSubExistsSub(SubFilter subExistsSub) {
 
         this.subExistsSub = subExistsSub;
+    }
+}
+
+class QueryCollectionDefaultIn extends DslQuery<TestJpaEntity> {
+
+    private Collection<String> c1;
+
+    public Collection<String> getC1() {
+
+        return c1;
+    }
+
+    public void setC1(Collection<String> c1) {
+
+        this.c1 = c1;
     }
 }
 

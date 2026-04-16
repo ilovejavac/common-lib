@@ -1,7 +1,5 @@
 package com.dev.lib.entity.dsl;
 
-import com.dev.lib.entity.dsl.group.LogicalOperator;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -30,12 +28,7 @@ import java.lang.annotation.Target;
  * private String customerNameLike;             // customer.name LIKE %?%
  * </pre>
  *
- * <h2>三、条件分组</h2>
- * <pre>
- * private TitleFilter titleFilterOr;           // OR (...)
- * </pre>
- *
- * <h2>四、子查询</h2>
+ * <h2>三、子查询</h2>
  * <pre>
  * // 后缀方式
  * private LogFilter logsExistsSub;             // EXISTS (...)
@@ -51,8 +44,8 @@ import java.lang.annotation.Target;
  *
  * <h2>后缀格式</h2>
  * <pre>
- * {field}{Type}{Sub?}{Or?}
- * 例：nameLikeOr, logsExistsSub, statusInSubOr
+ * {field}{Type}{Sub?}
+ * 例：nameLike, logsExistsSub, statusInSub
  * </pre>
  */
 @Target(ElementType.FIELD)
@@ -68,11 +61,6 @@ public @interface Condition {
      * 目标字段/关联路径
      */
     String field() default "";
-
-    /**
-     * 连接方式
-     */
-    LogicalOperator operator() default LogicalOperator.AND;
 
     /**
      * 子查询返回字段

@@ -4,7 +4,6 @@ import com.dev.lib.entity.CoreEntity;
 import com.dev.lib.entity.dsl.agg.AggregateBuilder;
 import com.dev.lib.entity.dsl.agg.AggregateSpec;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
-import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.web.model.QueryRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
@@ -55,10 +54,6 @@ public abstract class DslQuery<E extends CoreEntity> {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<QueryFieldMerger.FieldMetaValue> externalFields = new ArrayList<>();
-
-    @JsonIgnore
-    @ConditionIgnore
-    protected LogicalOperator selfOperator = LogicalOperator.AND;
 
     @JsonIgnore
     @ConditionIgnore

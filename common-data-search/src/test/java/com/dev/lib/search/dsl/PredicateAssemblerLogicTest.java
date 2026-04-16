@@ -150,6 +150,18 @@ class PredicateAssemblerLogicTest {
         assertThat(groups).containsExactlyInAnyOrder("c1", "goods.bizId");
     }
 
+    @Test
+    void shouldUseTermsWhenCollectionFieldHasNoTypeSuffix() {
+
+        QueryCollectionDefaultIn query = new QueryCollectionDefaultIn();
+        query.setC1(List.of("A", "B"));
+
+        Query assembled = assemble(query);
+
+        assertThat(assembled.isTerms()).isTrue();
+        assertThat(assembled.terms().field()).isEqualTo("c1.keyword");
+    }
+
     private static Query assemble(DslQuery<TestSearchEntity> query) {
 
         Collection<QueryFieldMerger.FieldMetaValue> merged = QueryFieldMerger.resolve(query);
@@ -342,6 +354,21 @@ class QueryWithPathCondition extends DslQuery<TestSearchEntity> {
     }
 
     public void setC1(String c1) {
+
+        this.c1 = c1;
+    }
+}
+
+class QueryCollectionDefaultIn extends DslQuery<TestSearchEntity> {
+
+    private Collection<String> c1;
+
+    public Collection<String> getC1() {
+
+        return c1;
+    }
+
+    public void setC1(Collection<String> c1) {
 
         this.c1 = c1;
     }

@@ -163,6 +163,20 @@ class PredicateAssemblerLogicTest {
         assertThat(groups).containsExactlyInAnyOrder("testMongoEntity.c1", "testMongoEntity.goods.bizId");
     }
 
+    @Test
+    void shouldUseInWhenCollectionFieldHasNoTypeSuffix() {
+
+        QueryCollectionDefaultIn query = new QueryCollectionDefaultIn();
+        query.setC1(List.of("A", "B"));
+
+        Predicate predicate = assemble(query);
+        assertThat(predicate).isInstanceOf(Operation.class);
+
+        Operation<?> operation = (Operation<?>) predicate;
+        assertThat(operation.getOperator()).isEqualTo(Ops.IN);
+        assertThat(operation.getArg(0).toString()).isEqualTo("testMongoEntity.c1");
+    }
+
     private static Predicate assemble(DslQuery<TestMongoEntity> query) {
 
         Collection<QueryFieldMerger.FieldMetaValue> merged = QueryFieldMerger.resolve(query);
@@ -308,6 +322,21 @@ class QueryWithPathCondition extends DslQuery<TestMongoEntity> {
     }
 
     public void setC1(String c1) {
+
+        this.c1 = c1;
+    }
+}
+
+class QueryCollectionDefaultIn extends DslQuery<TestMongoEntity> {
+
+    private Collection<String> c1;
+
+    public Collection<String> getC1() {
+
+        return c1;
+    }
+
+    public void setC1(Collection<String> c1) {
 
         this.c1 = c1;
     }
