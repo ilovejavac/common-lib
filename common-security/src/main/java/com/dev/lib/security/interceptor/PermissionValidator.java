@@ -12,6 +12,7 @@ import com.dev.lib.security.util.ClientInfoExtractor;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
 import com.dev.lib.util.StringUtils;
+import com.dev.lib.web.model.StandardErrorCodes;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +63,7 @@ public class PermissionValidator implements InitializingBean {
         // 6. 必须登录
         if (!SecurityContextHolder.isLogin()) {
             throw new BizException(
-                    104101,
+                    StandardErrorCodes.AUTHENTICATION_FAILED,
                     "认证失败，请先登录"
             );
         }
@@ -72,7 +73,7 @@ public class PermissionValidator implements InitializingBean {
         if (methodRole != null) {
             if (!permissionService.hasRole(methodRole.value())) {
                 throw new BizException(
-                        104102,
+                        StandardErrorCodes.PERMISSION_DENIED,
                         "无权限访问"
                 );
             }
@@ -83,7 +84,7 @@ public class PermissionValidator implements InitializingBean {
         RequireRole classRole = controllerClass.getAnnotation(RequireRole.class);
         if (classRole != null && !permissionService.hasRole(classRole.value())) {
             throw new BizException(
-                    104102,
+                    StandardErrorCodes.PERMISSION_DENIED,
                     "无权限访问"
             );
         }
@@ -93,7 +94,7 @@ public class PermissionValidator implements InitializingBean {
         if (methodPermission != null) {
             if (!permissionService.hasPermission(methodPermission.value())) {
                 throw new BizException(
-                        104103,
+                        StandardErrorCodes.PERMISSION_DENIED,
                         "无权限访问"
                 );
             }
@@ -104,7 +105,7 @@ public class PermissionValidator implements InitializingBean {
         RequirePermission classPermission = controllerClass.getAnnotation(RequirePermission.class);
         if (classPermission != null && !permissionService.hasPermission(classPermission.value())) {
             throw new BizException(
-                    104103,
+                    StandardErrorCodes.PERMISSION_DENIED,
                     "无权限访问"
             );
         }

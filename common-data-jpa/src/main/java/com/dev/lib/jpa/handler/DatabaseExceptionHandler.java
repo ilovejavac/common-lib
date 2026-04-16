@@ -2,6 +2,7 @@ package com.dev.lib.jpa.handler;
 
 import com.dev.lib.web.MessageUtils;
 import com.dev.lib.web.model.ServerResponse;
+import com.dev.lib.web.model.StandardErrorCodes;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +26,7 @@ public class DatabaseExceptionHandler {
     public ServerResponse<Void> handleDuplicateKey(DuplicateKeyException e, HttpServletRequest request) {
 
         log.warn("唯一键冲突", e);
-        return ServerResponse.fail(6001, MessageUtils.get("error.duplicate.key"), null);
+        return ServerResponse.fail(StandardErrorCodes.DUPLICATE_KEY, MessageUtils.get("error.duplicate.key"), null);
     }
 
     /**
@@ -35,7 +36,7 @@ public class DatabaseExceptionHandler {
     public ServerResponse<Void> handleDataIntegrity(DataIntegrityViolationException e, HttpServletRequest request) {
 
         log.warn("数据完整性约束违反 [{}]", request.getRequestURI(), e);
-        return ServerResponse.fail(6002, MessageUtils.get("error.data.integrity"), null);
+        return ServerResponse.fail(StandardErrorCodes.DATA_INTEGRITY_VIOLATION, MessageUtils.get("error.data.integrity"), null);
     }
 
     /**
@@ -45,7 +46,7 @@ public class DatabaseExceptionHandler {
     public ServerResponse<Void> handleBadSql(BadSqlGrammarException e, HttpServletRequest request) {
 
         log.error("SQL语法错误 [{}] SQL={}", request.getRequestURI(), e.getSql(), e);
-        return ServerResponse.fail(6003, MessageUtils.get("error.database"), null);
+        return ServerResponse.fail(StandardErrorCodes.DATABASE_ERROR, MessageUtils.get("error.database"), null);
     }
 
     /**
@@ -55,7 +56,7 @@ public class DatabaseExceptionHandler {
     public ServerResponse<Void> handleOptimisticLock(OptimisticLockingFailureException e, HttpServletRequest request) {
 
         log.warn("乐观锁冲突 [{}]", request.getRequestURI(), e);
-        return ServerResponse.fail(6004, MessageUtils.get("error.concurrent.modify"), null);
+        return ServerResponse.fail(StandardErrorCodes.CONCURRENT_MODIFICATION, MessageUtils.get("error.concurrent.modify"), null);
     }
 
     /**
@@ -65,6 +66,6 @@ public class DatabaseExceptionHandler {
     public ServerResponse<Void> handleDataAccess(DataAccessException e, HttpServletRequest request) {
 
         log.error("数据访问异常 [{}]: {}", request.getRequestURI(), e.getMessage(), e);
-        return ServerResponse.fail(6005, MessageUtils.get("error.database"), null);
+        return ServerResponse.fail(StandardErrorCodes.DATABASE_ERROR, MessageUtils.get("error.database"), null);
     }
 }

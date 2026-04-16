@@ -5,9 +5,11 @@ import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.jpa.entity.RepositoryUtils;
+import com.dev.lib.jpa.multiple.JpaDialect;
 import com.dev.lib.jpa.multiple.JpaDatasource;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -52,6 +54,57 @@ class MultiJpaDatasourceIntegrationTest {
         });
     }
 
+    @Test
+    void shouldApplyDatabasePlatformPerDatasource() {
+
+        new WebApplicationContextRunner()
+                .withUserConfiguration(MultiDatasourceDialectApplication.class)
+                .withPropertyValues(
+                        "spring.jpa.hibernate.ddl-auto=none",
+                        "spring.jpa.open-in-view=false",
+                        "spring.application.name=multi-jpa-datasource-dialect-test",
+                        "app.dialect=H2",
+                        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasBean("sqliteDsEntityManagerFactory");
+                    assertThat(context).hasBean("pgsqlDsEntityManagerFactory");
+
+                    EntityManagerFactory sqliteEmf = context.getBean("sqliteDsEntityManagerFactory", EntityManagerFactory.class);
+                    EntityManagerFactory pgsqlEmf = context.getBean("pgsqlDsEntityManagerFactory", EntityManagerFactory.class);
+
+                    assertThat(sqliteEmf.getProperties().get("hibernate.dialect"))
+                            .isEqualTo("org.hibernate.community.dialect.SQLiteDialect");
+                    assertThat(pgsqlEmf.getProperties().get("hibernate.dialect"))
+                            .isEqualTo("org.hibernate.dialect.PostgreSQLDialect");
+                });
+    }
+
+    @Test
+    void shouldApplyAppDialectForMultiDatasourceWithoutExplicitDialect() {
+
+        new WebApplicationContextRunner()
+                .withUserConfiguration(MultiDatasourceApplication.class)
+                .withPropertyValues(
+                        "spring.jpa.hibernate.ddl-auto=none",
+                        "spring.jpa.open-in-view=false",
+                        "spring.application.name=multi-jpa-datasource-ignore-app-dialect-test",
+                        "app.dialect=SQLITE"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+
+                    EntityManagerFactory primaryEmf = context.getBean("primaryDsEntityManagerFactory", EntityManagerFactory.class);
+                    EntityManagerFactory archiveEmf = context.getBean("archiveDsEntityManagerFactory", EntityManagerFactory.class);
+
+                    assertThat(resolveDialect(primaryEmf))
+                            .isEqualTo("org.hibernate.community.dialect.SQLiteDialect");
+                    assertThat(resolveDialect(archiveEmf))
+                            .isEqualTo("org.hibernate.community.dialect.SQLiteDialect");
+                });
+    }
+
     private static EntityManagerFactory extractEntityManagerFactory(BaseRepositoryImpl<?> impl) {
 
         try {
@@ -61,6 +114,15 @@ class MultiJpaDatasourceIntegrationTest {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to read EntityManagerFactory from BaseRepositoryImpl", e);
         }
+    }
+
+    private static String resolveDialect(EntityManagerFactory emf) {
+
+        return emf.unwrap(SessionFactoryImplementor.class)
+                .getJdbcServices()
+                .getDialect()
+                .getClass()
+                .getName();
     }
 
     private static PlatformTransactionManager resolveTransactionManager(EntityManagerFactory emf) {
@@ -91,6 +153,44 @@ class MultiJpaDatasourceIntegrationTest {
         DataSource archiveDataSource() {
 
             return createDataSource("archive_ds");
+        }
+
+        private DataSource createDataSource(String name) {
+
+            DriverManagerDataSource ds = new DriverManagerDataSource();
+            ds.setDriverClassName("org.h2.Driver");
+            ds.setUrl("jdbc:h2:mem:" + name + ";DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE");
+            ds.setUsername("sa");
+            ds.setPassword("");
+            return ds;
+        }
+    }
+
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    @JpaDatasource(
+            datasource = "sqliteDs",
+            packages = "org.example.commonlib.jpa.sqlite",
+            dialect = JpaDialect.SQLITE
+    )
+    @JpaDatasource(
+            datasource = "pgsqlDs",
+            packages = "org.example.commonlib.jpa.pgsql",
+            dialect = JpaDialect.POSTGRESQL
+    )
+    static class MultiDatasourceDialectApplication {
+
+        @Bean("sqliteDs")
+        @Primary
+        DataSource sqliteDataSource() {
+
+            return createDataSource("sqlite_ds");
+        }
+
+        @Bean("pgsqlDs")
+        DataSource pgsqlDataSource() {
+
+            return createDataSource("pgsql_ds");
         }
 
         private DataSource createDataSource(String name) {

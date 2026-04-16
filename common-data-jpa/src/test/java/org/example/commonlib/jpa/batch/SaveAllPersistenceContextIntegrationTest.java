@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
@@ -33,6 +35,20 @@ class SaveAllPersistenceContextIntegrationTest {
                     "app.jpa.in-clause-batch-size=3",
                     "spring.application.name=batch-save-context-test"
             );
+
+    @Test
+    void shouldUseConfiguredInClauseBatchSizeFromAppJpaProperties() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            BatchThingRepo repo = context.getBean(BatchThingRepo.class);
+            Object targetRepo = AopTestUtils.getTargetObject(repo);
+
+            Object batchSize = ReflectionTestUtils.getField(targetRepo, "inClauseBatchSize");
+            assertThat(batchSize).isEqualTo(3);
+        });
+    }
 
     @Test
     void saveAllShouldNotDetachUnrelatedManagedEntitiesInOuterTransaction() {

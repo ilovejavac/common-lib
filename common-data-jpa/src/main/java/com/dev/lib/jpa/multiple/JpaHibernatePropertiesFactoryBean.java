@@ -1,5 +1,6 @@
 package com.dev.lib.jpa.multiple;
 
+import com.dev.lib.jpa.config.SingleDatasourceOnlyHibernatePropertiesCustomizer;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -89,6 +90,10 @@ public class JpaHibernatePropertiesFactoryBean
         if (!(beanFactory instanceof ListableBeanFactory listableBeanFactory)) {
             return Collections.emptyList();
         }
-        return listableBeanFactory.getBeansOfType(HibernatePropertiesCustomizer.class).values();
+        return listableBeanFactory.getBeansOfType(HibernatePropertiesCustomizer.class)
+                .values()
+                .stream()
+                .filter(customizer -> !(customizer instanceof SingleDatasourceOnlyHibernatePropertiesCustomizer))
+                .toList();
     }
 }

@@ -42,6 +42,9 @@ public @interface JpaDatasource {
     /** entity 和 repository 所在包路径（同时用于 entity 扫描和 repository 扫描） */
     String[] packages();
 
+    /** 方言类型；未设置时回退到全局 app.dialect / spring.jpa.database-platform */
+    JpaDialect dialect() default JpaDialect.AUTO;
+
     /** 多个 &#64;JpaDatasource 时的容器注解，由 Java 自动使用，用户无需关心 */
     @Target(ElementType.TYPE)
     @Retention(RetentionPolicy.RUNTIME)

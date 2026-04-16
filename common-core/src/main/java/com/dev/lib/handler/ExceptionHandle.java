@@ -3,6 +3,7 @@ package com.dev.lib.handler;
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.web.MessageUtils;
 import com.dev.lib.web.model.ServerResponse;
+import com.dev.lib.web.model.StandardErrorCodes;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -69,7 +70,7 @@ public class ExceptionHandle {
                 errors.put(field, message);
             });
         }
-        return ServerResponse.requestFail(4010, MessageUtils.get("error.validation.failed"), errors);
+        return ServerResponse.requestFail(StandardErrorCodes.VALIDATION_FAILED, MessageUtils.get("error.validation.failed"), errors);
     }
 
     /**
@@ -88,7 +89,7 @@ public class ExceptionHandle {
                     : MessageUtils.get("error.validation.failed")
             );
         }
-        return ServerResponse.requestFail(4020, MessageUtils.get("error.validation.failed"), errors);
+        return ServerResponse.requestFail(StandardErrorCodes.VALIDATION_FAILED, MessageUtils.get("error.validation.failed"), errors);
     }
 
     /**
@@ -107,7 +108,7 @@ public class ExceptionHandle {
                     : MessageUtils.get("error.bind.failed")
             );
         }
-        return ServerResponse.requestFail(4030, MessageUtils.get("error.bind.failed"), errors);
+        return ServerResponse.requestFail(StandardErrorCodes.BIND_FAILED, MessageUtils.get("error.bind.failed"), errors);
     }
 
     /**
@@ -118,7 +119,7 @@ public class ExceptionHandle {
 
         log.warn("约束校验失败: {}", e.getMessage());
         List<String> errors = e.getConstraintViolations().stream().map(ConstraintViolation::getMessage).toList();
-        return ServerResponse.requestFail(4040, MessageUtils.get("error.validation.failed"), errors);
+        return ServerResponse.requestFail(StandardErrorCodes.VALIDATION_FAILED, MessageUtils.get("error.validation.failed"), errors);
     }
 
     /**
@@ -128,7 +129,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleMissingParameter(MissingServletRequestParameterException e) {
 
         log.warn("缺少请求参数: {}", e.getParameterName());
-        return ServerResponse.requestFail(4050, MessageUtils.get("error.param.missing", e.getParameterName()), null);
+        return ServerResponse.requestFail(StandardErrorCodes.PARAM_MISSING, MessageUtils.get("error.param.missing", e.getParameterName()), null);
     }
 
     /**
@@ -139,7 +140,7 @@ public class ExceptionHandle {
 
         String typeName = e.getRequiredType() != null ? e.getRequiredType().getSimpleName() : "unknown";
         log.warn("参数类型错误: {} 期望类型: {}", e.getName(), typeName);
-        return ServerResponse.requestFail(4060, MessageUtils.get("error.param.type", e.getName(), typeName), null);
+        return ServerResponse.requestFail(StandardErrorCodes.PARAM_TYPE_INVALID, MessageUtils.get("error.param.type", e.getName(), typeName), null);
     }
 
     /**
@@ -149,7 +150,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleIllegalArgument(IllegalArgumentException e) {
 
         log.warn("非法参数: {}", e.getMessage());
-        return ServerResponse.requestFail(4070, e.getMessage() != null ? e.getMessage() : MessageUtils.get("error.param.invalid"), null);
+        return ServerResponse.requestFail(StandardErrorCodes.PARAM_INVALID, MessageUtils.get("error.param.invalid"), null);
     }
 
     // ==================== HTTP 相关 ====================
@@ -158,14 +159,14 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleMissingHeader(MissingRequestHeaderException e) {
 
         log.warn("缺少请求头", e);
-        return ServerResponse.requestFail(7001, MessageUtils.get("error.header.missing", e.getHeaderName()), null);
+        return ServerResponse.requestFail(StandardErrorCodes.HEADER_MISSING, MessageUtils.get("error.header.missing", e.getHeaderName()), null);
     }
 
     @ExceptionHandler(MissingPathVariableException.class)
     public ServerResponse<Void> handleMissingPathVariable(MissingPathVariableException e) {
 
         log.warn("缺少路径变量", e);
-        return ServerResponse.requestFail(7002, MessageUtils.get("error.path.variable.missing", e.getVariableName()), null);
+        return ServerResponse.requestFail(StandardErrorCodes.PATH_VARIABLE_MISSING, MessageUtils.get("error.path.variable.missing", e.getVariableName()), null);
     }
 
     /**
@@ -175,7 +176,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleMessageNotReadable(HttpMessageNotReadableException e) {
 
         log.warn("请求体格式错误", e);
-        return ServerResponse.requestFail(7003, MessageUtils.get("error.request.body.invalid"), null);
+        return ServerResponse.requestFail(StandardErrorCodes.REQUEST_BODY_INVALID, MessageUtils.get("error.request.body.invalid"), null);
     }
 
     /**
@@ -187,7 +188,7 @@ public class ExceptionHandle {
         log.warn("不支持的请求方法", e);
         String supportedMethods = e.getSupportedHttpMethods() != null ? e.getSupportedHttpMethods().toString() : "";
         return ServerResponse.requestFail(
-                7004,
+                StandardErrorCodes.METHOD_NOT_ALLOWED,
                 MessageUtils.get("error.method.not.supported", e.getMethod(), supportedMethods),
                 null
         );
@@ -200,7 +201,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
 
         log.warn("不支持的 Content-Type", e);
-        return ServerResponse.requestFail(7005, MessageUtils.get("error.media.type.unsupported"), null);
+        return ServerResponse.requestFail(StandardErrorCodes.MEDIA_TYPE_UNSUPPORTED, MessageUtils.get("error.media.type.unsupported"), null);
     }
 
     /**
@@ -210,7 +211,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleMediaTypeNotAcceptable(HttpMediaTypeNotAcceptableException e) {
 
         log.warn("无法生成客户端可接受的响应类型", e);
-        return ServerResponse.requestFail(7006, MessageUtils.get("error.media.type.not.acceptable"), null);
+        return ServerResponse.requestFail(StandardErrorCodes.MEDIA_TYPE_NOT_ACCEPTABLE, MessageUtils.get("error.media.type.not.acceptable"), null);
     }
 
     /**
@@ -220,7 +221,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleNotFound(NoHandlerFoundException e) {
 
         log.warn("接口不存在", e);
-        return ServerResponse.requestFail(7007, MessageUtils.get("error.api.not.found"), null);
+        return ServerResponse.requestFail(StandardErrorCodes.API_NOT_FOUND, MessageUtils.get("error.api.not.found"), null);
     }
 
     /**
@@ -230,7 +231,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
 
         log.warn("上传文件大小超限", e);
-        return ServerResponse.requestFail(7008, MessageUtils.get("error.file.size.exceeded"), null);
+        return ServerResponse.requestFail(StandardErrorCodes.FILE_SIZE_EXCEEDED, MessageUtils.get("error.file.size.exceeded"), null);
     }
 
     /**
@@ -240,7 +241,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleAsyncTimeout(AsyncRequestTimeoutException e, HttpServletRequest request) {
 
         log.warn("异步请求超时 [{}]", request.getRequestURI());
-        return ServerResponse.fail(7009, MessageUtils.get("error.request.timeout"));
+        return ServerResponse.fail(StandardErrorCodes.REQUEST_TIMEOUT, MessageUtils.get("error.request.timeout"));
     }
 
     // ==================== 系统异常 ====================
@@ -252,7 +253,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleIllegalState(IllegalStateException e, HttpServletRequest request) {
 
         log.error("非法状态 [{}]: ", request.getRequestURI(), e);
-        return ServerResponse.fail(5001, MessageUtils.get("error.system.state"));
+        return ServerResponse.fail(StandardErrorCodes.SYSTEM_STATE_ERROR, MessageUtils.get("error.system.state"));
     }
 
     /**
@@ -262,16 +263,7 @@ public class ExceptionHandle {
     public ServerResponse<Void> handleException(Throwable e, HttpServletRequest request) {
 
         log.error("系统异常 [{}]: ", request.getRequestURI(), e);
-        String message = isProductionEnvironment()
-                         ? MessageUtils.get("error.system.contact")
-                         : (e.getMessage() != null ? e.getMessage() : MessageUtils.get("error.unknown"));
-        return ServerResponse.fail(5500, message);
-    }
-
-    private boolean isProductionEnvironment() {
-
-        String activeProfile = System.getProperty("spring.profiles.active");
-        return activeProfile != null && activeProfile.contains("prod");
+        return ServerResponse.fail(StandardErrorCodes.SYSTEM_ERROR, MessageUtils.get("error.system.contact"));
     }
 
 }

@@ -1,6 +1,7 @@
 package com.dev.lib.jpa.multiple;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.dev.lib.jpa.config.AppDialectProperties;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -43,7 +44,6 @@ public class JpaDatasourceRegistrar
         implements ImportBeanDefinitionRegistrar, EnvironmentAware, ResourceLoaderAware {
 
     private static final String COMMON_LIB_PACKAGE     = "com.dev.lib";
-    private static final String VENDOR_ADAPTER_BEAN   = "commonJpaHibernateVendorAdapter";
     private static final String JPA_PROPERTIES_BEAN   = "commonJpaResolvedHibernateProperties";
 
     private Environment    environment;
@@ -69,7 +69,11 @@ public class JpaDatasourceRegistrar
         if (specs.isEmpty()) return;
 
         JpaProperties jpaProperties = bindJpaProperties();
-        registerSharedVendorAdapter(registry, jpaProperties);
+        AppDialectProperties appDialectProperties = bindAppDialectProperties();
+        String globalDatabasePlatform = appDialectProperties.getDialect().resolveDatabasePlatform(
+                appDialectProperties.getDatabasePlatform(),
+                jpaProperties.getDatabasePlatform()
+        );
         registerSharedHibernateProperties(registry);
         String[] mappingResources = resolveMappingResources(jpaProperties);
 
@@ -77,7 +81,12 @@ public class JpaDatasourceRegistrar
         for (AnnotationAttributes spec : specs) {
             String   dsRef    = spec.getString("datasource");
             String[] packages = spec.getStringArray("packages");
+            JpaDialect dialect = spec.getEnum("dialect");
             validateSpec(dsRef, packages);
+            boolean explicitDialectConfigured = dialect != JpaDialect.AUTO;
+            String resolvedDatabasePlatform = explicitDialectConfigured
+                    ? dialect.resolveDatabasePlatform(null, jpaProperties.getDatabasePlatform())
+                    : globalDatabasePlatform;
 
             boolean isPrimary = first;
             if (first) {
@@ -89,8 +98,10 @@ public class JpaDatasourceRegistrar
             String tmName       = dsRef + "TransactionManager";
             String sharedEmName = dsRef + "SharedEntityManager";
             String qfName       = dsRef + "JpaQueryFactory";
+            String vendorAdapterName = dsRef + "JpaVendorAdapter";
 
-            registerEntityManagerFactory(registry, emfName, dsRef, packages, mappingResources, isPrimary);
+            registerVendorAdapter(registry, vendorAdapterName, jpaProperties, resolvedDatabasePlatform, isPrimary);
+            registerEntityManagerFactory(registry, emfName, dsRef, packages, mappingResources, vendorAdapterName, resolvedDatabasePlatform, isPrimary);
             registerTransactionManager(registry, tmName, emfName, isPrimary);
             registerSharedEntityManager(registry, sharedEmName, emfName);
             registerQueryFactory(registry, qfName, sharedEmName, isPrimary);
@@ -122,9 +133,13 @@ public class JpaDatasourceRegistrar
 
     // ==================== 共享 JpaVendorAdapter ====================
 
-    private void registerSharedVendorAdapter(BeanDefinitionRegistry registry, JpaProperties jpaProperties) {
+    private void registerVendorAdapter(BeanDefinitionRegistry registry,
+                                       String beanName,
+                                       JpaProperties jpaProperties,
+                                       String resolvedDatabasePlatform,
+                                       boolean primary) {
 
-        if (registry.containsBeanDefinition(VENDOR_ADAPTER_BEAN)) return;
+        if (registry.containsBeanDefinition(beanName)) return;
 
         BeanDefinitionBuilder builder =
                 BeanDefinitionBuilder.rootBeanDefinition(HibernateJpaVendorAdapter.class)
@@ -133,13 +148,12 @@ public class JpaDatasourceRegistrar
         if (jpaProperties.getDatabase() != null) {
             builder.addPropertyValue("database", jpaProperties.getDatabase());
         }
-        if (StringUtils.hasText(jpaProperties.getDatabasePlatform())) {
-            builder.addPropertyValue("databasePlatform", jpaProperties.getDatabasePlatform());
+        if (StringUtils.hasText(resolvedDatabasePlatform)) {
+            builder.addPropertyValue("databasePlatform", resolvedDatabasePlatform);
         }
+        builder.setPrimary(primary);
 
-        registry.registerBeanDefinition(
-                VENDOR_ADAPTER_BEAN,
-                builder.getBeanDefinition());
+        registry.registerBeanDefinition(beanName, builder.getBeanDefinition());
     }
 
     private void registerSharedHibernateProperties(BeanDefinitionRegistry registry) {
@@ -159,6 +173,8 @@ public class JpaDatasourceRegistrar
                                               String dsRef,
                                               String[] packages,
                                               String[] mappingResources,
+                                              String vendorAdapterRef,
+                                              String resolvedDatabasePlatform,
                                               boolean primary) {
 
         BeanDefinitionBuilder builder =
@@ -166,10 +182,15 @@ public class JpaDatasourceRegistrar
                         .addPropertyReference("dataSource", dsRef)
                         .addPropertyValue("persistenceUnitName", dsRef)
                         .addPropertyValue("packagesToScan", packages)
-                        .addPropertyReference("jpaVendorAdapter", VENDOR_ADAPTER_BEAN)
+                        .addPropertyReference("jpaVendorAdapter", vendorAdapterRef)
                         .addPropertyReference("jpaProperties", JPA_PROPERTIES_BEAN);
         if (mappingResources != null && mappingResources.length > 0) {
             builder.addPropertyValue("mappingResources", mappingResources);
+        }
+        if (StringUtils.hasText(resolvedDatabasePlatform)) {
+            Map<String, Object> jpaPropertyMap = new HashMap<>();
+            jpaPropertyMap.put("hibernate.dialect", resolvedDatabasePlatform);
+            builder.addPropertyValue("jpaPropertyMap", jpaPropertyMap);
         }
 
         builder.setPrimary(primary);
@@ -248,6 +269,13 @@ public class JpaDatasourceRegistrar
         return Binder.get(environment)
                 .bind("spring.jpa", Bindable.of(JpaProperties.class))
                 .orElseGet(JpaProperties::new);
+    }
+
+    private AppDialectProperties bindAppDialectProperties() {
+
+        return Binder.get(environment)
+                .bind("app", Bindable.of(AppDialectProperties.class))
+                .orElseGet(AppDialectProperties::new);
     }
 
     private static void validateSpec(String dsRef, String[] packages) {

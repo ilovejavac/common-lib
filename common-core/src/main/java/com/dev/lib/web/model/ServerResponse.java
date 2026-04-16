@@ -91,10 +91,11 @@ public class ServerResponse<T> implements Serializable {
     public static <T> ServerResponse<T> fail(Integer code, String message, T data) {
 
         ServerResponse<T> result = new ServerResponse<>();
+        String            value  = message != null ? message : "failed";
 
         result.setCode(code);
-        result.setMessage("Response failed");
-        result.setError(message);
+        result.setMessage(value);
+        result.setError(value);
         result.setData(data);
 
         return result;
@@ -103,10 +104,11 @@ public class ServerResponse<T> implements Serializable {
     public static <T> ServerResponse<T> requestFail(Integer code, String message, T data) {
 
         ServerResponse<T> result = new ServerResponse<>();
+        String            value  = message != null ? message : "failed";
 
         result.setCode(code);
-        result.setMessage("Invalid request");
-        result.setError(message);
+        result.setMessage(value);
+        result.setError(value);
         result.setData(data);
 
         return result;

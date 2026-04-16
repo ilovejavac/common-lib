@@ -46,6 +46,17 @@ class ServerResponseJacksonNullExclusionTest {
         assertThat(json).doesNotContain("\"traceId\":null");
     }
 
+    @Test
+    void shouldSerializeFailureMessageIntoMessageField() throws Exception {
+
+        ServerResponse<Void> response = ServerResponse.fail(4101, "参数校验失败");
+        String json = commonJacksonJsonHttpMessageConverter.getMapper().writeValueAsString(response);
+
+        assertThat(json).contains("\"code\":4101");
+        assertThat(json).contains("\"message\":\"参数校验失败\"");
+        assertThat(json).contains("\"error\":\"参数校验失败\"");
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     static class TestApplication {
