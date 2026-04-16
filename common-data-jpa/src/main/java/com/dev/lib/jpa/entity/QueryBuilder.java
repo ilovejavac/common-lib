@@ -82,22 +82,22 @@ public class QueryBuilder<T extends JpaEntity> {
 
     public Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return impl.load(context, selectBuilder, impl.getEntityClass(), dslQuery, expressions);
+        return impl.load(context, selectBuilder, dslQuery, expressions);
     }
 
     public List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return impl.loads(context, selectBuilder, impl.getEntityClass(), dslQuery, expressions);
+        return impl.loads(context, selectBuilder, dslQuery, expressions);
     }
 
     public Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return impl.page(context, selectBuilder, impl.getEntityClass(), dslQuery, expressions);
+        return impl.page(context, selectBuilder, dslQuery, expressions);
     }
 
     public Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return impl.stream(context, selectBuilder, impl.getEntityClass(), dslQuery, expressions);
+        return impl.stream(context, selectBuilder, dslQuery, expressions);
     }
 
     // ==================== 终结操作 - 返回 DTO ====================

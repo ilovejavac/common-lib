@@ -29,6 +29,7 @@ import java.beans.ConstructorProperties;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
@@ -48,8 +49,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AggregateExecutor<T extends JpaEntity> {
 
     private static final Map<Class<?>, Map<String, Field>> AGG_TARGET_FIELD_CACHE = new ConcurrentHashMap<>(128);
-
-    private static final Map<Class<?>, Constructor<?>> AGG_TARGET_CTOR_CACHE = new ConcurrentHashMap<>(128);
 
     private static final Map<Class<?>, Map<String, Method>> AGG_TARGET_SETTER_CACHE = new ConcurrentHashMap<>(128);
 
@@ -258,7 +257,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         return new PathResolution(currentPath.get(last));
     }
 
-    private Expression<?> buildAggregateExpression(AggType type, Expression<?> source) {
+    private static Expression<?> buildAggregateExpression(AggType type, Expression<?> source) {
 
         return switch (type) {
             case FIELD -> source;
@@ -271,9 +270,9 @@ public final class AggregateExecutor<T extends JpaEntity> {
         };
     }
 
-    private void applyAggregateHaving(
+    private static void applyAggregateHaving(
             JPAQuery<Tuple> query,
-            AggregateSpec<T, ?> spec,
+            AggregateSpec<?, ?> spec,
             Map<String, AggregateProjection> projectionByTarget
     ) {
 
@@ -299,7 +298,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         }
     }
 
-    private Predicate buildHavingPredicate(
+    private static Predicate buildHavingPredicate(
             Expression<?> expression,
             QueryType queryType,
             Object value
@@ -321,13 +320,13 @@ public final class AggregateExecutor<T extends JpaEntity> {
             case END_WITH -> Expressions.stringTemplate("str({0})", expression).endsWithIgnoreCase(String.valueOf(value));
             case IN -> {
                 if (!(value instanceof Collection<?> values) || values.isEmpty()) {
-                    yield null;
+                    yield Expressions.booleanTemplate("1=0");
                 }
                 yield Expressions.booleanTemplate("{0} in {1}", expression, Expressions.constant(values));
             }
             case NOT_IN -> {
                 if (!(value instanceof Collection<?> values) || values.isEmpty()) {
-                    yield null;
+                    yield Expressions.booleanTemplate("1=1");
                 }
                 yield Expressions.booleanTemplate("{0} not in {1}", expression, Expressions.constant(values));
             }
@@ -338,9 +337,9 @@ public final class AggregateExecutor<T extends JpaEntity> {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private void applyAggregateOrder(
+    private static void applyAggregateOrder(
             JPAQuery<Tuple> query,
-            AggregateSpec<T, ?> spec,
+            AggregateSpec<?, ?> spec,
             Map<String, AggregateProjection> projectionByTarget
     ) {
 
@@ -361,7 +360,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         query.orderBy(orders.toArray(OrderSpecifier[]::new));
     }
 
-    private AggregateProjection requireAggregateProjection(
+    private static AggregateProjection requireAggregateProjection(
             Map<String, AggregateProjection> projectionByTarget,
             String targetField,
             String stage
@@ -374,7 +373,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         return projection;
     }
 
-    private void applyAggregatePage(JPAQuery<Tuple> query, AggregateSpec<T, ?> spec) {
+    private static void applyAggregatePage(JPAQuery<Tuple> query, AggregateSpec<?, ?> spec) {
 
         if (spec.getOffset() != null) {
             query.offset(spec.getOffset());
@@ -384,9 +383,9 @@ public final class AggregateExecutor<T extends JpaEntity> {
         }
     }
 
-    private <R> R mapAggregateRow(
+    private static <R> R mapAggregateRow(
             Tuple tuple,
-            AggregateSpec<T, R> spec,
+            AggregateSpec<?, R> spec,
             List<AliasedExpression> selectExpressions
     ) {
 
@@ -405,7 +404,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
     }
 
     @SuppressWarnings("unchecked")
-    private <R> R mapByNoArgsCtor(Class<R> targetClass, Map<String, Object> valueByField, Constructor<?> constructor) {
+    private static <R> R mapByNoArgsCtor(Class<R> targetClass, Map<String, Object> valueByField, Constructor<?> constructor) {
 
         R instance;
         try {
@@ -439,7 +438,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
     }
 
     @SuppressWarnings("unchecked")
-    private <R> R mapByArgsCtor(Class<R> targetClass, Map<String, Object> valueByField, AggregateCtorPlan plan) {
+    private static <R> R mapByArgsCtor(Class<R> targetClass, Map<String, Object> valueByField, AggregateCtorPlan plan) {
 
         try {
             Constructor<?> constructor = plan.constructor();
@@ -455,24 +454,19 @@ public final class AggregateExecutor<T extends JpaEntity> {
         }
     }
 
-    private AggregateCtorPlan getAggregateCtorPlan(Class<?> targetClass) {
+    private static AggregateCtorPlan getAggregateCtorPlan(Class<?> targetClass) {
 
-        return AGG_TARGET_CTOR_PLAN_CACHE.computeIfAbsent(targetClass, this::buildAggregateCtorPlan);
+        return AGG_TARGET_CTOR_PLAN_CACHE.computeIfAbsent(targetClass, AggregateExecutor::buildAggregateCtorPlan);
     }
 
-    private AggregateCtorPlan buildAggregateCtorPlan(Class<?> targetClass) {
+    private static AggregateCtorPlan buildAggregateCtorPlan(Class<?> targetClass) {
 
-        Constructor<?> noArgsCtor = AGG_TARGET_CTOR_CACHE.computeIfAbsent(targetClass, clazz -> {
-            try {
-                Constructor<?> constructor = clazz.getDeclaredConstructor();
-                ReflectionUtils.makeAccessible(constructor);
-                return constructor;
-            } catch (NoSuchMethodException e) {
-                return null;
-            }
-        });
-        if (noArgsCtor != null) {
-            return new AggregateCtorPlan(AggregateCtorPlanType.NO_ARGS, noArgsCtor, new String[0]);
+        try {
+            Constructor<?> constructor = targetClass.getDeclaredConstructor();
+            ReflectionUtils.makeAccessible(constructor);
+            return new AggregateCtorPlan(AggregateCtorPlanType.NO_ARGS, constructor, new String[0]);
+        } catch (NoSuchMethodException ignored) {
+            // fall through to other strategies
         }
 
         if (targetClass.isRecord()) {
@@ -504,7 +498,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         throw new IllegalStateException("聚合结果类型必须有无参构造、Record 构造或 @ConstructorProperties 构造: " + targetClass.getName());
     }
 
-    private AggregateCtorPlan buildRecordCtorPlan(Class<?> targetClass) {
+    private static AggregateCtorPlan buildRecordCtorPlan(Class<?> targetClass) {
 
         try {
             RecordComponent[] components = targetClass.getRecordComponents();
@@ -518,7 +512,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         }
     }
 
-    private Map<String, Method> getAggTargetSetters(Class<?> targetClass) {
+    private static Map<String, Method> getAggTargetSetters(Class<?> targetClass) {
 
         return AGG_TARGET_SETTER_CACHE.computeIfAbsent(targetClass, clazz -> {
             Map<String, Method> setters = new HashMap<>();
@@ -536,7 +530,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         });
     }
 
-    private Object convertAggregateValue(Object value, Class<?> rawTargetType) {
+    private static Object convertAggregateValue(Object value, Class<?> rawTargetType) {
 
         if (value == null) {
             return null;
@@ -563,8 +557,13 @@ public final class AggregateExecutor<T extends JpaEntity> {
         if (targetType == Byte.class && value instanceof Number number) {
             return number.byteValue();
         }
-        if (targetType == BigDecimal.class && value instanceof Number number) {
-            return BigDecimal.valueOf(number.doubleValue());
+        if (targetType == BigDecimal.class) {
+            if (value instanceof BigDecimal) {
+                return value;
+            }
+            if (value instanceof Number number) {
+                return new BigDecimal(number.toString());
+            }
         }
         if (targetType == String.class) {
             return value.toString();
@@ -572,12 +571,15 @@ public final class AggregateExecutor<T extends JpaEntity> {
         return value;
     }
 
-    private Map<String, Field> getAggTargetFields(Class<?> targetClass) {
+    private static Map<String, Field> getAggTargetFields(Class<?> targetClass) {
 
         return AGG_TARGET_FIELD_CACHE.computeIfAbsent(targetClass, clazz -> {
             Map<String, Field> fields = new HashMap<>();
             for (Class<?> current = clazz; current != null && current != Object.class; current = current.getSuperclass()) {
                 for (Field field : current.getDeclaredFields()) {
+                    if (Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers())) {
+                        continue;
+                    }
                     ReflectionUtils.makeAccessible(field);
                     fields.putIfAbsent(field.getName(), field);
                 }
@@ -586,21 +588,16 @@ public final class AggregateExecutor<T extends JpaEntity> {
         });
     }
 
-    private Field findField(Class<?> type, String name) {
+    private static Field findField(Class<?> type, String name) {
 
-        Class<?> current = type;
-        while (current != null && current != Object.class) {
-            Field field = ReflectionUtils.findField(current, name);
-            if (field != null) {
-                ReflectionUtils.makeAccessible(field);
-                return field;
-            }
-            current = current.getSuperclass();
+        Field field = ReflectionUtils.findField(type, name);
+        if (field != null) {
+            ReflectionUtils.makeAccessible(field);
         }
-        return null;
+        return field;
     }
 
-    private Class<?> resolveFieldType(Class<?> rootType, String fieldPath) {
+    private static Class<?> resolveFieldType(Class<?> rootType, String fieldPath) {
 
         String[] parts = fieldPath.split("\\.");
         Class<?> currentType = rootType;
@@ -614,7 +611,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         return currentType;
     }
 
-    private Class<?> resolveFieldType(Field field) {
+    private static Class<?> resolveFieldType(Field field) {
 
         if (!Collection.class.isAssignableFrom(field.getType())) {
             return boxed(field.getType());
@@ -630,7 +627,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
         return Object.class;
     }
 
-    private boolean isJpaRelationField(Field field) {
+    private static boolean isJpaRelationField(Field field) {
 
         return field.isAnnotationPresent(OneToMany.class)
                 || field.isAnnotationPresent(ManyToOne.class)
@@ -638,7 +635,7 @@ public final class AggregateExecutor<T extends JpaEntity> {
                 || field.isAnnotationPresent(ManyToMany.class);
     }
 
-    private Class<?> boxed(Class<?> type) {
+    private static Class<?> boxed(Class<?> type) {
 
         if (!type.isPrimitive()) {
             return type;

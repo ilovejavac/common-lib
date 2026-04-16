@@ -157,7 +157,7 @@ class BatchThing extends JpaEntity {
 
     private String name;
 
-    BatchThing() {
+    public  BatchThing() {
     }
 
     BatchThing(String name) {

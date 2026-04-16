@@ -6,7 +6,6 @@ import com.dev.lib.jpa.entity.dsl.SFunction;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.querydsl.ListQuerydslPredicateExecutor;
 import org.springframework.data.repository.NoRepositoryBean;
 
 import java.util.List;
@@ -14,7 +13,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 @NoRepositoryBean
-public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Long>, ListQuerydslPredicateExecutor<T> {
+public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Long> {
 
     // ==================== 构建器入口 ====================
 

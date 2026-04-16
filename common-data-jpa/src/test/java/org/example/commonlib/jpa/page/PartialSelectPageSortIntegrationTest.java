@@ -26,6 +26,7 @@ class PartialSelectPageSortIntegrationTest {
                     "spring.datasource.password=",
                     "spring.jpa.hibernate.ddl-auto=create-drop",
                     "spring.jpa.open-in-view=false",
+                    "spring.jpa.show-sql=true",
                     "spring.application.name=partial-select-page-sort-test"
             );
 
@@ -67,12 +68,13 @@ class PageSortUser extends JpaEntity {
 
     private String name;
 
-    PageSortUser() {
-    }
-
     PageSortUser(String name) {
 
         this.name = name;
+    }
+
+    public PageSortUser() {
+
     }
 
     public String getName() {

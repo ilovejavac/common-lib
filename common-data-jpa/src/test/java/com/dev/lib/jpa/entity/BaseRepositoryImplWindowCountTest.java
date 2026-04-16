@@ -1,5 +1,6 @@
 package com.dev.lib.jpa.entity;
 
+import com.dev.lib.jpa.entity.query.PageQuerySupport;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.dsl.Expressions;
@@ -11,7 +12,7 @@ import java.util.function.LongSupplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class BaseRepositoryImplWindowCountTest {
+class PageQuerySupportWindowCountTest {
 
     @Test
     void shouldUseWindowTotalWhenPresent() {
@@ -25,7 +26,7 @@ class BaseRepositoryImplWindowCountTest {
             return 0L;
         };
 
-        long total = BaseRepositoryImpl.resolveWindowTotal(List.of(tuple), totalExpression, fallback);
+        long total = PageQuerySupport.resolveWindowTotal(List.of(tuple), totalExpression, fallback);
 
         assertThat(total).isEqualTo(23L);
         assertThat(fallbackCalls.get()).isZero();
@@ -41,7 +42,7 @@ class BaseRepositoryImplWindowCountTest {
             return 7L;
         };
 
-        long total = BaseRepositoryImpl.resolveWindowTotal(List.of(), totalExpression, fallback);
+        long total = PageQuerySupport.resolveWindowTotal(List.of(), totalExpression, fallback);
 
         assertThat(total).isEqualTo(7L);
         assertThat(fallbackCalls.get()).isEqualTo(1);
@@ -56,7 +57,7 @@ class BaseRepositoryImplWindowCountTest {
             return 13L;
         };
 
-        long total = BaseRepositoryImpl.resolveWindowTotalFromTuples(List.of(), fallback);
+        long total = PageQuerySupport.resolveWindowTotalFromTuples(List.of(), fallback);
 
         assertThat(total).isEqualTo(13L);
         assertThat(fallbackCalls.get()).isEqualTo(1);
@@ -74,7 +75,7 @@ class BaseRepositoryImplWindowCountTest {
             return 11L;
         };
 
-        long total = BaseRepositoryImpl.resolveWindowTotal(List.of(tuple), totalExpression, fallback);
+        long total = PageQuerySupport.resolveWindowTotal(List.of(tuple), totalExpression, fallback);
 
         assertThat(total).isEqualTo(11L);
         assertThat(fallbackCalls.get()).isEqualTo(1);
@@ -85,7 +86,7 @@ class BaseRepositoryImplWindowCountTest {
 
         RuntimeException ex = new RuntimeException("You have an error in your SQL syntax near 'over()'");
 
-        assertThat(BaseRepositoryImpl.shouldFallbackToLegacyPage(ex)).isTrue();
+        assertThat(PageQuerySupport.shouldFallbackToLegacyPage(ex)).isTrue();
     }
 
     @Test
@@ -93,7 +94,7 @@ class BaseRepositoryImplWindowCountTest {
 
         RuntimeException ex = new RuntimeException("Null pointer while mapping dto");
 
-        assertThat(BaseRepositoryImpl.shouldFallbackToLegacyPage(ex)).isFalse();
+        assertThat(PageQuerySupport.shouldFallbackToLegacyPage(ex)).isFalse();
     }
 
     private record TotalTuple(Expression<Long> expression, Long total) implements Tuple {
