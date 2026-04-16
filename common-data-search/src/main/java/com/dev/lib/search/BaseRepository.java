@@ -1,6 +1,7 @@
 package com.dev.lib.search;
 
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.entity.dsl.core.DslQueryFieldResolver;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.id.IDWorker;
 import com.dev.lib.search.dsl.PredicateAssembler;
@@ -417,11 +418,13 @@ public abstract class BaseRepository<T extends SearchEntity> {
     // ═══════════════════════════════════════════════════════════════
     public Optional<T> load(DslQuery<T> dslQuery, Query... extraQueries) {
 
+        ensureNonAggregateQuery(dslQuery, "load");
         return findOne(toQuery(dslQuery, extraQueries));
     }
 
     public List<T> loads(DslQuery<T> dslQuery, Query... extraQueries) {
 
+        ensureNonAggregateQuery(dslQuery, "loads");
         int                   size       = Optional.ofNullable(dslQuery.getLimit()).orElse(100);
         int                   from       = Optional.ofNullable(dslQuery.getOffset()).orElse(0);
         Map<String, Class<?>> fieldTypes = getFieldTypes();
@@ -445,6 +448,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
     public Page<T> page(DslQuery<T> dslQuery, Query... extraQueries) {
 
+        ensureNonAggregateQuery(dslQuery, "page");
         Map<String, Class<?>> fieldTypes = getFieldTypes();
         Pageable              pageable   = dslQuery.toPageable(fieldTypes.keySet());
         return findAll(toQuery(dslQuery, extraQueries), pageable);
@@ -452,16 +456,19 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
     public boolean exists(DslQuery<T> dslQuery, Query... extraQueries) {
 
+        ensureNonAggregateQuery(dslQuery, "exists");
         return exists(toQuery(dslQuery, extraQueries));
     }
 
     public long count(DslQuery<T> dslQuery, Query... extraQueries) {
 
+        ensureNonAggregateQuery(dslQuery, "count");
         return count(toQuery(dslQuery, extraQueries));
     }
 
     public long delete(DslQuery<T> dslQuery, Query... extraQueries) {
 
+        ensureNonAggregateQuery(dslQuery, "delete");
         return delete(toQuery(dslQuery, extraQueries));
     }
 
@@ -506,29 +513,19 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
         Collection<QueryFieldMerger.FieldMetaValue> fields = null;
         if (dslQuery != null) {
-            List<QueryFieldMerger.FieldMetaValue> self     = QueryFieldMerger.resolve(dslQuery);
-            List<QueryFieldMerger.FieldMetaValue> external = dslQuery.getExternalFields();
-
-            if (external.isEmpty()) {
-                fields = self;
-            } else {
-                // external 覆盖 self（同 targetField-queryType 时 external 优先）
-                Map<String, QueryFieldMerger.FieldMetaValue> fieldMap = new HashMap<>(self.size() + external.size());
-                for (QueryFieldMerger.FieldMetaValue fv : self) {
-                    fieldMap.put(mergeKey(fv), fv);
-                }
-                for (QueryFieldMerger.FieldMetaValue fv : external) {
-                    fieldMap.put(mergeKey(fv), fv);
-                }
-                fields = fieldMap.values();
-            }
+            fields = DslQueryFieldResolver.resolveMerged(
+                    dslQuery,
+                    DslQueryFieldResolver.OverridePolicy.EXTERNAL_OVERRIDE_SELF
+            );
         }
         return PredicateAssembler.assemble(dslQuery, fields, extraQueries);
     }
 
-    private static String mergeKey(QueryFieldMerger.FieldMetaValue fmv) {
+    private void ensureNonAggregateQuery(DslQuery<T> query, String operation) {
 
-        return fmv.getFieldMeta().targetField() + "-" + fmv.getFieldMeta().queryType();
+        if (query != null && query.hasAgg()) {
+            throw new IllegalStateException("检测到 agg() 聚合配置，" + operation + " 不支持聚合查询");
+        }
     }
 
     private static final Map<Class<?>, Map<String, Class<?>>> FIELD_TYPE_CACHE = new ConcurrentHashMap<>();

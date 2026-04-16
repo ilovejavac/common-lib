@@ -82,6 +82,8 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
         return stream(null, expressions);
     }
 
+    <R> List<R> aggregate(DslQuery<T> dslQuery, BooleanExpression... expressions);
+
     void delete(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
     default void delete(BooleanExpression... expressions) {

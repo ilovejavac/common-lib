@@ -1,11 +1,12 @@
 package com.dev.lib.mongo.dsl;
 
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.entity.dsl.QueryWhere;
 import com.dev.lib.entity.dsl.QueryType;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
 import com.dev.lib.entity.dsl.core.FieldMetaCache.FieldMeta;
+import com.dev.lib.entity.dsl.core.LogicComposer;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
-import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.mongo.MongoEntity;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
@@ -16,7 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -43,13 +46,14 @@ public final class PredicateAssembler {
                     entityPath.getMetadata()
             );
 
-            List<ExpressionItem> items     = collectExpressions(
-                    pathBuilder,
-                    fields
-            );
-            Predicate            predicate = buildWithPrecedence(items);
-            if (predicate != null) {
-                builder.and(predicate);
+            Map<String, Predicate> predicateByField = collectPredicates(pathBuilder, fields);
+            if (query.where().hasLogic()) {
+                Predicate arranged = buildByLogic(query.where().logicTokens(), predicateByField);
+                if (arranged != null) {
+                    builder.and(arranged);
+                }
+            } else {
+                predicateByField.values().forEach(builder::and);
             }
         }
 
@@ -62,12 +66,12 @@ public final class PredicateAssembler {
         return builder;
     }
 
-    private static <E extends MongoEntity> List<ExpressionItem> collectExpressions(
+    private static <E extends MongoEntity> Map<String, Predicate> collectPredicates(
             PathBuilder<E> pathBuilder,
             Collection<QueryFieldMerger.FieldMetaValue> fields
     ) {
 
-        List<ExpressionItem> items = new ArrayList<>();
+        Map<String, Predicate> predicates = new LinkedHashMap<>();
 
         for (QueryFieldMerger.FieldMetaValue fv : fields) {
             FieldMeta fm    = fv.getFieldMeta();
@@ -83,25 +87,12 @@ public final class PredicateAssembler {
                             value
                     );
                     if (expr != null) {
-                        items.add(new ExpressionItem(
-                                expr,
-                                fm.operator()
-                        ));
+                        predicates.put(fm.field().getName(), expr);
                     }
                 }
 
                 case GROUP -> {
-                    Predicate groupPred = buildGroupPredicate(
-                            pathBuilder,
-                            fm,
-                            value
-                    );
-                    if (groupPred != null) {
-                        items.add(new ExpressionItem(
-                                groupPred,
-                                fm.operator()
-                        ));
-                    }
+                    // GROUP 元数据不参与构建，静默忽略
                 }
 
                 case SUB_QUERY -> {
@@ -112,44 +103,12 @@ public final class PredicateAssembler {
                             value
                     );
                     if (embeddedPred != null) {
-                        items.add(new ExpressionItem(
-                                embeddedPred,
-                                fm.operator()
-                        ));
+                        predicates.put(fm.field().getName(), embeddedPred);
                     }
                 }
             }
         }
-        return items;
-    }
-
-    private static <E extends MongoEntity> Predicate buildGroupPredicate(
-            PathBuilder<E> pathBuilder,
-            FieldMeta groupMeta,
-            Object groupValue
-    ) {
-
-        List<FieldMeta> nestedMetas = groupMeta.nestedMetas();
-        if (nestedMetas == null || nestedMetas.isEmpty()) return null;
-
-        List<QueryFieldMerger.FieldMetaValue> nestedFields = new ArrayList<>();
-        for (FieldMeta nested : nestedMetas) {
-            Object nestedValue = nested.getValue(groupValue);
-            if (nestedValue != null) {
-                nestedFields.add(new QueryFieldMerger.FieldMetaValue(
-                        nestedValue,
-                        nested
-                ));
-            }
-        }
-
-        if (nestedFields.isEmpty()) return null;
-
-        List<ExpressionItem> nestedItems = collectExpressions(
-                pathBuilder,
-                nestedFields
-        );
-        return buildWithPrecedence(nestedItems);
+        return predicates;
     }
 
     /**
@@ -240,49 +199,21 @@ public final class PredicateAssembler {
         return null;
     }
 
-    private static Predicate buildWithPrecedence(List<ExpressionItem> items) {
+    private static Predicate buildByLogic(List<QueryWhere.LogicToken> logicTokens, Map<String, Predicate> predicateByField) {
 
-        if (items.isEmpty()) return null;
-        if (items.size() == 1) return items.getFirst().expression;
+        return LogicComposer.compose(logicTokens, predicateByField::get, new LogicComposer.Combiner<>() {
+            @Override
+            public Predicate and(Predicate left, Predicate right) {
 
-        // 按 OR 分组，实现 AND 优先级高于 OR
-        List<List<ExpressionItem>> andGroups    = new ArrayList<>();
-        List<ExpressionItem>       currentGroup = new ArrayList<>();
-
-        for (ExpressionItem item : items) {
-            currentGroup.add(item);
-            if (item.operator == LogicalOperator.OR) {
-                andGroups.add(new ArrayList<>(currentGroup));
-                currentGroup.clear();
+                return ((BooleanExpression) left).and((BooleanExpression) right);
             }
-        }
-        if (!currentGroup.isEmpty()) {
-            andGroups.add(currentGroup);
-        }
 
-        // 组内 AND，组间 OR
-        List<Predicate> groupPredicates = new ArrayList<>();
-        for (List<ExpressionItem> group : andGroups) {
-            BooleanBuilder andBuilder = new BooleanBuilder();
-            for (ExpressionItem item : group) {
-                andBuilder.and(item.expression);
+            @Override
+            public Predicate or(Predicate left, Predicate right) {
+
+                return ((BooleanExpression) left).or((BooleanExpression) right);
             }
-            if (andBuilder.getValue() != null) {
-                groupPredicates.add(andBuilder.getValue());
-            }
-        }
-
-        if (groupPredicates.isEmpty()) return null;
-        if (groupPredicates.size() == 1) return groupPredicates.getFirst();
-
-        BooleanBuilder result = new BooleanBuilder();
-        for (Predicate pred : groupPredicates) {
-            result.or(pred);
-        }
-        return result.getValue();
-    }
-
-    private record ExpressionItem(Predicate expression, LogicalOperator operator) {
+        });
     }
 
 }

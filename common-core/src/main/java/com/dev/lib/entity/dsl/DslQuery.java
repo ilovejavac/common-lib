@@ -1,6 +1,8 @@
 package com.dev.lib.entity.dsl;
 
 import com.dev.lib.entity.CoreEntity;
+import com.dev.lib.entity.dsl.agg.AggregateBuilder;
+import com.dev.lib.entity.dsl.agg.AggregateSpec;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.web.model.QueryRequest;
@@ -58,6 +60,18 @@ public abstract class DslQuery<E extends CoreEntity> {
     @ConditionIgnore
     protected LogicalOperator selfOperator = LogicalOperator.AND;
 
+    @JsonIgnore
+    @ConditionIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private final QueryWhere<E> where = new QueryWhere<>();
+
+    @JsonIgnore
+    @ConditionIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private AggregateSpec<E, ?> aggregateSpec;
+
     public DslQuery<E> external(Object query) {
 
         if (query != null) {
@@ -73,6 +87,32 @@ public abstract class DslQuery<E extends CoreEntity> {
             this.externalFields.addAll(QueryFieldMerger.resolve(pageRequest.getQuery()));
         }
         return this;
+    }
+
+    public QueryWhere<E> where() {
+
+        return where;
+    }
+
+    public <R> AggregateBuilder<E, R> agg(Class<R> targetClass) {
+
+        if (targetClass == null) {
+            throw new IllegalArgumentException("聚合结果类型不能为空");
+        }
+        AggregateSpec<E, R> spec = new AggregateSpec<>(targetClass);
+        this.aggregateSpec = spec;
+        return new AggregateBuilder<>(spec, this);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <R> AggregateSpec<E, R> aggregateSpec() {
+
+        return (AggregateSpec<E, R>) aggregateSpec;
+    }
+
+    public boolean hasAgg() {
+
+        return aggregateSpec != null && !aggregateSpec.isEmpty();
     }
 
     public Sort toSort(Set<String> allowFields) {

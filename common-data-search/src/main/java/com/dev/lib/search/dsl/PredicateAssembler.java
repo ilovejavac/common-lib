@@ -1,17 +1,20 @@
 package com.dev.lib.search.dsl;
 
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.entity.dsl.QueryWhere;
 import com.dev.lib.entity.dsl.QueryType;
 import com.dev.lib.entity.dsl.core.FieldMetaCache.FieldMeta;
+import com.dev.lib.entity.dsl.core.LogicComposer;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
-import com.dev.lib.entity.dsl.group.LogicalOperator;
 import com.dev.lib.search.SearchEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -27,31 +30,38 @@ public final class PredicateAssembler {
             Query... extraQueries
     ) {
 
-        List<QueryItem> items = new ArrayList<>();
+        List<Query> extras = new ArrayList<>();
 
         if (fields != null && !fields.isEmpty()) {
-            items.addAll(collectQueries(fields));
+            Map<String, Query> queryByField = collectQueries(fields);
+            if (query != null && query.where().hasLogic()) {
+                Query arranged = buildByLogic(query.where().logicTokens(), queryByField, query.getMinimumShouldMatch());
+                if (arranged != null) {
+                    extras.add(arranged);
+                }
+            } else {
+                extras.addAll(queryByField.values());
+            }
         }
 
         for (Query extra : extraQueries) {
             if (extra != null) {
-                items.add(new QueryItem(extra, LogicalOperator.AND));
+                extras.add(extra);
             }
         }
 
-        if (items.isEmpty()) {
+        if (extras.isEmpty()) {
             return Query.of(q -> q.matchAll(m -> m));
         }
-
-        String minMatch = (query != null && query.getMinimumShouldMatch() != null)
-                          ? query.getMinimumShouldMatch()
-                          : "1";
-        return buildWithPrecedence(items, minMatch);
+        if (extras.size() == 1) {
+            return extras.getFirst();
+        }
+        return Query.of(q -> q.bool(b -> b.must(extras)));
     }
 
-    private static List<QueryItem> collectQueries(Collection<QueryFieldMerger.FieldMetaValue> fields) {
+    private static Map<String, Query> collectQueries(Collection<QueryFieldMerger.FieldMetaValue> fields) {
 
-        List<QueryItem> items = new ArrayList<>();
+        Map<String, Query> queries = new LinkedHashMap<>();
 
         for (QueryFieldMerger.FieldMetaValue fv : fields) {
             FieldMeta fm    = fv.getFieldMeta();
@@ -66,46 +76,24 @@ public final class PredicateAssembler {
                             value
                     );
                     if (q != null) {
-                        items.add(new QueryItem(q, fm.operator()));
+                        queries.put(fm.field().getName(), q);
                     }
                 }
 
                 case GROUP -> {
-                    Query groupQuery = buildGroupQuery(fm, value);
-                    if (groupQuery != null) {
-                        items.add(new QueryItem(groupQuery, fm.operator()));
-                    }
+                    // GROUP 元数据不参与构建，静默忽略
                 }
 
                 case SUB_QUERY -> {
                     Query nestedQuery = buildNestedQuery(fm, value);
                     if (nestedQuery != null) {
-                        items.add(new QueryItem(nestedQuery, fm.operator()));
+                        queries.put(fm.field().getName(), nestedQuery);
                     }
                 }
             }
         }
 
-        return items;
-    }
-
-    private static Query buildGroupQuery(FieldMeta groupMeta, Object groupValue) {
-
-        List<FieldMeta> nestedMetas = groupMeta.nestedMetas();
-        if (nestedMetas == null || nestedMetas.isEmpty()) return null;
-
-        List<QueryFieldMerger.FieldMetaValue> nestedFields = new ArrayList<>();
-        for (FieldMeta nested : nestedMetas) {
-            Object nestedValue = nested.getValue(groupValue);
-            if (nestedValue != null) {
-                nestedFields.add(new QueryFieldMerger.FieldMetaValue(nestedValue, nested));
-            }
-        }
-
-        if (nestedFields.isEmpty()) return null;
-
-        List<QueryItem> nestedItems = collectQueries(nestedFields);
-        return buildWithPrecedence(nestedItems, "1");
+        return queries;
     }
 
     private static Query buildNestedQuery(FieldMeta fm, Object filterValue) {
@@ -176,43 +164,22 @@ public final class PredicateAssembler {
         return null;
     }
 
-    private static Query buildWithPrecedence(List<QueryItem> items, String minimumShouldMatch) {
+    private static Query buildByLogic(List<QueryWhere.LogicToken> logicTokens, Map<String, Query> queryByField, String minimumShouldMatch) {
 
-        if (items.isEmpty()) return null;
-        if (items.size() == 1) return items.get(0).query;
+        return LogicComposer.compose(logicTokens, queryByField::get, new LogicComposer.Combiner<>() {
+            @Override
+            public Query and(Query left, Query right) {
 
-        List<List<QueryItem>> andGroups    = new ArrayList<>();
-        List<QueryItem>       currentGroup = new ArrayList<>();
-
-        for (QueryItem item : items) {
-            currentGroup.add(item);
-            if (item.operator == LogicalOperator.OR) {
-                andGroups.add(new ArrayList<>(currentGroup));
-                currentGroup.clear();
+                return Query.of(q -> q.bool(b -> b.must(left, right)));
             }
-        }
-        if (!currentGroup.isEmpty()) {
-            andGroups.add(currentGroup);
-        }
 
-        List<Query> groupQueries = new ArrayList<>();
-        for (List<QueryItem> group : andGroups) {
-            if (group.isEmpty()) continue;
-            if (group.size() == 1) {
-                groupQueries.add(group.get(0).query);
-            } else {
-                List<Query> mustQueries = group.stream().map(i -> i.query).toList();
-                groupQueries.add(Query.of(q -> q.bool(b -> b.must(mustQueries))));
+            @Override
+            public Query or(Query left, Query right) {
+
+                String minShouldMatch = minimumShouldMatch == null ? "1" : minimumShouldMatch;
+                return Query.of(q -> q.bool(b -> b.should(left, right).minimumShouldMatch(minShouldMatch)));
             }
-        }
-
-        if (groupQueries.isEmpty()) return null;
-        if (groupQueries.size() == 1) return groupQueries.get(0);
-
-        return Query.of(q -> q.bool(b -> b.should(groupQueries).minimumShouldMatch(minimumShouldMatch)));
-    }
-
-    private record QueryItem(Query query, LogicalOperator operator) {
+        });
     }
 
 }

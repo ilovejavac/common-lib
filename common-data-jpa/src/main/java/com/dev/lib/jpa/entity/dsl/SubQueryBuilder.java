@@ -312,21 +312,24 @@ public class SubQueryBuilder {
         if (filterMetas == null || filterMetas.isEmpty()) {
             return null;
         }
-
         BooleanExpression result = null;
 
         for (FieldMeta meta : filterMetas) {
-            if (!meta.isCondition()) continue;
-
             Object value = meta.getValue(filterValue);
-            if (value == null) continue;
+            if (value == null) {
+                continue;
+            }
 
-            BooleanExpression expr = ExpressionBuilder.build(
-                    subPath,
-                    meta.targetFieldParts(),
-                    Optional.ofNullable(meta.queryType()).orElse(QueryType.EQ),
-                    value
-            );
+            BooleanExpression expr = switch (meta.metaType()) {
+                case CONDITION -> ExpressionBuilder.build(
+                        subPath,
+                        meta.targetFieldParts(),
+                        Optional.ofNullable(meta.queryType()).orElse(QueryType.EQ),
+                        value
+                );
+                case GROUP -> null;
+                case SUB_QUERY -> build(subPath, meta, value);
+            };
 
             if (expr != null) {
                 result = result == null ? expr : result.and(expr);

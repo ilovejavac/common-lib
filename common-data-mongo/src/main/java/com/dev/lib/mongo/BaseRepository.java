@@ -1,6 +1,7 @@
 package com.dev.lib.mongo;
 
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.entity.dsl.core.DslQueryFieldResolver;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.mongo.dsl.PredicateAssembler;
@@ -60,6 +61,7 @@ public interface BaseRepository<T extends MongoEntity>
 
     default Optional<T> load(DslQuery<T> query, BooleanExpression... expressions) {
 
+        ensureNonAggregateQuery(query, "load");
         Predicate predicate = toPredicate(query, expressions);
         var sort = query != null ? query.toSort(getAllowedFields(query)) : org.springframework.data.domain.Sort.unsorted();
         return findBy(predicate, q -> q.sortBy(sort).first());
@@ -67,6 +69,7 @@ public interface BaseRepository<T extends MongoEntity>
 
     default List<T> loads(DslQuery<T> query, BooleanExpression... expressions) {
 
+        ensureNonAggregateQuery(query, "loads");
         Predicate predicate = toPredicate(query, expressions);
 
         if (query != null && query.getLimit() != null) {
@@ -82,6 +85,7 @@ public interface BaseRepository<T extends MongoEntity>
 
     default Page<T> page(DslQuery<T> query, BooleanExpression... expressions) {
 
+        ensureNonAggregateQuery(query, "page");
         return findAll(
                 toPredicate(
                         query,
@@ -93,6 +97,7 @@ public interface BaseRepository<T extends MongoEntity>
 
     default boolean exists(DslQuery<T> query, BooleanExpression... expressions) {
 
+        ensureNonAggregateQuery(query, "exists");
         return exists(toPredicate(
                 query,
                 expressions
@@ -101,6 +106,7 @@ public interface BaseRepository<T extends MongoEntity>
 
     default long count(DslQuery<T> query, BooleanExpression... expressions) {
 
+        ensureNonAggregateQuery(query, "count");
         return count(toPredicate(
                 query,
                 expressions
@@ -109,6 +115,7 @@ public interface BaseRepository<T extends MongoEntity>
 
     default void delete(DslQuery<T> query, BooleanExpression... expressions) {
 
+        ensureNonAggregateQuery(query, "delete");
         Predicate predicate = toPredicate(query, expressions);
         Iterable<T> entities = findAll(predicate);
         deleteAll(entities);
@@ -120,36 +127,25 @@ public interface BaseRepository<T extends MongoEntity>
             return PredicateAssembler.assemble(null, null, expressions);
         }
 
-        List<QueryFieldMerger.FieldMetaValue> self     = QueryFieldMerger.resolve(query);
-        List<QueryFieldMerger.FieldMetaValue> external = query.getExternalFields();
-
-        Collection<QueryFieldMerger.FieldMetaValue> merged;
-        if (external.isEmpty()) {
-            merged = self;
-        } else {
-            // external 覆盖 self（同 targetField-queryType 时 external 优先）
-            Map<String, QueryFieldMerger.FieldMetaValue> fieldMap = new HashMap<>(self.size() + external.size());
-            for (QueryFieldMerger.FieldMetaValue fv : self) {
-                fieldMap.put(mergeKey(fv), fv);
-            }
-            for (QueryFieldMerger.FieldMetaValue fv : external) {
-                fieldMap.put(mergeKey(fv), fv);
-            }
-            merged = fieldMap.values();
-        }
+        Collection<QueryFieldMerger.FieldMetaValue> merged = DslQueryFieldResolver.resolveMerged(
+                query,
+                DslQueryFieldResolver.OverridePolicy.EXTERNAL_OVERRIDE_SELF
+        );
 
         return PredicateAssembler.assemble(query, merged, expressions);
-    }
-
-    private static String mergeKey(QueryFieldMerger.FieldMetaValue fmv) {
-
-        return fmv.getFieldMeta().targetField() + "-" + fmv.getFieldMeta().queryType();
     }
 
     private Set<String> getAllowedFields(DslQuery<T> query) {
 
         if (query == null) return Collections.emptySet();
         return FieldMetaCache.getMeta(query.getClass()).entityFieldNames();
+    }
+
+    private void ensureNonAggregateQuery(DslQuery<T> query, String operation) {
+
+        if (query != null && query.hasAgg()) {
+            throw new IllegalStateException("检测到 agg() 聚合配置，" + operation + " 不支持聚合查询");
+        }
     }
 
 }

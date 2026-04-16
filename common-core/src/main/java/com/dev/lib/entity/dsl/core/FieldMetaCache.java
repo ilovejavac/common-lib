@@ -144,17 +144,7 @@ public class FieldMetaCache {
                     operator
             );
 
-            case GROUP -> {
-                List<FieldMeta> nestedMetas = resolveFieldMeta(
-                        field.getType(),
-                        entityClass
-                );
-                yield FieldMeta.group(
-                        field,
-                        operator,
-                        nestedMetas
-                );
-            }
+            case GROUP -> null;
 
             case SUB_QUERY -> {
                 RelationInfo relationInfo = resolveRelation(
