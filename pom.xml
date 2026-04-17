@@ -457,132 +457,132 @@
 
             <!-- Internal modules -->
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-starter</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-util</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-core</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-data-jpa</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-data-jpa-tenant</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-data-mongo</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-data-search</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-local-task-message</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-dict</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-schedule</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-storage</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-cache</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-excel</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-agent</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-security-sa</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-web-notify</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-security</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-security-jwt</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-mq-rabbit</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-mq-rocketmq</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-mq-kafka</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-cloud</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-cloud-consul</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-cloud-nacos</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-bash</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>
-                <groupId>${lib.groupId}</groupId>
+                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-mq</artifactId>
                 <version>${lib.version}</version>
             </dependency>

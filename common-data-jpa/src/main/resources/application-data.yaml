@@ -33,7 +33,3 @@ spring:
         generate_statistics: false
     hibernate:
       ddl-auto: update
-
-app:
-  jpa:
-    in-clause-batch-size: 1000
