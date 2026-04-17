@@ -5,6 +5,8 @@ import com.dev.lib.jpa.entity.JpaEntity;
 import com.querydsl.core.types.dsl.NumberPath;
 import com.querydsl.core.types.dsl.PathBuilder;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import org.hibernate.Hibernate;
@@ -187,7 +189,15 @@ public final class CascadeFieldResolver {
             return true;
         }
         OneToOne oneToOne = field.getAnnotation(OneToOne.class);
-        return oneToOne != null && (hasCascadeRemove(oneToOne.cascade()) || oneToOne.orphanRemoval());
+        if (oneToOne != null && (hasCascadeRemove(oneToOne.cascade()) || oneToOne.orphanRemoval())) {
+            return true;
+        }
+        ManyToMany manyToMany = field.getAnnotation(ManyToMany.class);
+        if (manyToMany != null && hasCascadeRemove(manyToMany.cascade())) {
+            return true;
+        }
+        ManyToOne manyToOne = field.getAnnotation(ManyToOne.class);
+        return manyToOne != null && hasCascadeRemove(manyToOne.cascade());
     }
 
     private static boolean hasCascadeRemove(CascadeType[] cascadeTypes) {

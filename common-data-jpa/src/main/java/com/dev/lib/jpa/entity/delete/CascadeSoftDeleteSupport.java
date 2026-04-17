@@ -34,27 +34,17 @@ public final class CascadeSoftDeleteSupport {
             throw new IllegalArgumentException("批量删除必须指定业务条件，防止误删全表");
         }
 
-        if (CascadeFieldResolver.hasCascadeFields(repository)) {
-            softDeleteByPredicateInChunks(
-                    repository,
-                    RepositoryPredicateSupport.buildPredicate(
-                            repository.getPathBuilder(),
-                            repository.getPath(),
-                            repository.getDeletedPath(),
-                            ctx,
-                            dslQuery,
-                            expressions
-                    )
-            );
-            return;
-        }
-
-        BooleanBuilder where = new BooleanBuilder();
-        if (ctx.getDeletedFilter() == QueryContext.DeletedFilter.EXCLUDE_DELETED) {
-            where.and(repository.getDeletedPath().eq(false));
-        }
-        where.and(businessPredicate);
-        executeSoftDeleteUpdate(repository, where);
+        softDeleteByPredicateInChunks(
+                repository,
+                RepositoryPredicateSupport.buildPredicate(
+                        repository.getPathBuilder(),
+                        repository.getPath(),
+                        repository.getDeletedPath(),
+                        ctx,
+                        dslQuery,
+                        expressions
+                )
+        );
     }
 
     public static <T extends JpaEntity> void deleteEntity(BaseRepositoryImpl<T> repository, T entity) {
@@ -85,11 +75,6 @@ public final class CascadeSoftDeleteSupport {
 
     public static <T extends JpaEntity> void deleteAll(BaseRepositoryImpl<T> repository) {
 
-        if (!CascadeFieldResolver.hasCascadeFields(repository)) {
-            executeSoftDeleteUpdate(repository, repository.getDeletedPath().eq(false));
-            return;
-        }
-
         Long lastId = null;
         while (true) {
             List<Long> ids = BatchHelper.fetchIdsAfter(repository, repository.getDeletedPath().eq(false), lastId);
@@ -113,9 +98,7 @@ public final class CascadeSoftDeleteSupport {
             }
         }
 
-        BooleanBuilder where = new BooleanBuilder(repository.getDeletedPath().eq(false));
-        where.and(repository.getIdPath().eq(id));
-        executeSoftDeleteUpdate(repository, where);
+        softDeleteByIds(repository, List.of(id));
     }
 
     private static <T extends JpaEntity> void softDeleteByIds(BaseRepositoryImpl<T> repository, List<Long> ids) {

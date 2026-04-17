@@ -34,11 +34,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private static final int DEFAULT_JDBC_BATCH_SIZE = 256;
 
-    private static final int DEFAULT_IN_CLAUSE_BATCH_SIZE = 1000;
-
     private static final String JDBC_BATCH_SIZE_PROPERTY = "hibernate.jdbc.batch_size";
-
-    private static final String IN_CLAUSE_BATCH_SIZE_PROPERTY = "app.jpa.in-clause-batch-size";
 
     private final EntityManagerFactory entityManagerFactory;
 
@@ -73,7 +69,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         this.idPath = pathBuilder.getNumber("id", Long.class);
 
         this.jdbcBatchSize = resolveConfiguredBatchSize(em, JDBC_BATCH_SIZE_PROPERTY, DEFAULT_JDBC_BATCH_SIZE);
-        this.inClauseBatchSize = resolveConfiguredBatchSize(em, IN_CLAUSE_BATCH_SIZE_PROPERTY, DEFAULT_IN_CLAUSE_BATCH_SIZE);
+        this.inClauseBatchSize = 1024;
 
         this.queryFactory = new JPAQueryFactory(em);
 
@@ -113,6 +109,12 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     public boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         return exists(new QueryContext(), dslQuery, expressions);
+    }
+
+    @Override
+    public long count() {
+
+        return count((DslQuery<T>) null);
     }
 
     @Override

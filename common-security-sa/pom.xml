@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.2.2-rc.0</version>
+        <version>1.2.4-rc.0</version>
     </parent>
 
     <artifactId>common-security-sa</artifactId>
@@ -17,7 +17,6 @@
         <dependency>
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-spring-boot4-starter</artifactId>
-            <version>${sa-token.version}</version>
         </dependency>
 
         <dependency>

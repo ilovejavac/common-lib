@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.2.2-rc.0</version>
+        <version>1.2.4-rc.0</version>
     </parent>
 
     <artifactId>common-core</artifactId>
@@ -48,7 +48,6 @@
         <dependency>
             <groupId>org.eclipse.collections</groupId>
             <artifactId>eclipse-collections</artifactId>
-            <version>${eclipse-collections.version}</version>
         </dependency>
     </dependencies>
 </project>

@@ -1,6 +1,7 @@
 package com.dev.lib.jpa.multiple;
 
 import com.dev.lib.jpa.config.SingleDatasourceOnlyHibernatePropertiesCustomizer;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -35,12 +36,12 @@ public class JpaHibernatePropertiesFactoryBean
     private Properties   cached;
 
     @Override
-    public void setEnvironment(Environment environment) {
+    public void setEnvironment(@NonNull Environment environment) {
         this.environment = environment;
     }
 
     @Override
-    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+    public void setBeanFactory(@NonNull BeanFactory beanFactory) throws BeansException {
         this.beanFactory = beanFactory;
     }
 
@@ -56,11 +57,6 @@ public class JpaHibernatePropertiesFactoryBean
     @Override
     public Class<?> getObjectType() {
         return Properties.class;
-    }
-
-    @Override
-    public boolean isSingleton() {
-        return true;
     }
 
     private Properties buildHibernateProperties() {
@@ -81,7 +77,7 @@ public class JpaHibernatePropertiesFactoryBean
                 .determineHibernateProperties(jpaProperties.getProperties(), settings);
 
         Properties result = new Properties();
-        resolved.forEach(result::put);
+        result.putAll(resolved);
         return result;
     }
 

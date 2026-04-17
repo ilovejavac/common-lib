@@ -2,6 +2,7 @@ package com.dev.lib.jpa.multiple;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.dev.lib.jpa.config.AppDialectProperties;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -17,7 +18,6 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.data.jpa.repository.config.JpaRepositoryConfigExtension;
 import org.springframework.data.repository.config.RepositoryConfigurationDelegate;
 import org.springframework.data.repository.config.RepositoryConfigurationExtension;
-import org.springframework.data.util.Streamable;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.support.SharedEntityManagerBean;
@@ -50,20 +50,20 @@ public class JpaDatasourceRegistrar
     private ResourceLoader resourceLoader;
 
     @Override
-    public void setEnvironment(Environment environment) {
+    public void setEnvironment(@NonNull Environment environment) {
         this.environment = environment;
     }
 
     @Override
-    public void setResourceLoader(ResourceLoader resourceLoader) {
+    public void setResourceLoader(@NonNull ResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
     }
 
     // ==================== 入口 ====================
 
     @Override
-    public void registerBeanDefinitions(AnnotationMetadata metadata,
-                                        BeanDefinitionRegistry registry) {
+    public void registerBeanDefinitions(@NonNull AnnotationMetadata metadata,
+                                        @NonNull BeanDefinitionRegistry registry) {
 
         List<AnnotationAttributes> specs = resolveSpecs(metadata);
         if (specs.isEmpty()) return;
@@ -90,7 +90,7 @@ public class JpaDatasourceRegistrar
 
             boolean isPrimary = first;
             if (first) {
-                packages = appendIfMissing(packages, COMMON_LIB_PACKAGE);
+                packages = appendIfMissing(packages);
                 first    = false;
             }
 
@@ -290,19 +290,19 @@ public class JpaDatasourceRegistrar
 
     private static String[] resolveMappingResources(JpaProperties jpaProperties) {
 
-        if (jpaProperties.getMappingResources() == null || jpaProperties.getMappingResources().isEmpty()) {
+        if (jpaProperties.getMappingResources().isEmpty()) {
             return null;
         }
         return jpaProperties.getMappingResources().toArray(String[]::new);
     }
 
-    private static String[] appendIfMissing(String[] arr, String value) {
+    private static String[] appendIfMissing(String[] arr) {
 
         for (String s : arr) {
-            if (s.equals(value)) return arr;
+            if (s.equals(JpaDatasourceRegistrar.COMMON_LIB_PACKAGE)) return arr;
         }
         String[] result = Arrays.copyOf(arr, arr.length + 1);
-        result[arr.length] = value;
+        result[arr.length] = JpaDatasourceRegistrar.COMMON_LIB_PACKAGE;
         return result;
     }
 }

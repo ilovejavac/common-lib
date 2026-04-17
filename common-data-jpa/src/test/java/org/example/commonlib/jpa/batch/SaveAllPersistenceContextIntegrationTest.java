@@ -32,23 +32,8 @@ class SaveAllPersistenceContextIntegrationTest {
                     "spring.jpa.open-in-view=false",
                     "spring.jpa.properties.hibernate.jdbc.batch_size=1",
                     "spring.jpa.properties.hibernate.generate_statistics=true",
-                    "app.jpa.in-clause-batch-size=3",
                     "spring.application.name=batch-save-context-test"
             );
-
-    @Test
-    void shouldUseConfiguredInClauseBatchSizeFromAppJpaProperties() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            BatchThingRepo repo = context.getBean(BatchThingRepo.class);
-            Object targetRepo = AopTestUtils.getTargetObject(repo);
-
-            Object batchSize = ReflectionTestUtils.getField(targetRepo, "inClauseBatchSize");
-            assertThat(batchSize).isEqualTo(3);
-        });
-    }
 
     @Test
     void saveAllShouldNotDetachUnrelatedManagedEntitiesInOuterTransaction() {

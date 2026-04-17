@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.2.2-rc.0</version>
+        <version>1.2.4-rc.0</version>
     </parent>
 
     <artifactId>common-data-jpa</artifactId>
@@ -35,12 +35,10 @@
         <dependency>
             <groupId>com.dameng</groupId>
             <artifactId>DmDialect-for-hibernate6.4</artifactId>
-            <version>8.1.4.93</version>
         </dependency>
         <dependency>
             <groupId>cn.com.kingbase</groupId>
             <artifactId>KesDialect-for-hibernate6.0</artifactId>
-            <version>2.0.1</version>
         </dependency>
         <dependency>
             <groupId>io.github.ilovejavac</groupId>

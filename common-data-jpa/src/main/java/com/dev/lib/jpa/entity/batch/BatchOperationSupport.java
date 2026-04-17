@@ -12,8 +12,6 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public final class BatchOperationSupport {
 
@@ -68,11 +66,8 @@ public final class BatchOperationSupport {
         }
 
         if (CascadeFieldResolver.hasCascadeFields(repository)) {
-            T managed = repository.getEntityManager().find(repository.getEntityClass(), id);
-            if (managed != null) {
-                cascadeHardDeleteBatch(repository, List.of(managed));
-                return;
-            }
+            cascadeHardDeleteByIds(repository, List.of(id));
+            return;
         }
 
         repository.getQueryFactory().delete(repository.getPath())
@@ -89,14 +84,14 @@ public final class BatchOperationSupport {
         }
 
         if (CascadeFieldResolver.hasCascadeFields(repository)) {
-            List<T> rootEntities = new ArrayList<>();
+            List<Long> ids = new ArrayList<>();
             for (T entity : entities) {
                 if (entity != null && entity.getId() != null) {
-                    rootEntities.add(entity);
+                    ids.add(entity.getId());
                 }
             }
-            if (!rootEntities.isEmpty()) {
-                cascadeHardDeleteBatch(repository, rootEntities);
+            if (!ids.isEmpty()) {
+                cascadeHardDeleteByIds(repository, ids);
             }
             return;
         }
@@ -117,14 +112,8 @@ public final class BatchOperationSupport {
                     idList.add(id);
                 }
             }
-            for (int i = 0; i < idList.size(); i += repository.getInClauseBatchSize()) {
-                List<Long> batch = idList.subList(i, Math.min(i + repository.getInClauseBatchSize(), idList.size()));
-                List<T> loaded = repository.getQueryFactory().selectFrom(repository.getPath())
-                        .where(repository.getIdPath().in(batch))
-                        .fetch();
-                if (!loaded.isEmpty()) {
-                    cascadeHardDeleteBatch(repository, loaded);
-                }
+            if (!idList.isEmpty()) {
+                cascadeHardDeleteByIds(repository, idList);
             }
             return;
         }
@@ -157,12 +146,7 @@ public final class BatchOperationSupport {
             }
 
             if (CascadeFieldResolver.hasCascadeFields(repository)) {
-                List<T> loaded = repository.getQueryFactory().selectFrom(repository.getPath())
-                        .where(repository.getIdPath().in(ids))
-                        .fetch();
-                if (!loaded.isEmpty()) {
-                    cascadeHardDeleteBatch(repository, loaded);
-                }
+                cascadeHardDeleteByIds(repository, ids);
                 totalAffected += ids.size();
             } else {
                 long affected = repository.getQueryFactory().delete(repository.getPath())
@@ -179,26 +163,29 @@ public final class BatchOperationSupport {
         return totalAffected;
     }
 
+    private static <T extends JpaEntity> void cascadeHardDeleteByIds(BaseRepositoryImpl<T> repository, List<Long> ids) {
+
+        for (int i = 0; i < ids.size(); i += repository.getInClauseBatchSize()) {
+            List<Long> batch = ids.subList(i, Math.min(i + repository.getInClauseBatchSize(), ids.size()));
+            List<T> loaded = repository.getQueryFactory().selectFrom(repository.getPath())
+                    .where(repository.getIdPath().in(batch))
+                    .fetch();
+            if (!loaded.isEmpty()) {
+                cascadeHardDeleteBatch(repository, loaded);
+            }
+        }
+    }
+
     private static <T extends JpaEntity> void cascadeHardDeleteBatch(BaseRepositoryImpl<T> repository, List<T> rootEntities) {
 
-        Map<Class<?>, Set<Long>> toDeleteByType = CascadeFieldResolver.newDeleteByTypeMap();
-        Set<Object> visited = CascadeFieldResolver.newVisitedSet();
-
         for (T entity : rootEntities) {
-            CascadeFieldResolver.collectCascadeEntitiesIncludeDeleted(entity, visited, toDeleteByType);
+            T managed = repository.getEntityManager().contains(entity)
+                    ? entity
+                    : repository.getEntityManager().find(repository.getEntityClass(), entity.getId());
+            if (managed != null) {
+                repository.getEntityManager().remove(managed);
+            }
         }
-
-        // Reverse order: delete children first, then parents
-        List<Map.Entry<Class<?>, Set<Long>>> entries = new ArrayList<>(toDeleteByType.entrySet());
-        Collections.reverse(entries);
-
-        CascadeFieldResolver.executeByType(
-                entries,
-                repository.getInClauseBatchSize(),
-                (builder, builderIdPath, batch) -> repository.getQueryFactory().delete(builder)
-                        .where(builderIdPath.in(batch))
-                        .execute()
-        );
 
         repository.getEntityManager().flush();
         repository.getEntityManager().clear();

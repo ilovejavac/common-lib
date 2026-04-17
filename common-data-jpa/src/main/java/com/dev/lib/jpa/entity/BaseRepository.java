@@ -63,10 +63,19 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
 
     Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
+    @Override
+    default long count() {
+        return count(null, new BooleanExpression[0]);
+    }
+
+    default long count(DslQuery<T> dslQuery) {
+        return count(dslQuery, new BooleanExpression[0]);
+    }
+
     long count(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
     default long count(BooleanExpression... expressions) {
-        return count(null, expressions);
+        return count((DslQuery<T>) null, expressions);
     }
 
     boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions);

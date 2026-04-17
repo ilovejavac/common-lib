@@ -14,7 +14,7 @@
 
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.2.2-rc.0</version>
+    <version>1.2.4-rc.0</version>
     <packaging>pom</packaging>
 
     <name>common-lib</name>
@@ -76,43 +76,66 @@
     </modules>
 
     <properties>
+        <!-- Platform / toolchain -->
         <java.version>25</java.version>
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
 
-        <tomcat.version>11.0.21</tomcat.version>
-        <jackson-bom.version>3.1.2</jackson-bom.version>
+        <!-- Internal coordinates -->
+        <lib.groupId>io.github.ilovejavac</lib.groupId>
+        <lib.version>1.2.4-rc.0</lib.version>
 
-        <!-- Spring -->
+        <!-- Spring ecosystem -->
         <spring-boot.version>4.1.0-M4</spring-boot.version>
         <spring-cloud.version>2025.1.1</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
+        <spring-ai.version>1.1.2</spring-ai.version>
+        <spring-ai-alibaba.version>1.1.2.2</spring-ai-alibaba.version>
+        <tomcat.version>11.0.21</tomcat.version>
+        <jackson-bom.version>3.1.2</jackson-bom.version>
 
-        <!-- Database -->
+        <!-- Persistence / data -->
         <mysql.version>8.2.0</mysql.version>
         <dm.version>8.1.3.140</dm.version>
-
-        <!-- Tools -->
-        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
-        <mapstruct-plus.version>1.5.0</mapstruct-plus.version>
         <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
-
-        <!-- Others -->
-        <sa-token.version>1.45.0</sa-token.version>
-        <dubbo.version>3.3.6</dubbo.version>
-        <redisson.version>3.52.0</redisson.version>
+        <openfeign-querydsl.version>7.1</openfeign-querydsl.version>
         <opensearch.version>2.0.5</opensearch.version>
+        <opensearch-java.version>3.8.0</opensearch-java.version>
+        <dm-hibernate-dialect.version>8.1.4.93</dm-hibernate-dialect.version>
+        <kingbase-hibernate-dialect.version>2.0.1</kingbase-hibernate-dialect.version>
+
+        <!-- Middleware / integration -->
+        <dubbo.version>3.3.6</dubbo.version>
+        <sa-token.version>1.45.0</sa-token.version>
+        <jwt.version>0.12.6</jwt.version>
+        <redisson.version>3.52.0</redisson.version>
+        <rocketmq.version>2.3.5</rocketmq.version>
         <minio.version>8.6.0</minio.version>
         <oss.version>3.17.4</oss.version>
-        <eclipse-collections.version>13.0.0</eclipse-collections.version>
-        <jwt.version>0.12.6</jwt.version>
-        <openfeign-querydsl.version>7.1</openfeign-querydsl.version>
+        <google-adk.version>0.6.0</google-adk.version>
 
+        <!-- Utilities -->
+        <eclipse-collections.version>13.0.0</eclipse-collections.version>
+        <fastexcel.version>1.3.0</fastexcel.version>
+        <logstash-logback-encoder.version>9.0</logstash-logback-encoder.version>
+        <mapstruct-plus.version>1.5.0</mapstruct-plus.version>
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+
+        <!-- Dependency overrides (fix version conflicts) -->
+        <fastjson2.version>2.0.56</fastjson2.version>
+        <zstd-jni.version>1.5.6-10</zstd-jni.version>
+        <commons-io.version>2.20.0</commons-io.version>
+        <commons-compress.version>1.28.0</commons-compress.version>
+        <httpclient.version>4.5.14</httpclient.version>
+        <bouncycastle.version>1.81</bouncycastle.version>
+        <javassist.version>3.30.2-GA</javassist.version>
+        <okio.version>3.6.0</okio.version>
+        <failureaccess.version>1.0.3</failureaccess.version>
+        <jaxb-api.version>2.3.1</jaxb-api.version>
+
+        <!-- Build tooling -->
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
-
-        <lib.groupId>io.github.ilovejavac</lib.groupId>
-        <lib.version>1.2.2-rc.0</lib.version>
         <skipTests>true</skipTests>
     </properties>
 
@@ -277,16 +300,53 @@
                 </exclusions>
             </dependency>
 
-            <!-- Others -->
+            <!-- Security -->
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-spring-boot4-starter</artifactId>
+                <version>${sa-token.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jwt.version}</version>
+            </dependency>
+
+            <!-- Middleware / integration -->
+            <dependency>
+                <groupId>org.apache.dubbo</groupId>
+                <artifactId>dubbo-spring-boot-starter</artifactId>
+                <version>${dubbo.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.opensearch.client</groupId>
                 <artifactId>spring-data-opensearch-starter</artifactId>
                 <version>${opensearch.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.opensearch.client</groupId>
+                <artifactId>opensearch-java</artifactId>
+                <version>${opensearch-java.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.redisson</groupId>
                 <artifactId>redisson-spring-boot-starter</artifactId>
                 <version>${redisson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-spring-boot-starter</artifactId>
+                <version>${rocketmq.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.minio</groupId>
@@ -299,6 +359,13 @@
                 <version>${oss.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.google.adk</groupId>
+                <artifactId>google-adk</artifactId>
+                <version>${google-adk.version}</version>
+            </dependency>
+
+            <!-- Utilities -->
+            <dependency>
                 <groupId>org.eclipse.collections</groupId>
                 <artifactId>eclipse-collections-api</artifactId>
                 <version>${eclipse-collections.version}</version>
@@ -307,6 +374,85 @@
                 <groupId>org.eclipse.collections</groupId>
                 <artifactId>eclipse-collections</artifactId>
                 <version>${eclipse-collections.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.idev.excel</groupId>
+                <artifactId>fastexcel</artifactId>
+                <version>${fastexcel.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-logback-encoder.version}</version>
+            </dependency>
+
+            <!-- Database dialects -->
+            <dependency>
+                <groupId>com.dameng</groupId>
+                <artifactId>DmDialect-for-hibernate6.4</artifactId>
+                <version>${dm-hibernate-dialect.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.com.kingbase</groupId>
+                <artifactId>KesDialect-for-hibernate6.0</artifactId>
+                <version>${kingbase-hibernate-dialect.version}</version>
+            </dependency>
+
+            <!-- Dependency version overrides -->
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
+                <version>${fastjson2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.luben</groupId>
+                <artifactId>zstd-jni</artifactId>
+                <version>${zstd-jni.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${httpclient.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.javassist</groupId>
+                <artifactId>javassist</artifactId>
+                <version>${javassist.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio-jvm</artifactId>
+                <version>${okio.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>failureaccess</artifactId>
+                <version>${failureaccess.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>${jaxb-api.version}</version>
             </dependency>
 
             <!-- Internal modules -->
@@ -592,6 +738,22 @@
                         <execution>
                             <id>attach-sources</id>
                             <goals><goal>jar-no-fork</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <id>empty-javadoc-jar</id>
+                            <phase>package</phase>
+                            <goals><goal>jar</goal></goals>
+                            <configuration>
+                                <classifier>javadoc</classifier>
+                                <classesDirectory>${project.build.directory}/apidocs</classesDirectory>
+                                <skipIfEmpty>false</skipIfEmpty>
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>
