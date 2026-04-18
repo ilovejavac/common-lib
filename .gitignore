@@ -34,3 +34,11 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Claude / AI ###
+.claude/
+.codex/
+
+### Logs ###
+log/
+*.log
