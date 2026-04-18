@@ -2,38 +2,22 @@ spring:
   threads:
     virtual:
       enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   mvc:
-#    throw-exception-if-no-handler-found: true
     static-path-pattern: /static/**
   servlet:
     multipart:
       enabled: true
       max-file-size: 100MB
-      max-request-size: 100MB
-      file-size-threshold: 10MB
-      location: ${UPLOAD_TEMP_DIR:/tmp}
+      max-request-size: 120MB
+      file-size-threshold: 2MB
       resolve-lazily: false
     encoding: # springboot4
       charset: utf-8
       enabled: true
       force-response: true
       force: true
-  config:
-    import:
-      - optional:classpath:application-mq.yaml
-      - optional:classpath:application-cloud.yaml
-      - optional:classpath:application-data.yaml
-      - optional:classpath:application-cache.yaml
-      - optional:classpath:application-mongo.yaml
-      - optional:classpath:application-search.yaml
-      - optional:classpath:application-ai.yaml
-      - optional:classpath:application-schedule.yaml
-      - optional:classpath:application-security.yaml
-      - optional:classpath:application-excel.yaml
-      - optional:classpath:application-storage.yaml
-      - optional:classpath:application-local-task-message.yaml
-#      - optional:consul:${app.cloud.host}:${app.cloud.port}
-#      - optional:nacos:${spring.application.name}.yaml
   web:
     resources:
       add-mappings: false
@@ -45,9 +29,12 @@ spring:
         enabled: false
 
 server:
+  shutdown: graceful
   tomcat:
     max-connections: 10000
     accept-count: 1000
+    connection-timeout: 5s
+    keep-alive-timeout: 20s
     max-http-form-post-size: 20MB
     max-swallow-size: 20MB
   http2:
@@ -61,24 +48,9 @@ server:
       - application/javascript
       - image/svg+xml
     min-response-size: 1KB
-#  servlet:
-#    encoding:
-#      charset: UTF-8
-#      enabled: true
-#      force-response: true
-#      force: true
-#  error:
-#    include-message: never
-#    include-stacktrace: never
-#    include-exception: false
-#    whitelabel:
-#      enabled: false
 
 logging:
   config: classpath:logback-spring.xml
-  file:
-    path: log
-    name: ${spring.application.name:application}
   level:
     root: INFO
 
@@ -86,13 +58,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info
         exclude: shutdown
       base-path: /actuator
   endpoint:
     health:
-      show-details: always
-      show-components: always
+      show-details: never
+      show-components: never
       probes:
         enabled: true
   metrics:
@@ -101,6 +73,7 @@ management:
 
 app:
   cors:
+    allowed-origins: []
     allowed-methods:
       - GET
       - POST
@@ -108,5 +81,5 @@ app:
       - DELETE
       - PATCH
       - OPTIONS
-    max-age: 3600
-    allow-credentials: true
+    max-age: 1800
+    allow-credentials: false

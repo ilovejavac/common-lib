@@ -1,7 +1,6 @@
 app:
   security:
-    secret: your-256-bit-secret-key-change-this-in-production-environment-must-be-at-least-256-bits
-    expiration: 8640000000
+    expiration: 86400000
     encrypt-version: base64
 sa-token:
   token-style: tik

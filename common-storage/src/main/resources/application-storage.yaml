@@ -15,9 +15,6 @@ app:
       - xlsx
       - txt
       - json
-    type: local
-    local:
-      path: storage
     vfs:
       temporary-ttl-minutes: 60
       cleanup-interval-ms: 300000

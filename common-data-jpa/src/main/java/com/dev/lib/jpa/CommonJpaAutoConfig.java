@@ -4,11 +4,15 @@ import com.dev.lib.jpa.config.AppDialectProperties;
 import com.dev.lib.jpa.config.BaseRepositoryFactoryBeanPostProcessor;
 import com.dev.lib.jpa.config.CommonJpaPackageRegistrar;
 import com.dev.lib.jpa.config.FinalSlowQueryLoggingListener;
+import com.dev.lib.jpa.config.JpaHikariDefaultsProperties;
 import com.dev.lib.jpa.config.SingleDatasourceOnlyHibernatePropertiesCustomizer;
 import com.dev.lib.jpa.config.SlowQueryProperties;
+import com.dev.lib.jpa.multiple.JpaManagedDatasourceGroup;
+import com.dev.lib.jpa.multiple.JpaManagedHikariDefaultsBeanPostProcessor;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import net.ttddyy.dsproxy.listener.QueryExecutionListener;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,15 +22,26 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
+
 @AutoConfiguration(before = DataJpaRepositoriesAutoConfiguration.class)
 @Import(CommonJpaPackageRegistrar.class)
-@EnableConfigurationProperties({AppDialectProperties.class, SlowQueryProperties.class})
+@EnableConfigurationProperties({AppDialectProperties.class, SlowQueryProperties.class, JpaHikariDefaultsProperties.class})
 public class CommonJpaAutoConfig {
 
     @Bean
     public static BaseRepositoryFactoryBeanPostProcessor baseRepositoryFactoryBeanPostProcessor() {
 
         return new BaseRepositoryFactoryBeanPostProcessor();
+    }
+
+    @Bean
+    public static BeanPostProcessor jpaManagedHikariDefaultsBeanPostProcessor(
+            List<JpaManagedDatasourceGroup> managedDatasourceGroups,
+            JpaHikariDefaultsProperties hikariDefaultsProperties
+    ) {
+
+        return new JpaManagedHikariDefaultsBeanPostProcessor(managedDatasourceGroups, hikariDefaultsProperties);
     }
 
     @Bean

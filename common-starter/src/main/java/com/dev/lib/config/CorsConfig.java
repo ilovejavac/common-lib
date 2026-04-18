@@ -4,6 +4,7 @@ import com.dev.lib.config.properties.CorsProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -18,7 +19,7 @@ public class CorsConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        if (corsProperties.getAllowedOrigins() != null) {
+        if (!CollectionUtils.isEmpty(corsProperties.getAllowedOrigins())) {
             corsProperties.getAllowedOrigins().forEach(config::addAllowedOrigin);
         } else {
             config.addAllowedOriginPattern("*");

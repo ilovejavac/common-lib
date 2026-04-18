@@ -7,6 +7,7 @@ import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.jpa.entity.RepositoryUtils;
 import com.dev.lib.jpa.multiple.JpaDialect;
 import com.dev.lib.jpa.multiple.JpaDatasource;
+import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -105,6 +106,83 @@ class MultiJpaDatasourceIntegrationTest {
                 });
     }
 
+    @Test
+    void shouldApplySharedHikariDefaultsToManagedJpaDatasourcesOnly() {
+
+        new WebApplicationContextRunner()
+                .withUserConfiguration(HikariManagedDatasourceApplication.class)
+                .withPropertyValues(
+                        "spring.jpa.hibernate.ddl-auto=none",
+                        "spring.jpa.open-in-view=false",
+                        "spring.application.name=multi-jpa-hikari-defaults-test",
+                        "app.jpa.hikari-defaults.maximum-pool-size=24",
+                        "app.jpa.hikari-defaults.minimum-idle=8",
+                        "app.jpa.hikari-defaults.connection-timeout=3000",
+                        "app.jpa.hikari-defaults.validation-timeout=1000",
+                        "app.jpa.hikari-defaults.idle-timeout=600000",
+                        "app.jpa.hikari-defaults.max-lifetime=1740000",
+                        "app.jpa.hikari-defaults.keepalive-time=300000"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+
+                    DataSource primaryDs = context.getBean("primaryDs", DataSource.class);
+                    DataSource archiveDs = context.getBean("archiveDs", DataSource.class);
+                    DataSource ignoredDs = context.getBean("ignoredDs", DataSource.class);
+
+                    HikariDataSource primaryHikari = unwrapHikari(primaryDs);
+                    HikariDataSource archiveHikari = unwrapHikari(archiveDs);
+                    HikariDataSource ignoredHikari = unwrapHikari(ignoredDs);
+
+                    assertThat(primaryHikari.getMaximumPoolSize()).isEqualTo(24);
+                    assertThat(primaryHikari.getMinimumIdle()).isEqualTo(8);
+                    assertThat(primaryHikari.getConnectionTimeout()).isEqualTo(3000);
+                    assertThat(primaryHikari.getValidationTimeout()).isEqualTo(1000);
+                    assertThat(primaryHikari.getIdleTimeout()).isEqualTo(600000);
+                    assertThat(primaryHikari.getMaxLifetime()).isEqualTo(1740000);
+                    assertThat(primaryHikari.getKeepaliveTime()).isEqualTo(300000);
+
+                    assertThat(archiveHikari.getMaximumPoolSize()).isEqualTo(30);
+                    assertThat(archiveHikari.getMinimumIdle()).isEqualTo(3);
+                    assertThat(archiveHikari.getConnectionTimeout()).isEqualTo(3000);
+                    assertThat(archiveHikari.getValidationTimeout()).isEqualTo(1000);
+                    assertThat(archiveHikari.getIdleTimeout()).isEqualTo(600000);
+                    assertThat(archiveHikari.getMaxLifetime()).isEqualTo(1740000);
+                    assertThat(archiveHikari.getKeepaliveTime()).isEqualTo(300000);
+
+                    assertThat(ignoredHikari.getMaximumPoolSize()).isEqualTo(10);
+                    assertThat(ignoredHikari.getMinimumIdle()).isEqualTo(-1);
+                    assertThat(ignoredHikari.getConnectionTimeout()).isEqualTo(30000);
+                    assertThat(ignoredHikari.getValidationTimeout()).isEqualTo(5000);
+                    assertThat(ignoredHikari.getIdleTimeout()).isEqualTo(600000);
+                    assertThat(ignoredHikari.getMaxLifetime()).isEqualTo(1800000);
+                    assertThat(ignoredHikari.getKeepaliveTime()).isEqualTo(120000);
+                });
+    }
+
+    @Test
+    void shouldSkipNonHikariManagedDatasource() {
+
+        new WebApplicationContextRunner()
+                .withUserConfiguration(MultiDatasourceApplication.class)
+                .withPropertyValues(
+                        "spring.jpa.hibernate.ddl-auto=none",
+                        "spring.jpa.open-in-view=false",
+                        "spring.application.name=multi-jpa-non-hikari-test",
+                        "app.jpa.hikari-defaults.maximum-pool-size=24"
+                )
+                .run(context -> assertThat(context).hasNotFailed());
+    }
+
+    private static HikariDataSource unwrapHikari(DataSource dataSource) {
+
+        try {
+            return dataSource.unwrap(HikariDataSource.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to unwrap HikariDataSource from DataSource bean", e);
+        }
+    }
+
     private static EntityManagerFactory extractEntityManagerFactory(BaseRepositoryImpl<?> impl) {
 
         try {
@@ -160,6 +238,45 @@ class MultiJpaDatasourceIntegrationTest {
             DriverManagerDataSource ds = new DriverManagerDataSource();
             ds.setDriverClassName("org.h2.Driver");
             ds.setUrl("jdbc:h2:mem:" + name + ";DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE");
+            ds.setUsername("sa");
+            ds.setPassword("");
+            return ds;
+        }
+    }
+
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    @JpaDatasource(datasource = "primaryDs", packages = "org.example.commonlib.jpa")
+    @JpaDatasource(datasource = "archiveDs", packages = "org.example.commonlib.jpa.archive")
+    static class HikariManagedDatasourceApplication {
+
+        @Bean("primaryDs")
+        @Primary
+        HikariDataSource primaryDataSource() {
+
+            return createDataSource("primary_ds");
+        }
+
+        @Bean("archiveDs")
+        HikariDataSource archiveDataSource() {
+
+            HikariDataSource ds = createDataSource("archive_ds");
+            ds.setMaximumPoolSize(30);
+            ds.setMinimumIdle(3);
+            return ds;
+        }
+
+        @Bean("ignoredDs")
+        HikariDataSource ignoredDataSource() {
+
+            return createDataSource("ignored_ds");
+        }
+
+        private HikariDataSource createDataSource(String name) {
+
+            HikariDataSource ds = new HikariDataSource();
+            ds.setDriverClassName("org.h2.Driver");
+            ds.setJdbcUrl("jdbc:h2:mem:" + name + ";DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE");
             ds.setUsername("sa");
             ds.setPassword("");
             return ds;

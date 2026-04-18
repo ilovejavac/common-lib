@@ -43,10 +43,11 @@ import java.util.*;
 public class JpaDatasourceRegistrar
         implements ImportBeanDefinitionRegistrar, EnvironmentAware, ResourceLoaderAware {
 
-    private static final String COMMON_LIB_PACKAGE     = "com.dev.lib";
-    private static final String JPA_PROPERTIES_BEAN   = "commonJpaResolvedHibernateProperties";
+    private static final String COMMON_LIB_PACKAGE = "com.dev.lib";
+    private static final String JPA_PROPERTIES_BEAN = "commonJpaResolvedHibernateProperties";
+    private static final String MANAGED_DATASOURCE_GROUP_BEAN_PREFIX = "commonJpaManagedDatasourceGroup#";
 
-    private Environment    environment;
+    private Environment environment;
     private ResourceLoader resourceLoader;
 
     @Override
@@ -68,6 +69,8 @@ public class JpaDatasourceRegistrar
         List<AnnotationAttributes> specs = resolveSpecs(metadata);
         if (specs.isEmpty()) return;
 
+        registerManagedDatasourceGroup(metadata, registry, specs);
+
         JpaProperties jpaProperties = bindJpaProperties();
         AppDialectProperties appDialectProperties = bindAppDialectProperties();
         String globalDatabasePlatform = appDialectProperties.getDialect().resolveDatabasePlatform(
@@ -79,7 +82,7 @@ public class JpaDatasourceRegistrar
 
         boolean first = true;
         for (AnnotationAttributes spec : specs) {
-            String   dsRef    = spec.getString("datasource");
+            String dsRef = spec.getString("datasource");
             String[] packages = spec.getStringArray("packages");
             JpaDialect dialect = spec.getEnum("dialect");
             validateSpec(dsRef, packages);
@@ -91,13 +94,13 @@ public class JpaDatasourceRegistrar
             boolean isPrimary = first;
             if (first) {
                 packages = appendIfMissing(packages);
-                first    = false;
+                first = false;
             }
 
-            String emfName      = dsRef + "EntityManagerFactory";
-            String tmName       = dsRef + "TransactionManager";
+            String emfName = dsRef + "EntityManagerFactory";
+            String tmName = dsRef + "TransactionManager";
             String sharedEmName = dsRef + "SharedEntityManager";
-            String qfName       = dsRef + "JpaQueryFactory";
+            String qfName = dsRef + "JpaQueryFactory";
             String vendorAdapterName = dsRef + "JpaVendorAdapter";
 
             registerVendorAdapter(registry, vendorAdapterName, jpaProperties, resolvedDatabasePlatform, isPrimary);
@@ -129,6 +132,26 @@ public class JpaDatasourceRegistrar
         }
 
         return Collections.emptyList();
+    }
+
+    private void registerManagedDatasourceGroup(AnnotationMetadata metadata,
+                                                BeanDefinitionRegistry registry,
+                                                List<AnnotationAttributes> specs) {
+
+        String beanName = MANAGED_DATASOURCE_GROUP_BEAN_PREFIX + metadata.getClassName();
+        if (registry.containsBeanDefinition(beanName)) {
+            return;
+        }
+        Set<String> datasourceBeanNames = new LinkedHashSet<>();
+        for (AnnotationAttributes spec : specs) {
+            datasourceBeanNames.add(spec.getString("datasource"));
+        }
+        registry.registerBeanDefinition(
+                beanName,
+                BeanDefinitionBuilder.rootBeanDefinition(JpaManagedDatasourceGroup.class)
+                        .addConstructorArgValue(datasourceBeanNames)
+                        .getBeanDefinition()
+        );
     }
 
     // ==================== 共享 JpaVendorAdapter ====================

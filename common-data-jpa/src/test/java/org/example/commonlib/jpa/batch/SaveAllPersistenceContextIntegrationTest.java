@@ -81,7 +81,7 @@ class SaveAllPersistenceContextIntegrationTest {
     }
 
     @Test
-    void deleteAllWithoutCascadeShouldUseSingleBulkUpdate() {
+    void deleteAllWithoutCascadeShouldUseSingleIdScanAndSingleBulkUpdate() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
@@ -100,8 +100,8 @@ class SaveAllPersistenceContextIntegrationTest {
 
             repo.deleteAll();
 
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
             assertThat(repo.onlyDeleted().count()).isEqualTo(3);
-            assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(2);
         });
     }
 

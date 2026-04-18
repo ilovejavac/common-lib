@@ -41,6 +41,22 @@ class CommonLibDefaultsEnvironmentPostProcessorTest {
     }
 
     @Test
+    void shouldNotLoadDangerousDeploymentAndSecurityDefaults() {
+
+        ConfigurableEnvironment environment = new StandardEnvironment();
+
+        new CommonLibDefaultsEnvironmentPostProcessor()
+                .postProcessEnvironment(environment, new SpringApplication(Object.class));
+
+        assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isNull();
+        assertThat(environment.getProperty("spring.kafka.bootstrap-servers")).isNull();
+        assertThat(environment.getProperty("spring.rabbitmq.virtual-host")).isNull();
+        assertThat(environment.getProperty("spring.rocketmq.name-server")).isNull();
+        assertThat(environment.getProperty("app.opensearch.hosts")).isNull();
+        assertThat(environment.getProperty("app.security.secret")).isNull();
+    }
+
+    @Test
     void shouldSupportDisablingAutoImport() {
 
         ConfigurableEnvironment environment = new StandardEnvironment();

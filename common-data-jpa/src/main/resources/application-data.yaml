@@ -5,7 +5,13 @@ spring:
       encoding: utf-8
   datasource:
     hikari:
-      maximum-pool-size: 15
+      maximum-pool-size: ${app.jpa.hikari-defaults.maximum-pool-size}
+      minimum-idle: ${app.jpa.hikari-defaults.minimum-idle}
+      connection-timeout: ${app.jpa.hikari-defaults.connection-timeout}
+      validation-timeout: ${app.jpa.hikari-defaults.validation-timeout}
+      idle-timeout: ${app.jpa.hikari-defaults.idle-timeout}
+      max-lifetime: ${app.jpa.hikari-defaults.max-lifetime}
+      keepalive-time: ${app.jpa.hikari-defaults.keepalive-time}
       pool-name: HikariPool-${spring.application.name}
   jpa:
     open-in-view: false
@@ -15,8 +21,8 @@ spring:
         check_constraints: false
         check_nullability: false
         default_batch_fetch_size: 128
-        format_sql: true
-        highlight_sql: true
+        format_sql: false
+        highlight_sql: false
         use_sql_comments: false
         jdbc:
           batch_size: 50
@@ -31,9 +37,6 @@ spring:
           use_second_level_cache: false
           use_query_cache: false
         generate_statistics: false
-    hibernate:
-      ddl-auto: update
-
 decorator:
   datasource:
     enabled: true
@@ -45,6 +48,14 @@ decorator:
 
 app:
   jpa:
+    hikari-defaults:
+      maximum-pool-size: 24
+      minimum-idle: 8
+      connection-timeout: 3000
+      validation-timeout: 1000
+      idle-timeout: 600000
+      max-lifetime: 1740000
+      keepalive-time: 300000
     slow-query:
       enabled: true
       threshold: 120ms

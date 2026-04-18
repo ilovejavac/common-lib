@@ -45,7 +45,9 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
     @Override
     public void afterPropertiesSet() throws Exception {
         this.basePath = fileProperties.getLocal().getPath();
-        // 确保根目录存在
+        if (basePath == null || basePath.isBlank()) {
+            throw new IllegalStateException("app.storage.local.path must be configured when storage type is 'local'");
+        }
         Files.createDirectories(Path.of(basePath));
     }
 
