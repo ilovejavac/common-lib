@@ -33,3 +33,18 @@ spring:
         generate_statistics: false
     hibernate:
       ddl-auto: update
+
+decorator:
+  datasource:
+    enabled: true
+    datasource-proxy:
+      multiline: true
+      format-sql: true
+      query:
+        enable-logging: false
+
+app:
+  jpa:
+    slow-query:
+      enabled: true
+      threshold: 120ms

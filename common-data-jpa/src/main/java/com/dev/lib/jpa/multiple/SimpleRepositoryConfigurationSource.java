@@ -1,8 +1,8 @@
 package com.dev.lib.jpa.multiple;
 
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanNameGenerator;
-import org.springframework.core.annotation.MergedAnnotation;
 import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ResourceLoader;
@@ -18,11 +18,10 @@ import org.springframework.data.repository.query.QueryLookupStrategy;
 
 import org.springframework.util.MultiValueMap;
 
-import java.lang.annotation.Annotation;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 基于 {@link AnnotationRepositoryConfigurationSource} 的极简实现，
@@ -83,115 +82,151 @@ class SimpleRepositoryConfigurationSource extends AnnotationRepositoryConfigurat
     // ==================== 合成 AnnotationMetadata 实现 ====================
 
     /**
-     * 伪装成"被 @EnableJpaRepositories 标注的虚拟类"的 AnnotationMetadata。
-     * AnnotationRepositoryConfigurationSource 构造时调用
-     * metadata.getAnnotationAttributes(EnableJpaRepositories.class.getName()) 读取属性。
-     */
-    private static class SyntheticEnableJpaRepositoriesMetadata implements AnnotationMetadata {
+         * 伪装成"被 @EnableJpaRepositories 标注的虚拟类"的 AnnotationMetadata。
+         * AnnotationRepositoryConfigurationSource 构造时调用
+         * metadata.getAnnotationAttributes(EnableJpaRepositories.class.getName()) 读取属性。
+         */
+        private record SyntheticEnableJpaRepositoriesMetadata(Map<String, Object> attrs) implements AnnotationMetadata {
 
-        private static final String ANNOTATION_NAME = EnableJpaRepositories.class.getName();
+            private static final String ANNOTATION_NAME = EnableJpaRepositories.class.getName();
+
         // 伪造一个虚拟类名，保证 getClassName() 不为 null
-        private static final String FAKE_CLASS_NAME  = "com.dev.lib.jpa.multiple.SyntheticJpaConfig";
-
-        private final Map<String, Object> attrs;
-
-        SyntheticEnableJpaRepositoriesMetadata(Map<String, Object> attrs) {
-            this.attrs = attrs;
-        }
+            private static final String FAKE_CLASS_NAME = "com.dev.lib.jpa.multiple.SyntheticJpaConfig";
 
         // AnnotationRepositoryConfigurationSource 核心读取路径
-        @Override
-        public Map<String, Object> getAnnotationAttributes(String annotationName) {
-            if (ANNOTATION_NAME.equals(annotationName)) return attrs;
-            return null;
-        }
+            @Override
+            public Map<String, Object> getAnnotationAttributes(@NonNull String annotationName) {
 
-        @Override
-        public Map<String, Object> getAnnotationAttributes(String annotationName, boolean classValuesAsString) {
-            return getAnnotationAttributes(annotationName);
-        }
+                if (ANNOTATION_NAME.equals(annotationName)) return attrs;
+                return null;
+            }
 
-        @Override
-        public boolean hasAnnotation(String annotationName) {
-            return ANNOTATION_NAME.equals(annotationName);
-        }
+            @Override
+            public Map<String, Object> getAnnotationAttributes(@NonNull String annotationName, boolean classValuesAsString) {
 
-        @Override
-        public boolean hasMetaAnnotation(String metaAnnotationName) {
-            return false;
-        }
+                return getAnnotationAttributes(annotationName);
+            }
 
-        @Override
-        public boolean isAnnotated(String annotationName) {
-            return ANNOTATION_NAME.equals(annotationName);
-        }
+            @Override
+            public boolean hasAnnotation(@NonNull String annotationName) {
 
-        @Override
-        public String getClassName() {
-            return FAKE_CLASS_NAME;
-        }
+                return ANNOTATION_NAME.equals(annotationName);
+            }
 
-        @Override
-        public boolean isInterface() { return false; }
+            @Override
+            public boolean hasMetaAnnotation(@NonNull String metaAnnotationName) {
 
-        @Override
-        public boolean isAnnotation() { return false; }
+                return false;
+            }
 
-        @Override
-        public boolean isAbstract() { return false; }
+            @Override
+            public boolean isAnnotated(@NonNull String annotationName) {
 
-        @Override
-        public boolean isFinal() { return false; }
+                return ANNOTATION_NAME.equals(annotationName);
+            }
 
-        @Override
-        public boolean isIndependent() { return true; }
+            @Override
+            public @NonNull String getClassName() {
 
-        @Override
-        public String getEnclosingClassName() { return null; }
+                return FAKE_CLASS_NAME;
+            }
 
-        @Override
-        public String getSuperClassName() { return Object.class.getName(); }
+            @Override
+            public boolean isInterface() {
 
-        @Override
-        public String[] getInterfaceNames() { return new String[0]; }
+                return false;
+            }
 
-        @Override
-        public String[] getMemberClassNames() { return new String[0]; }
+            @Override
+            public boolean isAnnotation() {
 
-        @Override
-        public Set<MethodMetadata> getAnnotatedMethods(String annotationName) {
-            return Set.of();
-        }
+                return false;
+            }
 
-        @Override
-        public Set<MethodMetadata> getDeclaredMethods() {
-            return Set.of();
-        }
+            @Override
+            public boolean isAbstract() {
 
-        @Override
-        public MergedAnnotations getAnnotations() {
-            return MergedAnnotations.of(java.util.Collections.emptyList());
-        }
+                return false;
+            }
 
-        @Override
-        public Set<String> getAnnotationTypes() {
-            return Set.of(ANNOTATION_NAME);
-        }
+            @Override
+            public boolean isFinal() {
 
-        @Override
-        public Set<String> getMetaAnnotationTypes(String annotationName) {
-            return Set.of();
-        }
+                return false;
+            }
 
-        @Override
-        public MultiValueMap<String, Object> getAllAnnotationAttributes(String annotationName) {
-            return null;
-        }
+            @Override
+            public boolean isIndependent() {
 
-        @Override
-        public MultiValueMap<String, Object> getAllAnnotationAttributes(String annotationName,
-                                                                        boolean classValuesAsString) {
-            return null;
-        }
+                return true;
+            }
+
+            @Override
+            public String getEnclosingClassName() {
+
+                return null;
+            }
+
+            @Override
+            public String getSuperClassName() {
+
+                return Object.class.getName();
+            }
+
+            @Override
+            public String @NonNull [] getInterfaceNames() {
+
+                return new String[0];
+            }
+
+            @Override
+            public String @NonNull [] getMemberClassNames() {
+
+                return new String[0];
+            }
+
+            @Override
+            public @NonNull Set<MethodMetadata> getAnnotatedMethods(@NonNull String annotationName) {
+
+                return Set.of();
+            }
+
+            @Override
+            public @NonNull Set<MethodMetadata> getDeclaredMethods() {
+
+                return Set.of();
+            }
+
+            @Override
+            public @NonNull MergedAnnotations getAnnotations() {
+
+                return MergedAnnotations.of(Collections.emptyList());
+            }
+
+            @Override
+            public @NonNull Set<String> getAnnotationTypes() {
+
+                return Set.of(ANNOTATION_NAME);
+            }
+
+            @Override
+            public @NonNull Set<String> getMetaAnnotationTypes(@NonNull String annotationName) {
+
+                return Set.of();
+            }
+
+            @Override
+            public MultiValueMap<String, Object> getAllAnnotationAttributes(@NonNull String annotationName) {
+
+                return null;
+            }
+
+            @Override
+            public MultiValueMap<String, Object> getAllAnnotationAttributes(@NonNull String annotationName,
+                                                                            boolean classValuesAsString) {
+
+                return null;
+            }
+
     }
 }
