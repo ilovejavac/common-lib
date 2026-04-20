@@ -12,7 +12,6 @@ spring:
       idle-timeout: ${app.jpa.hikari-defaults.idle-timeout}
       max-lifetime: ${app.jpa.hikari-defaults.max-lifetime}
       keepalive-time: ${app.jpa.hikari-defaults.keepalive-time}
-      pool-name: HikariPool-${spring.application.name}
   jpa:
     open-in-view: false
     show-sql: false
@@ -48,9 +47,9 @@ decorator:
 
 app:
   jpa:
-    hikari-defaults:
+    hikari:
       maximum-pool-size: 24
-      minimum-idle: 8
+      minimum-idle: 10
       connection-timeout: 3000
       validation-timeout: 1000
       idle-timeout: 600000
@@ -58,4 +57,4 @@ app:
       keepalive-time: 300000
     slow-query:
       enabled: true
-      threshold: 120ms
+      threshold: 95ms

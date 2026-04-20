@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 @Getter
 @Accessors(chain = false, fluent = false)
-@ConfigurationProperties(prefix = "app.jpa.hikari-defaults")
+@ConfigurationProperties(prefix = "app.jpa.hikari")
 public class JpaHikariDefaultsProperties {
 
     private Integer maximumPoolSize;

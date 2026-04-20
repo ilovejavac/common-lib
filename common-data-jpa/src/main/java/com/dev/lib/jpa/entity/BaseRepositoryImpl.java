@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 @Getter
 public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository<T, Long> implements BaseRepository<T> {
 
-    private static final int DEFAULT_JDBC_BATCH_SIZE = 256;
+    private static final int DEFAULT_JDBC_BATCH_SIZE = 50;
 
     private static final String JDBC_BATCH_SIZE_PROPERTY = "hibernate.jdbc.batch_size";
 

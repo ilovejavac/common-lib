@@ -337,7 +337,7 @@ public final class QueryReadSupport {
                 select.buildExpressions(repository.getPathBuilder()),
                 dslQuery
         );
-        applyStreamFetchSize(query, repository.getJdbcBatchSize());
+        applyStreamFetchSize(query, repository.getInClauseBatchSize());
 
         return mapTupleStream(repository, query.stream(), select, resultClass);
     }
@@ -480,7 +480,7 @@ public final class QueryReadSupport {
         Predicate predicate = buildPredicate(repository, ctx, dslQuery, expressions);
 
         JPAQuery<T> query = repository.getQueryFactory().selectFrom(repository.getPath()).where(predicate);
-        applyStreamFetchSize(query, repository.getJdbcBatchSize());
+        applyStreamFetchSize(query, repository.getInClauseBatchSize());
 
         if (dslQuery != null) {
             applySort(query, repository.getPathBuilder(), dslQuery);
