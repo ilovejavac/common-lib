@@ -5,6 +5,7 @@ import com.dev.lib.entity.dsl.agg.AggType;
 import com.dev.lib.entity.dsl.agg.AggJoinStrategy;
 import com.dev.lib.entity.dsl.agg.AggregateSpec;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

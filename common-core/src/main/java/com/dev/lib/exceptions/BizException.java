@@ -16,6 +16,12 @@ public class BizException extends RuntimeException {
 
     private boolean i18n = false;
 
+    public BizException(CodeEnums ce) {
+        super(ce.getMessage());
+        this.coder = ce.getCode();
+        this.msger = ce.getMessage();
+    }
+
     public BizException(Integer code, String message) {
 
         super(message);

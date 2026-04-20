@@ -73,6 +73,7 @@
         <module>common-mq-rocketmq</module>
         <module>common-agent</module>
         <module>common-security-aes</module>
+        <module>common-user</module>
     </modules>
 
     <properties>
@@ -590,6 +591,11 @@
             <dependency>
                 <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-mq</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.ilovejavac</groupId>
+                <artifactId>common-user</artifactId>
                 <version>${lib.version}</version>
             </dependency>
         </dependencies>
