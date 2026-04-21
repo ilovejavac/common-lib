@@ -2,6 +2,7 @@ package com.dev.lib.security.interceptor;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.exceptions.BizException;
+import com.dev.lib.security.config.properties.SecurityValidProperties;
 import com.dev.lib.security.service.AuthenticateService;
 import com.dev.lib.security.service.PermissionService;
 import com.dev.lib.security.service.TokenService;
@@ -33,9 +34,9 @@ public class PermissionValidator implements InitializingBean {
 
     private final PermissionService permissionService;
 
-    private final AuthenticateService authenticateService;
-
     private final TokenService tokenService;
+
+    private final SecurityValidProperties validProperties;
 
     public boolean anonymous(HandlerMethod handlerMethod) {
 
@@ -135,7 +136,8 @@ public class PermissionValidator implements InitializingBean {
                     "/healthz",
                     "/api/login",
                     "/api/register",
-                    "/api/public/**"
+                    "/api/public/**",
+                    "/api/bootstrap/**"
             )
     );
 
@@ -155,6 +157,10 @@ public class PermissionValidator implements InitializingBean {
 
         if (securityProperties.getWhiteListRequest() != null) {
             whitelistPatterns.addAll(securityProperties.getWhiteListRequest());
+        }
+
+        if (validProperties.getSkipPatterns() != null) {
+            whitelistPatterns.addAll(validProperties.getSkipPatterns());
         }
     }
 

@@ -7,4 +7,12 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class BootstrapAdapt implements IBootstrapQueryRepo {
+
+
+    @Override
+    public Boolean isSystemInitialized() {
+
+        return null;
+    }
+
 }

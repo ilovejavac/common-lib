@@ -78,7 +78,7 @@ public final class IntEncoder {
         // 填充
         if (minLen > sb.length()) {
             int padding = minLen - sb.length();
-            sb.append(String.valueOf(chars[0]).repeat(Math.max(0, padding)));
+            sb.repeat(String.valueOf(chars[0]), Math.max(0, padding));
         }
         return sb.reverse().toString();
     }

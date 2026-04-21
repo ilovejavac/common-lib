@@ -1,6 +1,8 @@
 package com.dev.lib.security.util;
 
 import com.dev.lib.entity.EntityStatus;
+import com.dev.lib.security.model.UserStatus;
+import com.dev.lib.security.model.UserType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -42,10 +44,10 @@ public class UserDetails implements Serializable {
         Anonymous = UserDetails.builder()
                 .id(ANONYMOUS_USER_ID)
                 .roles(List.of(ANONYMOUS))
-                .status(EntityStatus.ENABLE)
+                .status(UserStatus.LOCKED)
                 .realName("Anonymous")
                 .username("anonymous")
-                .userType(ANONYMOUS)
+                .userType(UserType.ORDINARY_USER)
                 .tenant(ANONYMOUS_USER_ID)
                 .deptId(ANONYMOUS_USER_ID)
                 .deptName("Anonymous")
@@ -56,10 +58,10 @@ public class UserDetails implements Serializable {
         Internal = UserDetails.builder()
                 .id(INTERNAL_USER_ID)
                 .roles(List.of(INTERNAL))
-                .status(EntityStatus.ENABLE)
+                .status(UserStatus.ACTIVE)
                 .realName("Internal")
                 .username("internal")
-                .userType(INTERNAL)
+                .userType(UserType.ORDINARY_USER)
                 .tenant(INTERNAL_USER_ID)
                 .deptId(INTERNAL_USER_ID)
                 .deptName("Internal")
@@ -70,10 +72,10 @@ public class UserDetails implements Serializable {
         System = UserDetails.builder()
                 .id(SYSTEM_USER_ID)
                 .roles(List.of(SYSTEM))
-                .status(EntityStatus.ENABLE)
+                .status(UserStatus.ACTIVE)
                 .realName("System")
                 .username("system")
-                .userType(SYSTEM)
+                .userType(UserType.SYSTEM_ADMINISTRATOR)
                 .tenant(SYSTEM_USER_ID)
                 .deptId(SYSTEM_USER_ID)
                 .deptName("System")
@@ -110,9 +112,9 @@ public class UserDetails implements Serializable {
     // ===== 用户状态  =====
     private String realName;          // 真实姓名(用于日志/审计)
 
-    private String userType;          // 用户类型: EMPLOYEE, ADMIN, SYSTEM 等
+    private UserType userType;          // 用户类型: EMPLOYEE, ADMIN, SYSTEM 等
 
-    private EntityStatus status;           // 用户状态
+    private UserStatus status;           // 用户状态
 
     // ===== Token  =====
     private String tokenId;           // Token 唯一标识(用于踢人/单点登录)
@@ -138,7 +140,7 @@ public class UserDetails implements Serializable {
      */
     public boolean isSuperAdmin() {
 
-        return roles != null && roles.contains("ADMIN");
+        return UserType.SYSTEM_ADMINISTRATOR.equals(userType);
     }
 
     /**

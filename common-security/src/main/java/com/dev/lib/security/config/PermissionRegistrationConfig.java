@@ -23,7 +23,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @ConditionalOnWebApplication
 @ConditionalOnBean(AuthenticateService.class)
-@DependsOn("snowflakeConfig")
 public class PermissionRegistrationConfig {
 
     private final AuthenticateService authenticateService;

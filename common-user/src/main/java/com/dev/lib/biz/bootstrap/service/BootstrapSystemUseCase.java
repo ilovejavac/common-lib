@@ -5,6 +5,7 @@ import com.dev.lib.biz.bootstrap.repo.IBootstrapQueryRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.validation.annotation.Validated;
 
 @Slf4j
 @Component
@@ -13,7 +14,7 @@ public class BootstrapSystemUseCase {
 
     private final IBootstrapQueryRepo bootstrapQueryRepo;
 
-    public Boolean execute(BootstrapCmd.BootstrapSystem cmd) {
+    public Boolean execute(@Validated BootstrapCmd.BootstrapSystem cmd) {
 
         throw new UnsupportedOperationException();
     }

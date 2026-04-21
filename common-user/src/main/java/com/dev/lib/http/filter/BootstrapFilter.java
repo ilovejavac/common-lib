@@ -1,6 +1,8 @@
 package com.dev.lib.http.filter;
 
+import com.dev.lib.biz.bootstrap.BootstrapError;
 import com.dev.lib.biz.bootstrap.repo.IBootstrapQueryRepo;
+import com.dev.lib.web.model.ServerResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,8 +23,12 @@ public class BootstrapFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-
+        if (!bootstrapQueryRepo.isSystemInitialized()) {
+            ServerResponse.fail(BootstrapError.SYSTEM_NOT_INITIALIZE).to(response);
+            return;
+        }
 
         filterChain.doFilter(request, response);
     }
+
 }
