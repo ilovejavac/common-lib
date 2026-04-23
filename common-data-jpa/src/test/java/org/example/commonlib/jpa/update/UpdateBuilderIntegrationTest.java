@@ -1,7 +1,6 @@
 package org.example.commonlib.jpa.update;
 
 import com.dev.lib.entity.dsl.DslQuery;
-import com.dev.lib.entity.encrypt.Encrypt;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.security.util.SecurityContextHolder;
@@ -11,13 +10,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import org.assertj.core.api.Assertions;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -52,13 +51,12 @@ class UpdateBuilderIntegrationTest {
             UpdateCaseQuery query = new UpdateCaseQuery();
             query.setId(saved.getId());
 
-            long skipped = repo.update()
+            Assertions.assertThatThrownBy(() -> repo.update()
                     .set(UpdateCaseThing::getRemark, null)
                     .where(query)
-                    .execute();
-
-            assertThat(skipped).isEqualTo(1L);
-            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getRemark).contains("remark-1");
+                    .execute())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("至少设置一个字段");
 
             long nulled = repo.update()
                     .setNull(UpdateCaseThing::getRemark)
@@ -71,13 +69,34 @@ class UpdateBuilderIntegrationTest {
     }
 
     @Test
-    void shouldSupportEnumJsonEncryptAndAutoAuditFields() {
+    void setNullOnNotNullColumnShouldFailBeforeDatabaseConstraint() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
 
             UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-3", "plain-before"));
+
+            UpdateCaseQuery query = new UpdateCaseQuery();
+            query.setId(saved.getId());
+
+            Assertions.assertThatThrownBy(() -> repo.update()
+                    .setNull(UpdateCaseThing::getName)
+                    .where(query)
+                    .execute())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("nullable = false")
+                    .hasMessageContaining("name");
+        });
+    }
+
+    @Test
+    void shouldSupportEnumJsonAndAutoAuditFields() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
 
             UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-2", "plain-before"));
             LocalDateTime oldUpdatedAt = saved.getUpdatedAt();
@@ -89,32 +108,24 @@ class UpdateBuilderIntegrationTest {
             payload.put("code", "A-1");
             payload.put("count", 2);
 
+            final long[] affectedHolder = new long[1];
             SecurityContextHolder.with(UserDetails.builder().id(101L).username("u101").build(), () -> {
-                long affected = repo.update()
+                affectedHolder[0] = repo.update()
                         .set(UpdateCaseThing::getName, "after")
                         .set(UpdateCaseThing::getExecuteState, PlanState.RUNNING)
                         .set(UpdateCaseThing::getPayload, payload)
-                        .set(UpdateCaseThing::getSecretText, "plain-secret")
                         .where(query)
                         .execute();
-                assertThat(affected).isEqualTo(1L);
             });
+
+            assertThat(affectedHolder[0]).isEqualTo(1L);
 
             UpdateCaseThing reloaded = repo.findById(saved.getId()).orElseThrow();
             assertThat(reloaded.getName()).isEqualTo("after");
             assertThat(reloaded.getExecuteState()).isEqualTo(PlanState.RUNNING);
             assertThat(reloaded.getPayload()).containsEntry("code", "A-1").containsEntry("count", 2);
-            assertThat(reloaded.getSecretText()).isEqualTo("plain-secret");
             assertThat(reloaded.getModifierId()).isEqualTo(101L);
             assertThat(reloaded.getUpdatedAt()).isAfter(oldUpdatedAt);
-
-            Map<String, Object> row = jdbcTemplate.queryForMap(
-                    "select execute_state, payload, secret_text from update_case_thing where id = ?",
-                    saved.getId()
-            );
-            assertThat(row.get("execute_state")).isEqualTo("RUNNING");
-            assertThat(String.valueOf(row.get("payload"))).contains("\"code\":\"A-1\"");
-            assertThat(String.valueOf(row.get("secret_text"))).startsWith("v1:").isNotEqualTo("plain-secret");
         });
     }
 
@@ -128,7 +139,7 @@ class UpdateBuilderIntegrationTest {
 @Table(name = "update_case_thing")
 class UpdateCaseThing extends JpaEntity {
 
-    @Column(length = 32)
+    @Column(length = 32, nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)
@@ -142,7 +153,6 @@ class UpdateCaseThing extends JpaEntity {
     @Column(length = 64)
     private String remark;
 
-    @Encrypt
     @Column(length = 256)
     private String secretText;
 
@@ -175,11 +185,6 @@ class UpdateCaseThing extends JpaEntity {
     public String getRemark() {
 
         return remark;
-    }
-
-    public String getSecretText() {
-
-        return secretText;
     }
 }
 

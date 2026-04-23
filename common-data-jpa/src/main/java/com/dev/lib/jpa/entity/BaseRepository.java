@@ -47,6 +47,10 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
         return new QueryBuilder<>(RepositoryUtils.unwrap(this)).selectByNames(fieldNames);
     }
 
+    default UpdateBuilder<T> update() {
+        return new UpdateBuilder<>(RepositoryUtils.unwrap(this));
+    }
+
     // ==================== 直接查询 ====================
 
     Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);
