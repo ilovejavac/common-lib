@@ -29,9 +29,9 @@ dubbo:
     address: nacos://${app.cloud.username}:${app.cloud.password}@${app.cloud.host}:${app.cloud.port}
     parameters:
       namespace: ${app.cloud.namespace}
-      group: ${app.cloud.group}
     use-as-config-center: true
     use-as-metadata-center: true
+    group: ${app.cloud.group}
   scan:
     base-packages: ${app.dubbo.scan-packages}
 spring:

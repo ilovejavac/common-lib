@@ -1,5 +1,6 @@
 package com.dev.lib.http.permission;
 
+import com.dev.lib.biz.permission.repo.IRoleQueryRepo;
 import com.dev.lib.security.service.annotation.RequireRole;
 import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class RoleController {
 
     // 修改角色
 
+    private final IRoleQueryRepo roleQueryRepo;
     // 角色列表
 
     // 角色详情

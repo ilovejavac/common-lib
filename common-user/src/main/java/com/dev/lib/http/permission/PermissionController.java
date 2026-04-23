@@ -1,5 +1,6 @@
 package com.dev.lib.http.permission;
 
+import com.dev.lib.biz.permission.repo.IPermissionQueryRepo;
 import com.dev.lib.security.service.annotation.RequireRole;
 import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ public class PermissionController {
         return ServerResponse.ok();
     }
 
+    private final IPermissionQueryRepo permissionQueryRepo;
     // 权限列表
     public ServerResponse<String> listPermission() {
 

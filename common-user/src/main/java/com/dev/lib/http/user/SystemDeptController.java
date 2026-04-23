@@ -1,5 +1,7 @@
 package com.dev.lib.http.user;
 
+import com.dev.lib.biz.user.repo.IDeptQueryRepo;
+import com.dev.lib.biz.user.service.department.DepartmentCommandService;
 import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 public class SystemDeptController {
+
+    private final DepartmentCommandService service;
 
     // 创建部门
     public ServerResponse<String> createDept() {
@@ -29,6 +33,8 @@ public class SystemDeptController {
     }
 
     // 部门列表
+    private final IDeptQueryRepo deptQueryRepo;
+
     public ServerResponse<String> listDept() {
 
         return ServerResponse.ok();
@@ -39,4 +45,5 @@ public class SystemDeptController {
 
         return ServerResponse.ok();
     }
+
 }
