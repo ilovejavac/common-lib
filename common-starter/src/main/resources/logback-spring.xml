@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration debug="false" scan="false">
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
     <!-- ========== 变量定义 ========== -->
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="/"/>
@@ -7,14 +8,16 @@
     <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="log"/>
     <springProperty scope="context" name="LOGSTASH_HOST" source="app.logstash.host" defaultValue="localhost:5044"/>
 
+    <property name="EX_PATTERN" value="%ex{20}"/>
+
     <property name="LOG_FILE" value="${APP_NAME}"/>
 
     <!-- 日志输出格式 -->
     <property name="CONSOLE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n%ex{20}"/>
+              value="%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5level) %clr(-){faint} %clr([%thread]){faint} %clr([traceId=%X{trace_id:-},spanId=%X{span_id:-}]){faint} %clr(%logger{39}){cyan}:%line %clr(-){faint} %msg%n${EX_PATTERN}"/>
 
     <property name="FILE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{trace_id:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n%ex{20}"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{trace_id:-}] [spanId=%X{span_id:-}] %-5level %logger{36} - %msg%n${EX_PATTERN}"/>
 
     <!-- ========== 控制台输出 ========== -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -102,14 +105,16 @@
 
             <!-- 异常堆栈优化 -->
             <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
-                <maxDepthPerThrowable>3</maxDepthPerThrowable>
-                <maxLength>2048</maxLength>
+                <maxDepthPerThrowable>5</maxDepthPerThrowable>
+                <maxLength>4096</maxLength>
                 <shortenedClassNameLength>40</shortenedClassNameLength>
+
                 <exclude>sun\.reflect\..*</exclude>
                 <exclude>java\.lang\.reflect\..*</exclude>
                 <exclude>org\.springframework\..*</exclude>
                 <exclude>org\.apache\.catalina\..*</exclude>
                 <exclude>org\.apache\.tomcat\..*</exclude>
+                <exclude>jakarta\.servlet\..*</exclude>
             </throwableConverter>
         </encoder>
     </appender>
@@ -156,13 +161,13 @@
 
     <!-- Nacos 客户端噪声（全面精简，只保留ERROR日志） -->
     <!-- 核心：屏蔽Nacos远程连接/grpc客户端的大量INFO日志 -->
-    <logger name="com.alibaba.nacos.common.remote.client" level="ERROR" additivity="false"/>
+    <logger name="com.alibaba.nacos.common.remote.client" level="ERROR"/>
     <!-- 屏蔽Nacos认证插件日志 -->
     <logger name="com.alibaba.nacos.plugin.auth" level="ERROR" additivity="false"/>
     <!-- 屏蔽Nacos命名服务（注册/发现）日志 -->
-    <logger name="com.alibaba.nacos.client.naming" level="ERROR" additivity="false"/>
+    <logger name="com.alibaba.nacos.client.naming" level="ERROR"/>
     <!-- 屏蔽Nacos配置客户端日志 -->
-    <logger name="com.alibaba.nacos.client.config" level="ERROR" additivity="false"/>
+    <logger name="com.alibaba.nacos.client.config" level="ERROR"/>
     <logger name="com.alibaba.nacos.client.config.impl" level="ERROR" additivity="false"/>
     <logger name="com.alibaba.nacos.client.config.filter" level="ERROR" additivity="false"/>
     <!-- 屏蔽Nacos通知中心（解决关闭时的NPE日志） -->
@@ -185,9 +190,9 @@
     <logger name="org.springframework.aop" level="WARN" additivity="false"/>
 
     <!-- Hibernate/JPA 噪声 -->
-<!--    <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR" additivity="false"/>-->
-<!--    <logger name="org.hibernate.engine.internal" level="WARN" additivity="false"/>-->
-<!--    <logger name="org.hibernate.validator" level="WARN" additivity="false"/>-->
+    <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR" additivity="false"/>
+    <logger name="org.hibernate.engine.internal" level="WARN" additivity="false"/>
+    <logger name="org.hibernate.validator" level="WARN" additivity="false"/>
 
     <!-- Redisson 客户端噪声 -->
     <logger name="org.redisson" level="WARN" additivity="false"/>
