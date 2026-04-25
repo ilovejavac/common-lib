@@ -7,11 +7,15 @@ import com.dev.lib.jpa.config.FinalSlowQueryLoggingListener;
 import com.dev.lib.jpa.config.JpaHikariDefaultsProperties;
 import com.dev.lib.jpa.config.SingleDatasourceOnlyHibernatePropertiesCustomizer;
 import com.dev.lib.jpa.config.SlowQueryProperties;
+import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
+import com.dev.lib.jpa.entity.write.RepositoryWritePlugin;
+import com.dev.lib.jpa.entity.write.RepositoryWritePluginRegistrar;
 import com.dev.lib.jpa.multiple.JpaManagedDatasourceGroup;
 import com.dev.lib.jpa.multiple.JpaManagedHikariDefaultsBeanPostProcessor;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import net.ttddyy.dsproxy.listener.QueryExecutionListener;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -45,6 +49,12 @@ public class CommonJpaAutoConfig {
     }
 
     @Bean
+    public static RepositoryWritePluginRegistrar repositoryWritePluginRegistrar(ObjectProvider<RepositoryWritePlugin> plugins) {
+
+        return new RepositoryWritePluginRegistrar(plugins);
+    }
+
+    @Bean
     @ConditionalOnMissingBean
     public JPAQueryFactory jpaQueryFactory(EntityManager entityManager) {
 
@@ -64,6 +74,8 @@ public class CommonJpaAutoConfig {
             if (StringUtils.hasText(resolvedDatabasePlatform)) {
                 hibernateProperties.put("hibernate.dialect", resolvedDatabasePlatform);
             }
+            hibernateProperties.put(RepositoryWriteContext.DATASOURCE_NAME_PROPERTY, RepositoryWriteContext.DEFAULT_DATASOURCE_NAME);
+            hibernateProperties.put(RepositoryWriteContext.LOGICAL_DIALECT_PROPERTY, appDialectProperties.getDialect().name());
         };
     }
 

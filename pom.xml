@@ -48,6 +48,7 @@
         <module>common-starter</module>
         <module>common-core</module>
         <module>common-data-jpa</module>
+        <module>common-data-datalake</module>
         <module>common-local-task-message</module>
         <module>common-dict</module>
         <module>common-schedule</module>
@@ -481,6 +482,11 @@
             <dependency>
                 <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-data-jpa</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.ilovejavac</groupId>
+                <artifactId>common-data-datalake</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>

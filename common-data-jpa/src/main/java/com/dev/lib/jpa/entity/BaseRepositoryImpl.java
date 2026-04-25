@@ -8,6 +8,8 @@ import com.dev.lib.jpa.entity.delete.CascadeSoftDeleteSupport;
 import com.dev.lib.jpa.entity.query.QueryReadSupport;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.dev.lib.jpa.entity.dsl.SelectBuilder;
+import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
+import com.dev.lib.jpa.entity.write.RepositoryWritePluginChain;
 import com.querydsl.core.types.EntityPath;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -207,9 +209,24 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public <S extends T> @NonNull S save(@NonNull S entity) {
+
+        RepositoryWriteContext<T> context = RepositoryWriteContext.from(this);
+        return RepositoryWritePluginChain.getInstance()
+                .resolve(context)
+                .map(plugin -> plugin.save(context, entity))
+                .orElseGet(() -> super.save(entity));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public <S extends T> @NonNull List<S> saveAll(@NonNull Iterable<S> entities) {
 
-        return BatchOperationSupport.saveAll(this, entities);
+        RepositoryWriteContext<T> context = RepositoryWriteContext.from(this);
+        return RepositoryWritePluginChain.getInstance()
+                .resolve(context)
+                .map(plugin -> plugin.saveAll(context, entities))
+                .orElseGet(() -> BatchOperationSupport.saveAll(this, entities));
     }
 
     @Override

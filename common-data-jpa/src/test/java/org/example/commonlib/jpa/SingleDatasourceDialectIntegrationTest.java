@@ -1,5 +1,6 @@
 package org.example.commonlib.jpa;
 
+import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
@@ -32,6 +33,10 @@ class SingleDatasourceDialectIntegrationTest {
             EntityManagerFactory emf = context.getBean(EntityManagerFactory.class);
             assertThat(emf.getProperties().get("hibernate.dialect"))
                     .isEqualTo("org.hibernate.community.dialect.SQLiteDialect");
+            assertThat(emf.getProperties().get(RepositoryWriteContext.DATASOURCE_NAME_PROPERTY))
+                    .isEqualTo(RepositoryWriteContext.DEFAULT_DATASOURCE_NAME);
+            assertThat(emf.getProperties().get(RepositoryWriteContext.LOGICAL_DIALECT_PROPERTY))
+                    .isEqualTo("SQLITE");
         });
     }
 

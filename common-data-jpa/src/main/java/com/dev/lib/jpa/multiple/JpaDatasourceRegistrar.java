@@ -2,6 +2,7 @@ package com.dev.lib.jpa.multiple;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.dev.lib.jpa.config.AppDialectProperties;
+import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -90,6 +91,9 @@ public class JpaDatasourceRegistrar
             String resolvedDatabasePlatform = explicitDialectConfigured
                     ? dialect.resolveDatabasePlatform(null, jpaProperties.getDatabasePlatform())
                     : globalDatabasePlatform;
+            JpaDialect logicalDialect = explicitDialectConfigured
+                    ? dialect
+                    : appDialectProperties.getDialect();
 
             boolean isPrimary = first;
             if (first) {
@@ -104,7 +108,7 @@ public class JpaDatasourceRegistrar
             String vendorAdapterName = dsRef + "JpaVendorAdapter";
 
             registerVendorAdapter(registry, vendorAdapterName, jpaProperties, resolvedDatabasePlatform, isPrimary);
-            registerEntityManagerFactory(registry, emfName, dsRef, packages, mappingResources, vendorAdapterName, resolvedDatabasePlatform, isPrimary);
+            registerEntityManagerFactory(registry, emfName, dsRef, packages, mappingResources, vendorAdapterName, resolvedDatabasePlatform, logicalDialect, isPrimary);
             registerTransactionManager(registry, tmName, emfName, isPrimary);
             registerSharedEntityManager(registry, sharedEmName, emfName);
             registerQueryFactory(registry, qfName, sharedEmName, isPrimary);
@@ -198,6 +202,7 @@ public class JpaDatasourceRegistrar
                                               String[] mappingResources,
                                               String vendorAdapterRef,
                                               String resolvedDatabasePlatform,
+                                              JpaDialect logicalDialect,
                                               boolean primary) {
 
         BeanDefinitionBuilder builder =
@@ -210,11 +215,13 @@ public class JpaDatasourceRegistrar
         if (mappingResources != null && mappingResources.length > 0) {
             builder.addPropertyValue("mappingResources", mappingResources);
         }
+        Map<String, Object> jpaPropertyMap = new HashMap<>();
+        jpaPropertyMap.put(RepositoryWriteContext.DATASOURCE_NAME_PROPERTY, dsRef);
+        jpaPropertyMap.put(RepositoryWriteContext.LOGICAL_DIALECT_PROPERTY, logicalDialect.name());
         if (StringUtils.hasText(resolvedDatabasePlatform)) {
-            Map<String, Object> jpaPropertyMap = new HashMap<>();
             jpaPropertyMap.put("hibernate.dialect", resolvedDatabasePlatform);
-            builder.addPropertyValue("jpaPropertyMap", jpaPropertyMap);
         }
+        builder.addPropertyValue("jpaPropertyMap", jpaPropertyMap);
 
         builder.setPrimary(primary);
         registry.registerBeanDefinition(beanName, builder.getBeanDefinition());

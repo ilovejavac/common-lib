@@ -5,6 +5,7 @@ import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.jpa.entity.RepositoryUtils;
+import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
 import com.dev.lib.jpa.multiple.JpaDialect;
 import com.dev.lib.jpa.multiple.JpaDatasource;
 import com.zaxxer.hikari.HikariDataSource;
@@ -79,6 +80,14 @@ class MultiJpaDatasourceIntegrationTest {
                             .isEqualTo("org.hibernate.community.dialect.SQLiteDialect");
                     assertThat(pgsqlEmf.getProperties().get("hibernate.dialect"))
                             .isEqualTo("org.hibernate.dialect.PostgreSQLDialect");
+                    assertThat(sqliteEmf.getProperties().get(RepositoryWriteContext.DATASOURCE_NAME_PROPERTY))
+                            .isEqualTo("sqliteDs");
+                    assertThat(sqliteEmf.getProperties().get(RepositoryWriteContext.LOGICAL_DIALECT_PROPERTY))
+                            .isEqualTo("SQLITE");
+                    assertThat(pgsqlEmf.getProperties().get(RepositoryWriteContext.DATASOURCE_NAME_PROPERTY))
+                            .isEqualTo("pgsqlDs");
+                    assertThat(pgsqlEmf.getProperties().get(RepositoryWriteContext.LOGICAL_DIALECT_PROPERTY))
+                            .isEqualTo("POSTGRESQL");
                 });
     }
 
