@@ -1,6 +1,7 @@
 package com.dev.lib.web;
 
 import com.dev.lib.exceptions.BizException;
+import com.dev.lib.handler.ExceptionHandle;
 import com.dev.lib.web.model.ServerResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -58,13 +59,23 @@ class GlobalExceptionHandlingTest {
 
         MvcResult result = mockMvc.perform(get("/api/exception/runtime"))
                 .andExpect(jsonPath("$.code").value(5500))
-                .andExpect(jsonPath("$.message").value("系统异常，请联系管理员"))
-                .andExpect(jsonPath("$.error").value("系统异常，请联系管理员"))
+                .andExpect(jsonPath("$.message").value("系统繁忙，请稍后再试"))
+                .andExpect(jsonPath("$.error").value("系统繁忙，请稍后再试"))
                 .andReturn();
 
         assertThat(result.getResponse().getContentAsString())
                 .doesNotContain("database connection refused")
                 .doesNotContain("RuntimeException");
+    }
+
+    @Test
+    void shouldMarkRequestWhenExceptionIsHandled() throws Exception {
+
+        MvcResult result = mockMvc.perform(get("/api/exception/runtime"))
+                .andExpect(jsonPath("$.code").value(5500))
+                .andReturn();
+
+        assertThat(result.getRequest().getAttribute(ExceptionHandle.EXCEPTION_HANDLED_ATTRIBUTE)).isEqualTo(Boolean.TRUE);
     }
 
     @Test

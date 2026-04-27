@@ -2,6 +2,7 @@ package com.dev.lib.web;
 
 import com.dev.lib.entity.id.IDWorker;
 import com.dev.lib.entity.id.IntEncoder;
+import com.dev.lib.handler.ExceptionHandle;
 import com.dev.lib.security.util.ClientInfoExtractor;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
@@ -32,7 +33,7 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 @RequiredArgsConstructor
 public class LoggingFilter extends OncePerRequestFilter {
 
-    private static final int CACHE_LIMIT = 64 * 1024; // 10KB
+    private static final int CACHE_LIMIT = 64 * 1024; // 64KB
 
     private static final String[] LOG_PATTERNS = {"/api/**"};
 
@@ -40,7 +41,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request, CACHE_LIMIT);
-        String requestPath = request.getServletPath();
+        String                       requestPath    = request.getServletPath();
 
         if (!shouldLog(requestPath)) {
             filterChain.doFilter(request, response);
@@ -108,15 +109,18 @@ public class LoggingFilter extends OncePerRequestFilter {
         Map<String, Object> business    = new HashMap<>();
         boolean             hasBusiness = false;
 
-        if ("POST".equals(request.getMethod()) || "PUT".equals(request.getMethod())) {
+        if (shouldLogRequestBody(request)) {
             byte[] content = request.getContentAsByteArray();
             if (content.length > 0) {
+                boolean truncated = content.length >= CACHE_LIMIT;
                 try {
                     String body = new String(content, request.getCharacterEncoding());
-                    business.put("request_body", Jsons.parse(body));
+                    business.put("request_body", truncated ? body : Jsons.parse(body));
+                    business.put("request_body_truncated", truncated);
                     hasBusiness = true;
                 } catch (Exception e) {
                     business.put("request_body", new String(content, request.getCharacterEncoding()));
+                    business.put("request_body_truncated", truncated);
                     hasBusiness = true;
                 }
             }
@@ -137,6 +141,18 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
 
         log.info("Request completed", args.toArray());
+    }
+
+    private boolean shouldLogRequestBody(ContentCachingRequestWrapper request) {
+
+        if (!Boolean.TRUE.equals(request.getAttribute(ExceptionHandle.EXCEPTION_HANDLED_ATTRIBUTE))) {
+            return false;
+        }
+        if (!"POST".equals(request.getMethod()) && !"PUT".equals(request.getMethod())) {
+            return false;
+        }
+        String contentType = request.getContentType();
+        return contentType != null && contentType.toLowerCase(Locale.ROOT).contains("application/json");
     }
 
 }

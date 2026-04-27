@@ -8,7 +8,7 @@
     <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="log"/>
     <springProperty scope="context" name="LOGSTASH_HOST" source="app.logstash.host" defaultValue="localhost:5044"/>
 
-    <property name="EX_PATTERN" value="%ex{20}"/>
+    <property name="EX_PATTERN" value="%ex{25}"/>
 
     <property name="LOG_FILE" value="${APP_NAME}"/>
 
@@ -158,6 +158,7 @@
     <logger name="org.apache.catalina" level="WARN" additivity="false"/>
     <logger name="org.apache.tomcat" level="WARN" additivity="false"/>
     <logger name="io.netty" level="WARN" additivity="false"/>
+    <logger name="org.springframework.web.servlet.DispatcherServlet" level="WARN"/>
 
     <!-- Nacos 客户端噪声（全面精简，只保留ERROR日志） -->
     <!-- 核心：屏蔽Nacos远程连接/grpc客户端的大量INFO日志 -->
@@ -188,6 +189,7 @@
     <logger name="org.springframework.cloud.context" level="WARN" additivity="false"/>
     <logger name="org.springframework.data" level="WARN" additivity="false"/>
     <logger name="org.springframework.aop" level="WARN" additivity="false"/>
+    <logger name="org.springframework.context.support.PostProcessorRegistrationDelegate" level="ERROR"/>
 
     <!-- Hibernate/JPA 噪声 -->
     <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR" additivity="false"/>

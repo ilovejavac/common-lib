@@ -12,7 +12,7 @@ public class Healthz {
     @RequestMapping("/healthz")
     public String healthz() {
 
-        return "response";
+        return "alive";
     }
 
 }
