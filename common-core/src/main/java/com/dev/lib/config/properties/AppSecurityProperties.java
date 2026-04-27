@@ -20,10 +20,6 @@ public class AppSecurityProperties {
 
     private Custom custom = new Custom();
 
-    private Jwt jwt = new Jwt();
-
-    private Long expiration;
-
     private Set<String> whiteListRequest;
 
     @Data
@@ -52,12 +48,6 @@ public class AppSecurityProperties {
     public static class Custom {
 
         private Boolean enabled;
-    }
-
-    @Data
-    public static class Jwt {
-
-        private String secret;
     }
 
 }

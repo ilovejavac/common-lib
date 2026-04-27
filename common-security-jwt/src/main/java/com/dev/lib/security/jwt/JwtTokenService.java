@@ -1,6 +1,5 @@
 package com.dev.lib.security.jwt;
 
-import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.security.TokenException;
 import com.dev.lib.security.service.AuthenticateService;
 import com.dev.lib.security.service.TokenManager;
@@ -25,7 +24,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class JwtTokenService implements TokenService, InitializingBean {
 
-    private final AppSecurityProperties properties;
+    private final JwtSecurityProperties properties;
 
     private final TokenManager tokenManager;
 
@@ -36,7 +35,7 @@ public class JwtTokenService implements TokenService, InitializingBean {
     @Override
     public void afterPropertiesSet() throws Exception {
 
-        String secret = properties.getJwt().getSecret();
+        String secret = properties.getSecret();
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("app.security.jwt.secret must be configured when using JWT security");
         }

@@ -1,4 +1,5 @@
 app:
   security:
-    expiration: 86400000
     encrypt-version: base64
+    jwt:
+      expiration: 86400000
