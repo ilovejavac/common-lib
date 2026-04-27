@@ -1,6 +1,7 @@
 package com.dev.lib.storage.data;
 
 import com.dev.lib.jpa.TenantEntity;
+import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageType;
 import com.dev.lib.storage.serialize.FileItem;
@@ -28,7 +29,7 @@ import java.util.List;
         @AutoMapper(target = FileItem.class, reverseConvertGenerate = false),
         @AutoMapper(target = StorageFile.class)
 })
-public class SysFile extends TenantEntity {
+public class SysFile extends JpaEntity {
 
     @Column(nullable = false)
     private String originalName;    // 原始文件名

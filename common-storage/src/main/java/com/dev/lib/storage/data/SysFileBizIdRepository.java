@@ -41,8 +41,6 @@ public interface SysFileBizIdRepository extends BaseRepository<SysFile> {
 
         private String serviceName;
 
-        private Collection<String> bizIdIn;
-
     }
 
     default List<SysFile> findAllByBizIdIn(Collection<String> bizIds) {
@@ -57,7 +55,7 @@ public interface SysFileBizIdRepository extends BaseRepository<SysFile> {
 
     default List<SysFile> findAllByBizIdInAndServiceName(Collection<String> bizIds, String serviceName) {
 
-        return loads(new Query().setBizIdIn(bizIds).setServiceName(serviceName));
+        return loads(new Query().setServiceName(serviceName).setBizIdIn(bizIds));
     }
 
     default Optional<SysFile> findByBizIdForUpdate(String bizId) {
@@ -82,7 +80,7 @@ public interface SysFileBizIdRepository extends BaseRepository<SysFile> {
         if (bizIds == null || bizIds.isEmpty()) {
             return;
         }
-        delete(new Query().setBizIdIn(bizIds).setServiceName(serviceName));
+        delete(new Query().setServiceName(serviceName).setBizIdIn(bizIds));
     }
 
     Optional<SysFile> findByBizId(String bizId);
