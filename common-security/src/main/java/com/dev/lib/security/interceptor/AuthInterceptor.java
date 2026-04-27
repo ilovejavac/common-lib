@@ -37,7 +37,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         // 放行不需要认证的接口
         if (validator.shouldSkip(request)) {
-            log.info("白名单放行, {}", request.getRequestURI());
+            log.info("skip security valid, {}", request.getRequestURI());
             validator.setContextInfo(request);
 
             return true;
