@@ -1,6 +1,6 @@
 package com.dev.lib.persist.user;
 
-import com.dev.lib.biz.user.SystemUser;
+import com.dev.lib.biz.user.model.SystemUser;
 import com.dev.lib.jpa.entity.JpaEntity;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.persistence.Entity;

@@ -1,7 +1,6 @@
-package com.dev.lib.biz.user;
+package com.dev.lib.biz.user.model;
 
-import com.dev.lib.biz.user.model.valobj.Dept;
-import com.dev.lib.biz.user.model.valobj.Role;
+import com.dev.lib.biz.permission.model.Role;
 import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.security.model.UserStatus;
 import com.dev.lib.security.model.UserType;

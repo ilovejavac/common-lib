@@ -10,14 +10,4 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SystemUserController {
 
-    // 创建用户
-
-    // 删除用户
-
-    // 修改用户
-
-    private final IUserQueryRepo userQueryRepo;
-    // 查询用户 list
-
-    // 查询用户 get
 }

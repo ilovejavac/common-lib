@@ -1,4 +1,4 @@
-package com.dev.lib.biz.user.model.valobj;
+package com.dev.lib.biz.user.model;
 
 import lombok.Getter;
 import lombok.Setter;

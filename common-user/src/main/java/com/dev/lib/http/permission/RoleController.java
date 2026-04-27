@@ -13,18 +13,4 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class RoleController {
 
-    // 创建角色
-    public ServerResponse<String> createRole() {
-
-        return ServerResponse.success("");
-    }
-
-    // 删除角色
-
-    // 修改角色
-
-    private final IRoleQueryRepo roleQueryRepo;
-    // 角色列表
-
-    // 角色详情
 }

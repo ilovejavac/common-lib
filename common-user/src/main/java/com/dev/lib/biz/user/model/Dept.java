@@ -1,4 +1,4 @@
-package com.dev.lib.biz.user.model.valobj;
+package com.dev.lib.biz.user.model;
 
 import com.dev.lib.domain.AggregateRoot;
 import lombok.Getter;
