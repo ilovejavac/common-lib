@@ -14,17 +14,24 @@ import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import static com.dev.lib.handler.ExceptionHandle.EXCEPTION_HANDLED_ATTRIBUTE;
+
 @Slf4j
 @Configuration
 @RestControllerAdvice
 public class DatabaseExceptionHandler {
+
+    private void markExceptionHandled(HttpServletRequest request) {
+
+        request.setAttribute(EXCEPTION_HANDLED_ATTRIBUTE, Boolean.TRUE);
+    }
 
     /**
      * 唯一键/主键冲突
      */
     @ExceptionHandler(DuplicateKeyException.class)
     public ServerResponse<Void> handleDuplicateKey(DuplicateKeyException e, HttpServletRequest request) {
-
+        markExceptionHandled(request);
         log.warn("唯一键冲突", e);
         return ServerResponse.fail(StandardErrorCodes.DUPLICATE_KEY, MessageUtils.get("error.duplicate.key"), null);
     }
@@ -34,7 +41,7 @@ public class DatabaseExceptionHandler {
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ServerResponse<Void> handleDataIntegrity(DataIntegrityViolationException e, HttpServletRequest request) {
-
+        markExceptionHandled(request);
         log.warn("数据完整性约束违反 [{}]", request.getRequestURI(), e);
         return ServerResponse.fail(StandardErrorCodes.DATA_INTEGRITY_VIOLATION, MessageUtils.get("error.data.integrity"), null);
     }
@@ -44,7 +51,7 @@ public class DatabaseExceptionHandler {
      */
     @ExceptionHandler(BadSqlGrammarException.class)
     public ServerResponse<Void> handleBadSql(BadSqlGrammarException e, HttpServletRequest request) {
-
+        markExceptionHandled(request);
         log.error("SQL语法错误 [{}] SQL={}", request.getRequestURI(), e.getSql(), e);
         return ServerResponse.fail(StandardErrorCodes.DATABASE_ERROR, MessageUtils.get("error.database"), null);
     }
@@ -54,7 +61,7 @@ public class DatabaseExceptionHandler {
      */
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ServerResponse<Void> handleOptimisticLock(OptimisticLockingFailureException e, HttpServletRequest request) {
-
+        markExceptionHandled(request);
         log.warn("乐观锁冲突 [{}]", request.getRequestURI(), e);
         return ServerResponse.fail(StandardErrorCodes.CONCURRENT_MODIFICATION, MessageUtils.get("error.concurrent.modify"), null);
     }
@@ -64,7 +71,7 @@ public class DatabaseExceptionHandler {
      */
     @ExceptionHandler(DataAccessException.class)
     public ServerResponse<Void> handleDataAccess(DataAccessException e, HttpServletRequest request) {
-
+        markExceptionHandled(request);
         log.error("数据访问异常 [{}]: {}", request.getRequestURI(), e.getMessage(), e);
         return ServerResponse.fail(StandardErrorCodes.DATABASE_ERROR, MessageUtils.get("error.database"), null);
     }

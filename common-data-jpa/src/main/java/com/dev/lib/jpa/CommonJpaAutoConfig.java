@@ -26,8 +26,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
-
 @AutoConfiguration(before = DataJpaRepositoriesAutoConfiguration.class)
 @Import(CommonJpaPackageRegistrar.class)
 @EnableConfigurationProperties({AppDialectProperties.class, SlowQueryProperties.class, JpaHikariDefaultsProperties.class})
@@ -41,8 +39,8 @@ public class CommonJpaAutoConfig {
 
     @Bean
     public static BeanPostProcessor jpaManagedHikariDefaultsBeanPostProcessor(
-            List<JpaManagedDatasourceGroup> managedDatasourceGroups,
-            JpaHikariDefaultsProperties hikariDefaultsProperties
+            ObjectProvider<JpaManagedDatasourceGroup> managedDatasourceGroups,
+            ObjectProvider<JpaHikariDefaultsProperties> hikariDefaultsProperties
     ) {
 
         return new JpaManagedHikariDefaultsBeanPostProcessor(managedDatasourceGroups, hikariDefaultsProperties);

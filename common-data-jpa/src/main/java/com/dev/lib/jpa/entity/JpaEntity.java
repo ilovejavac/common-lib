@@ -1,7 +1,6 @@
 package com.dev.lib.jpa.entity;
 
 import com.dev.lib.entity.CoreEntity;
-import com.dev.lib.jpa.entity.audit.AuditListener;
 import com.dev.lib.jpa.entity.encrypt.EncryptionListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
@@ -20,7 +19,7 @@ import java.util.Map;
 @EntityListeners({
         BaseEntityListener.class,
         EncryptionListener.class,
-        AuditListener.class
+//        AuditListener.class
 })
 public abstract class JpaEntity extends CoreEntity implements Persistable<Long> {
 

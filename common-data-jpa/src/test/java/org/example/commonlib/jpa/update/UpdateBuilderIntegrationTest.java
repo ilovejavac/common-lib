@@ -1,6 +1,7 @@
 package org.example.commonlib.jpa.update;
 
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.entity.encrypt.Encrypt;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.security.util.SecurityContextHolder;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -129,6 +131,72 @@ class UpdateBuilderIntegrationTest {
         });
     }
 
+    @Test
+    void setIdShouldBecomeWhereConditionInsteadOfUpdatedColumn() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
+            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-id", "plain-before"));
+
+            long affected = repo.update()
+                    .set(UpdateCaseThing::getId, saved.getId())
+                    .set(UpdateCaseThing::getName, "after-id")
+                    .execute();
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-id");
+        });
+    }
+
+    @Test
+    void setBizIdShouldBecomeWhereConditionWhenIdIsAbsent() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
+            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-biz", "plain-before"));
+
+            long affected = repo.update()
+                    .set(UpdateCaseThing::getBizId, saved.getBizId())
+                    .set(UpdateCaseThing::getName, "after-biz")
+                    .execute();
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-biz");
+        });
+    }
+
+    @Test
+    void updateBuilderShouldEncryptAnnotatedFieldBeforeBulkUpdate() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-encrypt", "plain-before"));
+
+            long affected = repo.update()
+                    .set(UpdateCaseThing::getId, saved.getId())
+                    .set(UpdateCaseThing::getSecretText, "secret-after")
+                    .execute();
+
+            assertThat(affected).isEqualTo(1L);
+
+            String rawSecret = jdbcTemplate.queryForObject(
+                    "select secret_text from update_case_thing where id = ?",
+                    String.class,
+                    saved.getId()
+            );
+            assertThat(rawSecret).startsWith("v1:");
+            assertThat(rawSecret).isNotEqualTo("secret-after");
+            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getSecretText).contains("secret-after");
+        });
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     static class UpdateBuilderApplication {
@@ -154,6 +222,7 @@ class UpdateCaseThing extends JpaEntity {
     private String remark;
 
     @Column(length = 256)
+    @Encrypt
     private String secretText;
 
     UpdateCaseThing() {
@@ -185,6 +254,11 @@ class UpdateCaseThing extends JpaEntity {
     public String getRemark() {
 
         return remark;
+    }
+
+    public String getSecretText() {
+
+        return secretText;
     }
 }
 

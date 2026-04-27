@@ -6,6 +6,7 @@ import com.dev.lib.jpa.TransactionHelper;
 import com.dev.lib.jpa.entity.dsl.SFunction;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.dev.lib.security.util.SecurityContextHolder;
+import com.dev.lib.util.encrypt.EncryptUtil;
 import com.querydsl.core.types.Path;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -15,11 +16,16 @@ import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateBuilder<T extends JpaEntity> {
+
+    private static final String ID_FIELD_NAME = "id";
+
+    private static final String BIZ_ID_FIELD_NAME = "bizId";
 
     private static final Map<Class<?>, Map<String, FieldMeta>> FIELD_META_CACHE = new ConcurrentHashMap<>();
 
@@ -27,9 +33,17 @@ public class UpdateBuilder<T extends JpaEntity> {
 
     private final Map<String, Assignment> assignments = new LinkedHashMap<>();
 
+    private DslQuery<T> dslQuery;
+
+    private BooleanExpression[] expressions = new BooleanExpression[0];
+
     private Predicate predicate;
 
     private Predicate businessPredicate;
+
+    private BooleanExpression identityExpression;
+
+    private boolean idIdentityPresent;
 
     public UpdateBuilder(BaseRepositoryImpl<T> impl) {
 
@@ -43,7 +57,10 @@ public class UpdateBuilder<T extends JpaEntity> {
         }
 
         FieldMeta meta = resolveFieldMeta(field);
-        assignments.put(meta.fieldName(), new Assignment(meta, value, false));
+        if (applyIdentityCondition(meta, value)) {
+            return this;
+        }
+        assignments.put(meta.fieldName(), new Assignment(meta, prepareAssignmentValue(meta, value), false));
         return this;
     }
 
@@ -59,19 +76,14 @@ public class UpdateBuilder<T extends JpaEntity> {
 
     public UpdateBuilder<T> where(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        this.businessPredicate = RepositoryPredicateSupport.toPredicate(dslQuery, expressions);
-        this.predicate = RepositoryPredicateSupport.buildPredicate(
-                impl.getPathBuilder(),
-                impl.getPath(),
-                impl.getDeletedPath(),
-                new QueryContext(),
-                dslQuery,
-                expressions
-        );
+        this.dslQuery = dslQuery;
+        this.expressions = expressions == null ? new BooleanExpression[0] : expressions;
         return this;
     }
 
     public long execute() {
+
+        refreshPredicates();
 
         if (assignments.isEmpty()) {
             throw new IllegalArgumentException("至少设置一个字段");
@@ -95,6 +107,66 @@ public class UpdateBuilder<T extends JpaEntity> {
             }
             return affected;
         });
+    }
+
+    private boolean applyIdentityCondition(FieldMeta meta, Object value) {
+
+        if (ID_FIELD_NAME.equals(meta.fieldName())) {
+            if (!(value instanceof Long id)) {
+                throw new IllegalArgumentException("id 条件值必须是 Long: " + value.getClass().getName());
+            }
+            identityExpression = impl.getIdPath().eq(id);
+            idIdentityPresent = true;
+            return true;
+        }
+
+        if (BIZ_ID_FIELD_NAME.equals(meta.fieldName())) {
+            if (idIdentityPresent) {
+                return true;
+            }
+            if (!(value instanceof String bizId)) {
+                throw new IllegalArgumentException("bizId 条件值必须是 String: " + value.getClass().getName());
+            }
+            identityExpression = impl.getPathBuilder().getString(BIZ_ID_FIELD_NAME).eq(bizId);
+            return true;
+        }
+        return false;
+    }
+
+    private Object prepareAssignmentValue(FieldMeta meta, Object value) {
+
+        if (!meta.encrypt()) {
+            return value;
+        }
+        if (!(value instanceof String stringValue)) {
+            throw new IllegalArgumentException("@Encrypt 字段只支持 String 类型: " + meta.fieldName());
+        }
+        return EncryptUtil.encrypt(stringValue);
+    }
+
+    private void refreshPredicates() {
+
+        BooleanExpression[] mergedExpressions = mergeIdentityExpression();
+        this.businessPredicate = RepositoryPredicateSupport.toPredicate(dslQuery, mergedExpressions);
+        this.predicate = RepositoryPredicateSupport.buildPredicate(
+                impl.getPathBuilder(),
+                impl.getPath(),
+                impl.getDeletedPath(),
+                new QueryContext(),
+                dslQuery,
+                mergedExpressions
+        );
+    }
+
+    private BooleanExpression[] mergeIdentityExpression() {
+
+        if (identityExpression == null) {
+            return expressions;
+        }
+
+        BooleanExpression[] merged = Arrays.copyOf(expressions, expressions.length + 1);
+        merged[expressions.length] = identityExpression;
+        return merged;
     }
 
     private void ensureAuditAssignments() {

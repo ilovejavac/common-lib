@@ -13,9 +13,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -26,6 +29,7 @@ import java.lang.reflect.Method;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(OutputCaptureExtension.class)
 class MultiJpaDatasourceIntegrationTest {
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
@@ -116,7 +120,7 @@ class MultiJpaDatasourceIntegrationTest {
     }
 
     @Test
-    void shouldApplySharedHikariDefaultsToManagedJpaDatasourcesOnly() {
+    void shouldApplySharedHikariDefaultsToManagedJpaDatasourcesOnly(CapturedOutput output) {
 
         new WebApplicationContextRunner()
                 .withUserConfiguration(HikariManagedDatasourceApplication.class)
@@ -124,13 +128,13 @@ class MultiJpaDatasourceIntegrationTest {
                         "spring.jpa.hibernate.ddl-auto=none",
                         "spring.jpa.open-in-view=false",
                         "spring.application.name=multi-jpa-hikari-defaults-test",
-                        "app.jpa.hikari-defaults.maximum-pool-size=24",
-                        "app.jpa.hikari-defaults.minimum-idle=8",
-                        "app.jpa.hikari-defaults.connection-timeout=3000",
-                        "app.jpa.hikari-defaults.validation-timeout=1000",
-                        "app.jpa.hikari-defaults.idle-timeout=600000",
-                        "app.jpa.hikari-defaults.max-lifetime=1740000",
-                        "app.jpa.hikari-defaults.keepalive-time=300000"
+                        "app.jpa.hikari.maximum-pool-size=24",
+                        "app.jpa.hikari.minimum-idle=8",
+                        "app.jpa.hikari.connection-timeout=3000",
+                        "app.jpa.hikari.validation-timeout=1000",
+                        "app.jpa.hikari.idle-timeout=600000",
+                        "app.jpa.hikari.max-lifetime=1740000",
+                        "app.jpa.hikari.keepalive-time=300000"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -166,6 +170,8 @@ class MultiJpaDatasourceIntegrationTest {
                     assertThat(ignoredHikari.getIdleTimeout()).isEqualTo(600000);
                     assertThat(ignoredHikari.getMaxLifetime()).isEqualTo(1800000);
                     assertThat(ignoredHikari.getKeepaliveTime()).isEqualTo(120000);
+                    assertThat(output.getAll())
+                            .doesNotContain("not eligible for getting processed by all BeanPostProcessors");
                 });
     }
 
@@ -178,7 +184,7 @@ class MultiJpaDatasourceIntegrationTest {
                         "spring.jpa.hibernate.ddl-auto=none",
                         "spring.jpa.open-in-view=false",
                         "spring.application.name=multi-jpa-non-hikari-test",
-                        "app.jpa.hikari-defaults.maximum-pool-size=24"
+                        "app.jpa.hikari.maximum-pool-size=24"
                 )
                 .run(context -> assertThat(context).hasNotFailed());
     }

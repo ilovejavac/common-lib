@@ -4,11 +4,12 @@ import com.dev.lib.jpa.config.JpaHikariDefaultsProperties;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.PriorityOrdered;
 
-import java.util.Collection;
+import javax.sql.DataSource;
 import java.util.Set;
 import java.util.function.IntConsumer;
 import java.util.function.LongConsumer;
@@ -18,27 +19,30 @@ public class JpaManagedHikariDefaultsBeanPostProcessor implements BeanPostProces
 
     private static final HikariDefaults HIKARI_DEFAULTS = createHikariDefaults();
 
-    private final Set<String> managedDatasourceNames;
-    private final JpaHikariDefaultsProperties hikariDefaultsProperties;
+    private final ObjectProvider<JpaManagedDatasourceGroup> managedDatasourceGroups;
+    private final ObjectProvider<JpaHikariDefaultsProperties> hikariDefaultsProperties;
+    private volatile Set<String> managedDatasourceNames;
+    private volatile JpaHikariDefaultsProperties resolvedHikariDefaultsProperties;
 
     public JpaManagedHikariDefaultsBeanPostProcessor(
-            Collection<JpaManagedDatasourceGroup> managedDatasourceGroups,
-            JpaHikariDefaultsProperties hikariDefaultsProperties
+            ObjectProvider<JpaManagedDatasourceGroup> managedDatasourceGroups,
+            ObjectProvider<JpaHikariDefaultsProperties> hikariDefaultsProperties
     ) {
-        this.managedDatasourceNames = managedDatasourceGroups.stream()
-                .flatMap(group -> group.getDatasourceBeanNames().stream())
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        this.managedDatasourceGroups = managedDatasourceGroups;
         this.hikariDefaultsProperties = hikariDefaultsProperties;
     }
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
 
-        if (!managedDatasourceNames.contains(beanName)) {
+        if (!(bean instanceof DataSource)) {
+            return bean;
+        }
+        if (!resolveManagedDatasourceNames().contains(beanName)) {
             return bean;
         }
         if (!(bean instanceof HikariDataSource hikariDataSource)) {
-            log.warn("Skip applying app.jpa.hikari-defaults to non-Hikari datasource bean [{}]: {}", beanName, bean.getClass().getName());
+            log.warn("Skip applying app.jpa.hikari to non-Hikari datasource bean [{}]: {}", beanName, bean.getClass().getName());
             return bean;
         }
 
@@ -60,72 +64,109 @@ public class JpaManagedHikariDefaultsBeanPostProcessor implements BeanPostProces
 
     private void applyMaximumPoolSize(HikariDataSource hikariDataSource) {
 
+        JpaHikariDefaultsProperties properties = resolveHikariDefaultsProperties();
         applyIfDefault(
                 hikariDataSource.getMaximumPoolSize(),
                 HIKARI_DEFAULTS.maximumPoolSize(),
-                hikariDefaultsProperties.getMaximumPoolSize(),
+                properties.getMaximumPoolSize(),
                 hikariDataSource::setMaximumPoolSize
         );
     }
 
     private void applyMinimumIdle(HikariDataSource hikariDataSource) {
 
+        JpaHikariDefaultsProperties properties = resolveHikariDefaultsProperties();
         applyIfDefault(
                 hikariDataSource.getMinimumIdle(),
                 HIKARI_DEFAULTS.minimumIdle(),
-                hikariDefaultsProperties.getMinimumIdle(),
+                properties.getMinimumIdle(),
                 hikariDataSource::setMinimumIdle
         );
     }
 
     private void applyConnectionTimeout(HikariDataSource hikariDataSource) {
 
+        JpaHikariDefaultsProperties properties = resolveHikariDefaultsProperties();
         applyIfDefault(
                 hikariDataSource.getConnectionTimeout(),
                 HIKARI_DEFAULTS.connectionTimeout(),
-                hikariDefaultsProperties.getConnectionTimeout(),
+                properties.getConnectionTimeout(),
                 hikariDataSource::setConnectionTimeout
         );
     }
 
     private void applyValidationTimeout(HikariDataSource hikariDataSource) {
 
+        JpaHikariDefaultsProperties properties = resolveHikariDefaultsProperties();
         applyIfDefault(
                 hikariDataSource.getValidationTimeout(),
                 HIKARI_DEFAULTS.validationTimeout(),
-                hikariDefaultsProperties.getValidationTimeout(),
+                properties.getValidationTimeout(),
                 hikariDataSource::setValidationTimeout
         );
     }
 
     private void applyIdleTimeout(HikariDataSource hikariDataSource) {
 
+        JpaHikariDefaultsProperties properties = resolveHikariDefaultsProperties();
         applyIfDefault(
                 hikariDataSource.getIdleTimeout(),
                 HIKARI_DEFAULTS.idleTimeout(),
-                hikariDefaultsProperties.getIdleTimeout(),
+                properties.getIdleTimeout(),
                 hikariDataSource::setIdleTimeout
         );
     }
 
     private void applyMaxLifetime(HikariDataSource hikariDataSource) {
 
+        JpaHikariDefaultsProperties properties = resolveHikariDefaultsProperties();
         applyIfDefault(
                 hikariDataSource.getMaxLifetime(),
                 HIKARI_DEFAULTS.maxLifetime(),
-                hikariDefaultsProperties.getMaxLifetime(),
+                properties.getMaxLifetime(),
                 hikariDataSource::setMaxLifetime
         );
     }
 
     private void applyKeepaliveTime(HikariDataSource hikariDataSource) {
 
+        JpaHikariDefaultsProperties properties = resolveHikariDefaultsProperties();
         applyIfDefault(
                 hikariDataSource.getKeepaliveTime(),
                 HIKARI_DEFAULTS.keepaliveTime(),
-                hikariDefaultsProperties.getKeepaliveTime(),
+                properties.getKeepaliveTime(),
                 hikariDataSource::setKeepaliveTime
         );
+    }
+
+    private Set<String> resolveManagedDatasourceNames() {
+
+        Set<String> names = managedDatasourceNames;
+        if (names != null) {
+            return names;
+        }
+        synchronized (this) {
+            if (managedDatasourceNames == null) {
+                managedDatasourceNames = managedDatasourceGroups.orderedStream()
+                        .flatMap(group -> group.getDatasourceBeanNames().stream())
+                        .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            }
+            return managedDatasourceNames;
+        }
+    }
+
+    private JpaHikariDefaultsProperties resolveHikariDefaultsProperties() {
+
+        JpaHikariDefaultsProperties properties = resolvedHikariDefaultsProperties;
+        if (properties != null) {
+            return properties;
+        }
+        synchronized (this) {
+            if (resolvedHikariDefaultsProperties == null) {
+                resolvedHikariDefaultsProperties = hikariDefaultsProperties.getObject();
+            }
+            return resolvedHikariDefaultsProperties;
+        }
     }
 
     private static void applyIfDefault(int currentValue, int defaultValue, Integer configuredValue, IntConsumer setter) {

@@ -2,6 +2,7 @@ package org.example.commonlib.jpa.batch;
 
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.entity.dsl.DslQuery;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
@@ -75,6 +76,28 @@ class DeleteBatchExecutionIntegrationTest {
 
             long preparedStatementCount = statistics.getPrepareStatementCount();
             assertThat(preparedStatementCount).isEqualTo(7);
+            assertThat(repo.onlyDeleted().count()).isEqualTo(2050);
+        });
+    }
+
+    @Test
+    void softDeleteByDslQueryShouldUseSingleBulkUpdate() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            repo.saveAll(buildEntities("soft-query-", 2050));
+
+            Statistics statistics = context.getBean(EntityManagerFactory.class)
+                    .unwrap(SessionFactory.class)
+                    .getStatistics();
+            statistics.clear();
+
+            repo.delete(new DeleteBatchThingQuery().setNameStartWith("soft-query-"));
+
+            long preparedStatementCount = statistics.getPrepareStatementCount();
+            assertThat(preparedStatementCount).isEqualTo(1);
             assertThat(repo.onlyDeleted().count()).isEqualTo(2050);
         });
     }
@@ -157,4 +180,15 @@ class DeleteBatchThing extends JpaEntity {
 }
 
 interface DeleteBatchThingRepo extends BaseRepository<DeleteBatchThing> {
+}
+
+class DeleteBatchThingQuery extends DslQuery<DeleteBatchThing> {
+
+    private String nameStartWith;
+
+    DeleteBatchThingQuery setNameStartWith(String nameStartWith) {
+
+        this.nameStartWith = nameStartWith;
+        return this;
+    }
 }

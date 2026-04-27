@@ -8,7 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 多版本数据库加密解密
@@ -17,6 +20,8 @@ import java.util.Arrays;
 @Component
 @RequiredArgsConstructor
 public class EncryptionListener {
+
+    private static final Map<Class<?>, Field[]> ENCRYPT_FIELD_CACHE = new ConcurrentHashMap<>();
 
     private final EncryptionService encryptionService;
 
@@ -42,22 +47,32 @@ public class EncryptionListener {
 
     private void processFields(Object entity, boolean isEncrypt) {
 
-        Arrays.stream(entity.getClass().getDeclaredFields())
+        for (Field field : resolveEncryptFields(entity.getClass())) {
+            try {
+                String value = (String) field.get(entity);
+                if (value != null) {
+                    String processed = isEncrypt
+                                       ? encryptionService.encrypt(value)
+                                       : encryptionService.decrypt(value);
+                    ReflectionUtils.setField(field, entity, processed);
+                }
+            } catch (IllegalAccessException e) {
+                log.warn("Failed to process field: " + field.getName(), e);
+            }
+        }
+    }
+
+    private static Field[] resolveEncryptFields(Class<?> entityClass) {
+
+        return ENCRYPT_FIELD_CACHE.computeIfAbsent(entityClass, EncryptionListener::scanEncryptFields);
+    }
+
+    private static Field[] scanEncryptFields(Class<?> entityClass) {
+
+        return Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(Encrypt.class))
-                .forEach(field -> {
-                    ReflectionUtils.makeAccessible(field);
-                    try {
-                        String value = (String) field.get(entity);
-                        if (value != null) {
-                            String processed = isEncrypt
-                                               ? encryptionService.encrypt(value)
-                                               : encryptionService.decrypt(value);
-                            ReflectionUtils.setField(field, entity, processed);
-                        }
-                    } catch (IllegalAccessException e) {
-                        log.warn("Failed to process field: " + field.getName(), e);
-                    }
-                });
+                .peek(ReflectionUtils::makeAccessible)
+                .toArray(Field[]::new);
     }
 
 }

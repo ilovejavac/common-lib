@@ -51,6 +51,14 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
         return new UpdateBuilder<>(RepositoryUtils.unwrap(this));
     }
 
+    default EtlSqlBuilder<T> etl(String sqlScript) {
+        return new EtlSqlBuilder<>(RepositoryUtils.unwrap(this), sqlScript);
+    }
+
+    default DropTableBuilder<T> drop(String tableName) {
+        return new DropTableBuilder<>(RepositoryUtils.unwrap(this), tableName);
+    }
+
     // ==================== 直接查询 ====================
 
     Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);

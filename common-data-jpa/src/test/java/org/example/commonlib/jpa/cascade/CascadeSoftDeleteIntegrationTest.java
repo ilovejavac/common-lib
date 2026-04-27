@@ -1,5 +1,6 @@
 package org.example.commonlib.jpa.cascade;
 
+import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
 import jakarta.persistence.CascadeType;
@@ -29,11 +30,12 @@ class CascadeSoftDeleteIntegrationTest {
                     "spring.datasource.password=",
                     "spring.jpa.hibernate.ddl-auto=create-drop",
                     "spring.jpa.open-in-view=false",
+                    "spring.jpa.show-sql=true",
                     "spring.application.name=cascade-soft-delete-test"
             );
 
     @Test
-    void shouldSoftDeleteOneToManyCascadeChildren() {
+    void deleteAllEntitiesShouldSoftDeleteOneToManyCascadeChildren() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
@@ -47,7 +49,7 @@ class CascadeSoftDeleteIntegrationTest {
 
             parent = parentRepo.saveAndFlush(parent);
 
-            parentRepo.delete(parent);
+            parentRepo.deleteAll(List.of(parent));
 
             assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1);
             assertThat(childRepo.onlyDeleted().count()).isEqualTo(1);
@@ -55,7 +57,7 @@ class CascadeSoftDeleteIntegrationTest {
     }
 
     @Test
-    void shouldSoftDeleteOneToOneCascadeChild() {
+    void deleteEntityShouldSoftDeleteOneToOneCascadeChild() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
@@ -69,6 +71,28 @@ class CascadeSoftDeleteIntegrationTest {
             parent = parentRepo.saveAndFlush(parent);
 
             parentRepo.delete(parent);
+
+            assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1);
+            assertThat(childRepo.onlyDeleted().count()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void deleteDslQueryShouldSoftDeleteCascadeChildren() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            CascadeParentRepo parentRepo = context.getBean(CascadeParentRepo.class);
+            CascadeChildRepo childRepo = context.getBean(CascadeChildRepo.class);
+
+            CascadeParent parent = new CascadeParent();
+            parent.addChild(new CascadeChild());
+            parent = parentRepo.saveAndFlush(parent);
+
+            CascadeParentQuery query = new CascadeParentQuery();
+            query.setId(parent.getId());
+            parentRepo.delete(query);
 
             assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1);
             assertThat(childRepo.onlyDeleted().count()).isEqualTo(1);
@@ -110,6 +134,9 @@ interface CascadeParentRepo extends BaseRepository<CascadeParent> {
 }
 
 interface CascadeChildRepo extends BaseRepository<CascadeChild> {
+}
+
+class CascadeParentQuery extends DslQuery<CascadeParent> {
 }
 
 @Entity

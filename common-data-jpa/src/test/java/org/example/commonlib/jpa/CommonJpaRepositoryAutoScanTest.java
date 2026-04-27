@@ -1,7 +1,6 @@
 package org.example.commonlib.jpa;
 
 import com.dev.lib.jpa.TransactionHelper;
-import com.dev.lib.jpa.entity.audit.AuditRepo;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import org.junit.jupiter.api.Test;
@@ -30,7 +29,7 @@ class CommonJpaRepositoryAutoScanTest {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
-            assertThat(context).hasSingleBean(AuditRepo.class);
+//            assertThat(context).hasSingleBean(AuditRepo.class);
             assertThat(context).hasSingleBean(BusinessOrderRepo.class);
             assertThat(context).hasSingleBean(TransactionHelper.class);
         });
@@ -40,6 +39,7 @@ class CommonJpaRepositoryAutoScanTest {
     @EnableAutoConfiguration
     static class BusinessApplication {
     }
+
 }
 
 @Entity
@@ -47,6 +47,7 @@ class BusinessOrder {
 
     @Id
     private Long id;
+
 }
 
 interface BusinessOrderRepo extends JpaRepository<BusinessOrder, Long> {

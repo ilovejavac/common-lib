@@ -8,13 +8,25 @@ import com.dev.lib.jpa.entity.batch.BatchHelper;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.CollectionExpression;
+import com.querydsl.core.types.EntityPath;
+import com.querydsl.core.types.Path;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.NumberPath;
+import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.jpa.JPQLSubQuery;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public final class CascadeSoftDeleteSupport {
@@ -34,7 +46,7 @@ public final class CascadeSoftDeleteSupport {
             throw new IllegalArgumentException("批量删除必须指定业务条件，防止误删全表");
         }
 
-        softDeleteByPredicateInChunks(
+        Predicate condition = activeCondition(
                 repository,
                 RepositoryPredicateSupport.buildPredicate(
                         repository.getPathBuilder(),
@@ -45,14 +57,19 @@ public final class CascadeSoftDeleteSupport {
                         expressions
                 )
         );
+        cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
+        executeSoftDeleteUpdate(repository, condition);
     }
 
     public static <T extends JpaEntity> void deleteEntity(BaseRepositoryImpl<T> repository, T entity) {
 
-        if (entity == null || entity.getId() == null) {
+        Predicate identity = identityCondition(repository, entity);
+        if (identity == null) {
             return;
         }
-        softDeleteById(repository, entity.getId(), entity);
+        Predicate condition = activeCondition(repository, identity);
+        cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
+        executeSoftDeleteUpdate(repository, condition);
     }
 
     public static <T extends JpaEntity> void deleteById(BaseRepositoryImpl<T> repository, Long id) {
@@ -60,7 +77,7 @@ public final class CascadeSoftDeleteSupport {
         if (id == null) {
             return;
         }
-        softDeleteById(repository, id, null);
+        softDeleteById(repository, id);
     }
 
     public static <T extends JpaEntity> void deleteAll(BaseRepositoryImpl<T> repository, Iterable<? extends T> entities) {
@@ -86,58 +103,61 @@ public final class CascadeSoftDeleteSupport {
         }
     }
 
-    private static <T extends JpaEntity> void softDeleteById(BaseRepositoryImpl<T> repository, Long id, T entityHint) {
-
-        if (CascadeFieldResolver.hasCascadeFields(repository)) {
-            T managed = (entityHint != null && repository.getEntityManager().contains(entityHint))
-                    ? entityHint
-                    : repository.getEntityManager().find(repository.getEntityClass(), id);
-            if (managed != null) {
-                cascadeSoftDeleteBatch(repository, List.of(managed));
-                return;
-            }
-        }
+    private static <T extends JpaEntity> void softDeleteById(BaseRepositoryImpl<T> repository, Long id) {
 
         softDeleteByIds(repository, List.of(id));
     }
 
     private static <T extends JpaEntity> void softDeleteByIds(BaseRepositoryImpl<T> repository, List<Long> ids) {
 
-        if (!CascadeFieldResolver.hasCascadeFields(repository)) {
-            BooleanBuilder where = new BooleanBuilder(repository.getDeletedPath().eq(false));
-            where.and(repository.getIdPath().in(ids));
-            executeSoftDeleteUpdate(repository, where);
+        if (ids == null || ids.isEmpty()) {
             return;
         }
-
-        List<T> toDelete = repository.getQueryFactory().selectFrom(repository.getPath())
-                .where(repository.getIdPath().in(ids), repository.getDeletedPath().eq(false))
-                .fetch();
-        if (!toDelete.isEmpty()) {
-            cascadeSoftDeleteBatch(repository, toDelete);
-        }
+        Predicate condition = activeCondition(repository, repository.getIdPath().in(ids));
+        cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
+        executeSoftDeleteUpdate(repository, condition);
     }
 
-    private static <T extends JpaEntity> void softDeleteByPredicateInChunks(BaseRepositoryImpl<T> repository, Predicate fullPredicate) {
+    private static <T extends JpaEntity> Predicate identityCondition(BaseRepositoryImpl<T> repository, T entity) {
 
-        Long lastId = null;
-        while (true) {
-            List<Long> ids = BatchHelper.fetchIdsAfter(repository, fullPredicate, lastId);
-            if (ids.isEmpty()) {
-                break;
-            }
-
-            softDeleteByIds(repository, ids);
-            lastId = ids.getLast();
+        if (entity == null) {
+            return null;
         }
+        if (entity.getId() != null) {
+            return repository.getIdPath().eq(entity.getId());
+        }
+        String bizId = entity.getBizId();
+        if (bizId != null && !bizId.isBlank()) {
+            return repository.getPathBuilder().getString("bizId").eq(bizId);
+        }
+        return null;
+    }
+
+    private static <T extends JpaEntity> Predicate activeCondition(BaseRepositoryImpl<T> repository, Predicate condition) {
+
+        return activeCondition(repository.getPathBuilder(), condition);
+    }
+
+    private static Predicate activeCondition(PathBuilder<?> pathBuilder, Predicate condition) {
+
+        BooleanBuilder where = new BooleanBuilder(pathBuilder.getBoolean("deleted").eq(false));
+        if (condition != null) {
+            where.and(condition);
+        }
+        return where;
     }
 
     private static <T extends JpaEntity> void executeSoftDeleteUpdate(BaseRepositoryImpl<T> repository, Predicate condition) {
 
-        long affected = repository.getQueryFactory().update(repository.getPath())
-                .set(repository.getPathBuilder().getBoolean("deleted"), true)
-                .set(repository.getPathBuilder().getDateTime("updatedAt", LocalDateTime.class), LocalDateTime.now())
-                .set(repository.getPathBuilder().getNumber("modifierId", Long.class), SecurityContextHolder.getUserId())
+        executeSoftDeleteUpdate(repository, repository.getPath(), repository.getPathBuilder(), condition);
+    }
+
+    private static void executeSoftDeleteUpdate(BaseRepositoryImpl<?> repository, EntityPath<?> path, PathBuilder<?> pathBuilder, Predicate condition) {
+
+        long affected = repository.getQueryFactory().update(path)
+                .set(pathBuilder.getBoolean("deleted"), true)
+                .set(pathBuilder.getDateTime("updatedAt", LocalDateTime.class), LocalDateTime.now())
+                .set(pathBuilder.getNumber("modifierId", Long.class), SecurityContextHolder.getUserId())
                 .where(condition)
                 .execute();
 
@@ -147,30 +167,140 @@ public final class CascadeSoftDeleteSupport {
         }
     }
 
-    private static <T extends JpaEntity> void cascadeSoftDeleteBatch(BaseRepositoryImpl<T> repository, List<T> rootEntities) {
+    private static void cascadeSoftDeleteChildren(
+            BaseRepositoryImpl<?> repository,
+            Class<?> sourceClass,
+            PathBuilder<?> sourcePath,
+            Predicate sourcePredicate,
+            Set<Class<?>> visiting
+    ) {
 
-        Map<Class<?>, Set<Long>> toDeleteByType = CascadeFieldResolver.newDeleteByTypeMap();
-        Set<Object> visited = CascadeFieldResolver.newVisitedSet();
-
-        for (T entity : rootEntities) {
-            CascadeFieldResolver.collectCascadeEntities(entity, visited, toDeleteByType);
+        if (!JpaEntity.class.isAssignableFrom(sourceClass) || !visiting.add(sourceClass)) {
+            return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        Long modifierId = SecurityContextHolder.getUserId();
+        try {
+            for (Field field : CascadeFieldResolver.getCascadeFields(sourceClass)) {
+                Class<?> targetClass = resolveTargetEntity(field);
+                if (targetClass == null || !JpaEntity.class.isAssignableFrom(targetClass)) {
+                    continue;
+                }
 
-        CascadeFieldResolver.executeByType(
-                new ArrayList<>(toDeleteByType.entrySet()),
-                repository.getInClauseBatchSize(),
-                (builder, builderIdPath, batch) -> repository.getQueryFactory().update(builder)
-                        .set(builder.getBoolean("deleted"), true)
-                        .set(builder.getDateTime("updatedAt", LocalDateTime.class), now)
-                        .set(builder.getNumber("modifierId", Long.class), modifierId)
-                        .where(builderIdPath.in(batch), builder.getBoolean("deleted").eq(false))
-                        .execute()
-        );
+                PathBuilder<?> targetPath = CascadeFieldResolver.createPathBuilder(targetClass);
+                Predicate targetRelationPredicate = buildCascadeTargetPredicate(sourcePath, sourcePredicate, field, targetClass, targetPath);
+                if (targetRelationPredicate == null) {
+                    continue;
+                }
 
-        repository.getEntityManager().flush();
-        repository.getEntityManager().clear();
+                Predicate targetPredicate = activeCondition(targetPath, targetRelationPredicate);
+                cascadeSoftDeleteChildren(repository, targetClass, targetPath, targetPredicate, visiting);
+                executeSoftDeleteUpdate(repository, targetPath, targetPath, targetPredicate);
+            }
+        } finally {
+            visiting.remove(sourceClass);
+        }
+    }
+
+    private static Predicate buildCascadeTargetPredicate(
+            PathBuilder<?> sourcePath,
+            Predicate sourcePredicate,
+            Field field,
+            Class<?> targetClass,
+            PathBuilder<?> targetPath
+    ) {
+
+        if (Collection.class.isAssignableFrom(field.getType())) {
+            return collectionTargetPredicate(sourcePath, sourcePredicate, field, targetClass, targetPath);
+        }
+
+        OneToOne oneToOne = field.getAnnotation(OneToOne.class);
+        if (oneToOne != null && oneToOne.mappedBy() != null && !oneToOne.mappedBy().isBlank()) {
+            return inverseSingleTargetPredicate(sourcePath, sourcePredicate, oneToOne.mappedBy(), targetPath);
+        }
+
+        if (field.isAnnotationPresent(OneToOne.class) || field.isAnnotationPresent(ManyToOne.class)) {
+            return owningSingleTargetPredicate(sourcePath, sourcePredicate, field.getName(), targetClass, targetPath);
+        }
+
+        return null;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static Predicate collectionTargetPredicate(
+            PathBuilder<?> sourcePath,
+            Predicate sourcePredicate,
+            Field field,
+            Class<?> targetClass,
+            PathBuilder<?> targetPath
+    ) {
+
+        PathBuilder<?> targetAlias = new PathBuilder(targetClass, "__cascade_" + field.getName());
+        CollectionExpression collectionPath = collectionPath(sourcePath, field, targetClass);
+        JPQLSubQuery<Long> targetIds = JPAExpressions
+                .select(targetAlias.getNumber("id", Long.class))
+                .from(sourcePath)
+                .join(collectionPath, (Path) targetAlias)
+                .where(sourcePredicate);
+
+        return targetPath.getNumber("id", Long.class).in(targetIds);
+    }
+
+    private static Predicate owningSingleTargetPredicate(
+            PathBuilder<?> sourcePath,
+            Predicate sourcePredicate,
+            String fieldName,
+            Class<?> targetClass,
+            PathBuilder<?> targetPath
+    ) {
+
+        PathBuilder<?> relationPath = sourcePath.get(fieldName, targetClass);
+        NumberPath<Long> relationId = relationPath.getNumber("id", Long.class);
+        JPQLSubQuery<Long> targetIds = JPAExpressions
+                .select(relationId)
+                .from(sourcePath)
+                .where(sourcePredicate, relationId.isNotNull());
+
+        return targetPath.getNumber("id", Long.class).in(targetIds);
+    }
+
+    private static Predicate inverseSingleTargetPredicate(
+            PathBuilder<?> sourcePath,
+            Predicate sourcePredicate,
+            String mappedBy,
+            PathBuilder<?> targetPath
+    ) {
+
+        NumberPath<Long> sourceId = sourcePath.getNumber("id", Long.class);
+        JPQLSubQuery<Long> sourceIds = JPAExpressions
+                .select(sourceId)
+                .from(sourcePath)
+                .where(sourcePredicate);
+
+        return targetPath.get(mappedBy, sourcePath.getType())
+                .getNumber("id", Long.class)
+                .in(sourceIds);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static CollectionExpression collectionPath(PathBuilder<?> sourcePath, Field field, Class<?> targetClass) {
+
+        return sourcePath.getCollection(field.getName(), (Class) targetClass);
+    }
+
+    private static Class<?> resolveTargetEntity(Field field) {
+
+        Class<?> fieldType = field.getType();
+        if (!Collection.class.isAssignableFrom(fieldType)) {
+            return fieldType;
+        }
+
+        Type genericType = field.getGenericType();
+        if (genericType instanceof ParameterizedType parameterizedType) {
+            Type[] typeArguments = parameterizedType.getActualTypeArguments();
+            if (typeArguments.length > 0 && typeArguments[0] instanceof Class<?> targetClass) {
+                return targetClass;
+            }
+        }
+        return null;
     }
 }
