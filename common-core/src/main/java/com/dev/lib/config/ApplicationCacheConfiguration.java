@@ -3,18 +3,20 @@ package com.dev.lib.config;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Role;
 
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Configuration
-public class ApplicationCacheConfiguration implements CachingConfigurer {
+@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+public class ApplicationCacheConfiguration {
 
     @Bean("applicationCacheManager")
     @Primary
@@ -44,12 +46,6 @@ public class ApplicationCacheConfiguration implements CachingConfigurer {
         }));
 
         return manager;
-    }
-
-    @Override
-    public CacheManager cacheManager() {
-
-        return applicationCacheManager();
     }
 
 }

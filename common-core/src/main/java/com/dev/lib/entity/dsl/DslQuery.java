@@ -22,16 +22,26 @@ import java.util.*;
 @Setter
 public abstract class DslQuery<E extends CoreEntity> {
 
-    @Condition(field = "id")
     private Long id;
 
-    @Condition(type = QueryType.EQ, field = "bizId")
+    private Long idNe;
+
+    private Collection<Long> idIn;
+
+    private Long idGt;
+
+    private Long idGe;
+
     private String bizId;
 
-    @Condition(type = QueryType.EQ, field = "creatorId")
+    private String bizIdNe;
+
+    private Collection<String> bizIdIn;
+
+    @Condition(field = "creatorId")
     private Long creator;
 
-    @Condition(type = QueryType.EQ, field = "modifierId")
+    @Condition(field = "modifierId")
     private Long modifier;
 
     @ConditionIgnore
