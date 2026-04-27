@@ -37,26 +37,6 @@ services:
         limits:
           memory: 4G
 
-  label-studio:
-    image: heartexlabs/label-studio:latest
-    ports:
-      - "18080:8080"
-    environment:
-      - DJANGO_DB=default
-      - POSTGRE_NAME=label-studio
-      - POSTGRE_USER=root
-      - POSTGRE_PASSWORD=1qazXDR%
-      - POSTGRE_HOST=pgsql
-      - POSTGRE_PORT=5432
-      - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
-      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/data
-    volumes:
-      - ./data/labelStudio:/label-studio/data
-    networks:
-      - geoai-infra
-    depends_on:
-      - pgsql
-
   opensearch:
     image: opensearchproject/opensearch:3.4.0
     restart: unless-stopped
