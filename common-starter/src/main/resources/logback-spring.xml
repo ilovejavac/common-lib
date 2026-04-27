@@ -189,12 +189,12 @@
     <logger name="org.springframework.cloud.context" level="WARN" additivity="false"/>
     <logger name="org.springframework.data" level="WARN" additivity="false"/>
     <logger name="org.springframework.aop" level="WARN" additivity="false"/>
-    <logger name="org.springframework.context.support.PostProcessorRegistrationDelegate" level="ERROR"/>
 
     <!-- Hibernate/JPA 噪声 -->
     <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR" additivity="false"/>
     <logger name="org.hibernate.engine.internal" level="WARN" additivity="false"/>
     <logger name="org.hibernate.validator" level="WARN" additivity="false"/>
+    <logger name="org.hibernate.orm.deprecation" level="ERROR"/>
 
     <!-- Redisson 客户端噪声 -->
     <logger name="org.redisson" level="WARN" additivity="false"/>

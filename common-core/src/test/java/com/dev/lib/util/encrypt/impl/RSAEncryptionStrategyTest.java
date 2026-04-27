@@ -20,10 +20,10 @@ class RSAEncryptionStrategyTest {
         KeyPair keyPair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
 
         AppSecurityProperties properties = new AppSecurityProperties();
-        properties.setRsaPublicKey(
+        properties.getRsa().setPublicKey(
                 Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded())
         );
-        properties.setRsaPrivateKey(
+        properties.getRsa().setPrivateKey(
                 Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded())
         );
 

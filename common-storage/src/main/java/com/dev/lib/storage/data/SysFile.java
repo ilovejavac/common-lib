@@ -1,6 +1,5 @@
 package com.dev.lib.storage.data;
 
-import com.dev.lib.jpa.TenantEntity;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageType;

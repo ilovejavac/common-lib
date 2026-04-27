@@ -14,7 +14,7 @@ class AesGcmEncryptionStrategyTest {
     void shouldEncryptAndDecryptUsingBase64Encoded32ByteKey() {
 
         AppSecurityProperties properties = new AppSecurityProperties();
-        properties.setSecret(Base64.getEncoder().encodeToString(new byte[32]));
+        properties.getAes().setSecret(Base64.getEncoder().encodeToString(new byte[32]));
 
         AesGcmEncryptionStrategy strategy = new AesGcmEncryptionStrategy(properties);
         strategy.afterPropertiesSet();
@@ -30,7 +30,7 @@ class AesGcmEncryptionStrategyTest {
     void shouldPrefixCiphertextWith12ByteIv() {
 
         AppSecurityProperties properties = new AppSecurityProperties();
-        properties.setSecret(Base64.getEncoder().encodeToString(new byte[32]));
+        properties.getAes().setSecret(Base64.getEncoder().encodeToString(new byte[32]));
 
         AesGcmEncryptionStrategy strategy = new AesGcmEncryptionStrategy(properties);
         strategy.afterPropertiesSet();
@@ -45,7 +45,7 @@ class AesGcmEncryptionStrategyTest {
     void shouldRejectSecretWhenDecodedKeyLengthIsNot32Bytes() {
 
         AppSecurityProperties properties = new AppSecurityProperties();
-        properties.setSecret(Base64.getEncoder().encodeToString(new byte[16]));
+        properties.getAes().setSecret(Base64.getEncoder().encodeToString(new byte[16]));
 
         AesGcmEncryptionStrategy strategy = new AesGcmEncryptionStrategy(properties);
 

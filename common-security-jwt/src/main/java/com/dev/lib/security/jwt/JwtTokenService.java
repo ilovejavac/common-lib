@@ -36,9 +36,9 @@ public class JwtTokenService implements TokenService, InitializingBean {
     @Override
     public void afterPropertiesSet() throws Exception {
 
-        String secret = properties.getSecret();
+        String secret = properties.getJwt().getSecret();
         if (secret == null || secret.isBlank()) {
-            throw new IllegalStateException("app.security.secret must be configured when using JWT security");
+            throw new IllegalStateException("app.security.jwt.secret must be configured when using JWT security");
         }
         byte[] keyBytes;
         try {

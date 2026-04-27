@@ -1,19 +1,20 @@
 package com.dev.lib.util.encrypt.impl;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
-import com.dev.lib.util.encrypt.Encryptor;
 import com.dev.lib.entity.encrypt.EncryptVersion;
+import com.dev.lib.util.encrypt.Encryptor;
+import com.dev.lib.util.encrypt.condition.ConditionalOnEncryptionStrategy;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
 import java.nio.charset.StandardCharsets;
-import java.security.*;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
@@ -22,10 +23,9 @@ import java.util.Base64;
 /**
  * RSA 加密
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "rsa")
+@ConditionalOnEncryptionStrategy(EncryptVersion.RSA)
 public class RSAEncryptionStrategy implements Encryptor, InitializingBean {
 
     private final AppSecurityProperties securityProperties;
@@ -33,8 +33,6 @@ public class RSAEncryptionStrategy implements Encryptor, InitializingBean {
     private static final String KEY_ALGORITHM = "RSA";
 
     private static final String CIPHER_TRANSFORMATION = "RSA/ECB/OAEPPadding";
-
-    private static final int KEY_SIZE = 2048;
 
     private static final OAEPParameterSpec OAEP_SHA256_SPEC = new OAEPParameterSpec(
             "SHA-256",
@@ -50,45 +48,31 @@ public class RSAEncryptionStrategy implements Encryptor, InitializingBean {
     @Override
     public void afterPropertiesSet() throws Exception {
 
-        // 方案1: 从配置读取已有密钥对
-        String publicKeyStr  = securityProperties.getRsaPublicKey();
-        String privateKeyStr = securityProperties.getRsaPrivateKey();
+        String publicKeyStr  = securityProperties.getRsa().getPublicKey();
+        String privateKeyStr = securityProperties.getRsa().getPrivateKey();
 
-        if (publicKeyStr != null && privateKeyStr != null) {
-            // 解析已有密钥
-            KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORITHM);
-
-            byte[]             publicKeyBytes = Base64.getDecoder().decode(publicKeyStr);
-            X509EncodedKeySpec publicKeySpec  = new X509EncodedKeySpec(publicKeyBytes);
-            this.publicKey = keyFactory.generatePublic(publicKeySpec);
-
-            byte[]              privateKeyBytes = Base64.getDecoder().decode(privateKeyStr);
-            PKCS8EncodedKeySpec privateKeySpec  = new PKCS8EncodedKeySpec(privateKeyBytes);
-            this.privateKey = keyFactory.generatePrivate(privateKeySpec);
-        } else {
-            // 方案2: 动态生成密钥对(首次使用)
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance(KEY_ALGORITHM);
-            keyGen.initialize(KEY_SIZE);
-            KeyPair keyPair = keyGen.generateKeyPair();
-            this.publicKey = keyPair.getPublic();
-            this.privateKey = keyPair.getPrivate();
-
-            log.warn("未配置 RSA 密钥,已动态生成。请保存以下密钥:");
-            log.warn(
-                    "PublicKey: {}",
-                    Base64.getEncoder().encodeToString(publicKey.getEncoded())
-            );
-            log.warn(
-                    "PrivateKey: {}",
-                    Base64.getEncoder().encodeToString(privateKey.getEncoded())
+        if (publicKeyStr == null || publicKeyStr.isBlank()
+                || privateKeyStr == null || privateKeyStr.isBlank()) {
+            throw new IllegalStateException(
+                    "app.security.rsa.public-key and app.security.rsa.private-key must both be configured when RSA encryption is enabled"
             );
         }
+
+        KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORITHM);
+
+        byte[]             publicKeyBytes = Base64.getDecoder().decode(publicKeyStr);
+        X509EncodedKeySpec publicKeySpec  = new X509EncodedKeySpec(publicKeyBytes);
+        this.publicKey = keyFactory.generatePublic(publicKeySpec);
+
+        byte[]              privateKeyBytes = Base64.getDecoder().decode(privateKeyStr);
+        PKCS8EncodedKeySpec privateKeySpec  = new PKCS8EncodedKeySpec(privateKeyBytes);
+        this.privateKey = keyFactory.generatePrivate(privateKeySpec);
     }
 
     @Override
-    public String getVersion() {
+    public EncryptVersion getVersion() {
 
-        return EncryptVersion.RSA.getMsg();
+        return EncryptVersion.RSA;
     }
 
     @Override

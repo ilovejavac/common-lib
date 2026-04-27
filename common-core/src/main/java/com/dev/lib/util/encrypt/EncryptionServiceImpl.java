@@ -1,23 +1,53 @@
 package com.dev.lib.util.encrypt;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
-import com.dev.lib.util.encrypt.factory.EncryptionStrategyFactory;
 import com.dev.lib.entity.encrypt.EncryptVersion;
 import com.dev.lib.entity.encrypt.EncryptionService;
+import com.dev.lib.util.encrypt.factory.EncryptionStrategyFactory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class EncryptionServiceImpl implements EncryptionService {
+public class EncryptionServiceImpl implements EncryptionService, InitializingBean {
 
     private final EncryptionStrategyFactory factory;
 
     private final AppSecurityProperties     securityProperties;
 
+    private EncryptVersion encryptVersion;
+
+    @Override
+    public void afterPropertiesSet() {
+
+        EncryptVersion configuredVersion = securityProperties.getEncryptVersion();
+        if (configuredVersion != null) {
+            this.encryptVersion = configuredVersion;
+            return;
+        }
+
+        Map<String, Encryptor> strategies = factory.getAllStrategies();
+        if (strategies.size() == 1) {
+            this.encryptVersion = strategies.values().iterator().next().getVersion();
+            return;
+        }
+
+        if (strategies.size() > 1) {
+            throw new IllegalStateException(
+                    "app.security.encrypt-version must be configured when multiple encryption strategies are registered: "
+                            + strategies.values().stream()
+                                    .map(strategy -> strategy.getVersion().name())
+                                    .toList()
+            );
+        }
+    }
+
     public String encrypt(String dbValue) {
 
-        EncryptVersion encryptVersion = securityProperties.getEncryptVersion();
+        EncryptVersion encryptVersion = resolveEncryptVersion();
         if (isEncrypted(dbValue)) {
             String version = extractVersion(dbValue);
             if (version.equals(encryptVersion.getMsg().toLowerCase())) {
@@ -61,6 +91,16 @@ public class EncryptionServiceImpl implements EncryptionService {
 
         String encrypted = factory.getStrategy(version).encrypt(plainText);
         return version.getMsg() + ":" + encrypted;
+    }
+
+    private EncryptVersion resolveEncryptVersion() {
+
+        if (encryptVersion == null) {
+            throw new IllegalStateException(
+                    "app.security.encrypt-version must be configured when no encryption strategy is registered"
+            );
+        }
+        return encryptVersion;
     }
 
 }

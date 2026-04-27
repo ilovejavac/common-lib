@@ -12,14 +12,52 @@ public class AppSecurityProperties {
 
     private EncryptVersion encryptVersion;
 
-    private String secret;
+    private Aes aes = new Aes();
+
+    private Base64 base64 = new Base64();
+
+    private Rsa rsa = new Rsa();
+
+    private Custom custom = new Custom();
+
+    private Jwt jwt = new Jwt();
 
     private Long expiration;
 
     private Set<String> whiteListRequest;
 
-    private String rsaPublicKey;
+    @Data
+    public static class Aes {
 
-    private String rsaPrivateKey;
+        private String secret;
+    }
+
+    @Data
+    public static class Base64 {
+
+        private Boolean enabled;
+    }
+
+    @Data
+    public static class Rsa {
+
+        private Boolean enabled;
+
+        private String publicKey;
+
+        private String privateKey;
+    }
+
+    @Data
+    public static class Custom {
+
+        private Boolean enabled;
+    }
+
+    @Data
+    public static class Jwt {
+
+        private String secret;
+    }
 
 }

@@ -1,8 +1,10 @@
 package com.dev.lib.util.encrypt;
 
+import com.dev.lib.entity.encrypt.EncryptVersion;
+
 public interface Encryptor {
 
-    String getVersion();
+    EncryptVersion getVersion();
 
     String encrypt(String value);
 

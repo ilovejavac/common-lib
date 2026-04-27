@@ -1,11 +1,11 @@
 package com.dev.lib.util.encrypt.impl;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
-import com.dev.lib.util.encrypt.Encryptor;
 import com.dev.lib.entity.encrypt.EncryptVersion;
+import com.dev.lib.util.encrypt.Encryptor;
+import com.dev.lib.util.encrypt.condition.ConditionalOnEncryptionStrategy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -21,7 +21,7 @@ import java.util.Base64;
 @Component
 @RequiredArgsConstructor
 // openssl rand -base64 32
-@ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "aes")
+@ConditionalOnEncryptionStrategy(EncryptVersion.AES)
 public class AesGcmEncryptionStrategy implements Encryptor, InitializingBean {
 
     private final AppSecurityProperties securityProperties;
@@ -35,14 +35,14 @@ public class AesGcmEncryptionStrategy implements Encryptor, InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
-        byte[] keyBytes = loadBase64Key(securityProperties.getSecret());
+        byte[] keyBytes = loadBase64Key(securityProperties.getAes().getSecret());
         this.secretKey = new SecretKeySpec(keyBytes, "AES");
     }
 
     @Override
-    public String getVersion() {
+    public EncryptVersion getVersion() {
 
-        return EncryptVersion.AES.getMsg();
+        return EncryptVersion.AES;
     }
 
     @Override
@@ -102,7 +102,7 @@ public class AesGcmEncryptionStrategy implements Encryptor, InitializingBean {
     private byte[] loadBase64Key(String encodedKey) {
         if (encodedKey == null || encodedKey.isBlank()) {
             throw new IllegalStateException(
-                    "app.security.secret must be a Base64-encoded 32-byte AES key"
+                    "app.security.aes.secret must be a Base64-encoded 32-byte AES key"
             );
         }
 
@@ -110,15 +110,16 @@ public class AesGcmEncryptionStrategy implements Encryptor, InitializingBean {
             byte[] keyBytes = Base64.getDecoder().decode(encodedKey);
             if (keyBytes.length != KEY_LENGTH / 8) {
                 throw new IllegalStateException(
-                        "app.security.secret must decode to exactly 32 bytes for AES-256"
+                        "app.security.aes.secret must decode to exactly 32 bytes for AES-256"
                 );
             }
             return keyBytes;
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException(
-                    "app.security.secret must be valid Base64",
+                    "app.security.aes.secret must be valid Base64",
                     e
             );
         }
     }
+
 }

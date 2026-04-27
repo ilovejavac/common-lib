@@ -22,12 +22,12 @@ public class EncryptionStrategyFactory {
 
         this.strategies = strategyList.stream()
                 .collect(Collectors.toMap(
-                        Encryptor::getVersion,
+                        strategy -> strategy.getVersion().getMsg(),
                         s -> s,
                         (existing, replacement) -> {
                             log.warn(
                                     "发现重复的加密策略版本: {}, 使用: {}",
-                                    existing.getVersion(),
+                                    existing.getVersion().getMsg(),
                                     existing.getClass().getSimpleName()
                             );
                             return existing;  // 保留第一个
@@ -35,8 +35,10 @@ public class EncryptionStrategyFactory {
                 ));
 
         log.info(
-                "加载加密策略: {}",
-                strategies.keySet()
+                "Loaded encryption strategies: {}",
+                strategies.values().stream()
+                        .map(strategy -> strategy.getVersion().name())
+                        .toList()
         );
     }
 

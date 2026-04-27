@@ -1,8 +1,8 @@
 package com.dev.lib.util.encrypt.impl;
 
-import com.dev.lib.util.encrypt.Encryptor;
 import com.dev.lib.entity.encrypt.EncryptVersion;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import com.dev.lib.util.encrypt.Encryptor;
+import com.dev.lib.util.encrypt.condition.ConditionalOnEncryptionStrategy;
 import org.springframework.stereotype.Component;
 
 import java.util.Base64;
@@ -11,13 +11,13 @@ import java.util.Base64;
  * base64加密
  */
 @Component
-@ConditionalOnProperty(prefix = "app.security", name = "encrypt-version", havingValue = "base64")
+@ConditionalOnEncryptionStrategy(EncryptVersion.BASE64)
 public class Base64EncryptionStrategy implements Encryptor {
 
     @Override
-    public String getVersion() {
+    public EncryptVersion getVersion() {
 
-        return EncryptVersion.BASE64.getMsg();
+        return EncryptVersion.BASE64;
     }
 
     @Override
