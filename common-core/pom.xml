@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.4.1-rc.0</version>
+        <version>1.4.2-RC1</version>
     </parent>
 
     <artifactId>common-core</artifactId>
@@ -33,6 +33,11 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context-support</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <version>2.2.48</version>
         </dependency>
 
         <dependency>

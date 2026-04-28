@@ -1,12 +1,8 @@
 FROM eclipse-temurin:25-jre-noble
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN groupadd --system --gid 10001 spring \
     && useradd --system --uid 10001 --gid spring --create-home --home-dir /home/spring spring \
-    && mkdir -p /app/log \
+    && mkdir -p /app/mnt \
     && chown -R 10001:10001 /app /home/spring
 
 WORKDIR /app
