@@ -34,7 +34,7 @@ public final class CascadeSoftDeleteSupport {
     private CascadeSoftDeleteSupport() {
     }
 
-    public static <T extends JpaEntity> void delete(
+    public static <T extends JpaEntity> long delete(
             BaseRepositoryImpl<T> repository,
             QueryContext ctx,
             DslQuery<T> dslQuery,
@@ -46,19 +46,21 @@ public final class CascadeSoftDeleteSupport {
             throw new IllegalArgumentException("批量删除必须指定业务条件，防止误删全表");
         }
 
+        if (ctx.getDeletedFilter() == QueryContext.DeletedFilter.ONLY_DELETED) {
+            return 0L;
+        }
+
         Predicate condition = activeCondition(
                 repository,
-                RepositoryPredicateSupport.buildPredicate(
+                RepositoryPredicateSupport.buildPluginAndBusinessPredicate(
                         repository.getPathBuilder(),
                         repository.getPath(),
-                        repository.getDeletedPath(),
-                        ctx,
                         dslQuery,
                         expressions
                 )
         );
         cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
-        executeSoftDeleteUpdate(repository, condition);
+        return executeSoftDeleteUpdate(repository, condition);
     }
 
     public static <T extends JpaEntity> void deleteEntity(BaseRepositoryImpl<T> repository, T entity) {
@@ -147,12 +149,12 @@ public final class CascadeSoftDeleteSupport {
         return where;
     }
 
-    private static <T extends JpaEntity> void executeSoftDeleteUpdate(BaseRepositoryImpl<T> repository, Predicate condition) {
+    private static <T extends JpaEntity> long executeSoftDeleteUpdate(BaseRepositoryImpl<T> repository, Predicate condition) {
 
-        executeSoftDeleteUpdate(repository, repository.getPath(), repository.getPathBuilder(), condition);
+        return executeSoftDeleteUpdate(repository, repository.getPath(), repository.getPathBuilder(), condition);
     }
 
-    private static void executeSoftDeleteUpdate(BaseRepositoryImpl<?> repository, EntityPath<?> path, PathBuilder<?> pathBuilder, Predicate condition) {
+    private static long executeSoftDeleteUpdate(BaseRepositoryImpl<?> repository, EntityPath<?> path, PathBuilder<?> pathBuilder, Predicate condition) {
 
         long affected = repository.getQueryFactory().update(path)
                 .set(pathBuilder.getBoolean("deleted"), true)
@@ -165,6 +167,7 @@ public final class CascadeSoftDeleteSupport {
             repository.getEntityManager().flush();
             repository.getEntityManager().clear();
         }
+        return affected;
     }
 
     private static void cascadeSoftDeleteChildren(

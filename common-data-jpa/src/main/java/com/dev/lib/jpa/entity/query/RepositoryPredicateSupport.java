@@ -40,6 +40,22 @@ public final class RepositoryPredicateSupport {
             case ONLY_DELETED -> builder.and(deletedPath.eq(true));
         }
 
+        Predicate scopedPredicate = buildPluginAndBusinessPredicate(pathBuilder, path, dslQuery, expressions);
+        if (scopedPredicate != null) {
+            builder.and(scopedPredicate);
+        }
+        return builder.getValue();
+    }
+
+    public static <T extends JpaEntity> Predicate buildPluginAndBusinessPredicate(
+            PathBuilder<T> pathBuilder,
+            EntityPath<T> path,
+            DslQuery<T> dslQuery,
+            BooleanExpression... expressions
+    ) {
+
+        BooleanBuilder builder = new BooleanBuilder();
+
         BooleanExpression pluginExpr = QueryPluginChain.getInstance().apply(pathBuilder, path.getType());
         if (pluginExpr != null) {
             builder.and(pluginExpr);

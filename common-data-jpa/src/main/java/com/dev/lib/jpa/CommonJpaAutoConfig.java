@@ -12,6 +12,7 @@ import com.dev.lib.jpa.entity.write.RepositoryWritePlugin;
 import com.dev.lib.jpa.entity.write.RepositoryWritePluginRegistrar;
 import com.dev.lib.jpa.multiple.JpaManagedDatasourceGroup;
 import com.dev.lib.jpa.multiple.JpaManagedHikariDefaultsBeanPostProcessor;
+import com.dev.lib.jpa.multiple.SingleDatasourceRepositoryRegistrar;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import net.ttddyy.dsproxy.listener.QueryExecutionListener;
@@ -27,7 +28,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.util.StringUtils;
 
 @AutoConfiguration(before = DataJpaRepositoriesAutoConfiguration.class)
-@Import(CommonJpaPackageRegistrar.class)
+@Import({CommonJpaPackageRegistrar.class, SingleDatasourceRepositoryRegistrar.class})
 @EnableConfigurationProperties({AppDialectProperties.class, SlowQueryProperties.class, JpaHikariDefaultsProperties.class})
 public class CommonJpaAutoConfig {
 

@@ -53,7 +53,7 @@ class ServerResponseJacksonNullExclusionTest {
         String json = commonJacksonJsonHttpMessageConverter.getMapper().writeValueAsString(response);
 
         assertThat(json).contains("\"code\":4101");
-        assertThat(json).contains("\"message\":\"参数校验失败\"");
+        assertThat(json).contains("\"message\":\"response failed\"");
         assertThat(json).contains("\"error\":\"参数校验失败\"");
     }
 

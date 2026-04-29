@@ -231,15 +231,15 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    public long delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        delete(new QueryContext(), dslQuery, expressions);
+        return delete(new QueryContext(), dslQuery, expressions);
     }
 
-    void delete(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    long delete(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         ensureNonAggregateQuery(dslQuery, "delete");
-        CascadeSoftDeleteSupport.delete(this, ctx, dslQuery, expressions);
+        return CascadeSoftDeleteSupport.delete(this, ctx, dslQuery, expressions);
     }
 
     @Override

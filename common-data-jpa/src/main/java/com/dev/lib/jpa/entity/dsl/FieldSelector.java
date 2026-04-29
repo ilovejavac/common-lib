@@ -26,10 +26,10 @@ public class FieldSelector<T> {
     /**
      * 简单字段: User::getName
      */
-    public static <T, R> FieldSelector<T> of(SFunction<T, R> fn) {
+    public static <T, R> FieldSelector<T> of(SFunction<? super T, R> fn) {
         List<SFunction<?, ?>> chain = new ArrayList<>();
-        chain.add(fn);
-        return new FieldSelector<>(fn.getFieldName(), getReturnType(fn), chain);
+        chain.add((SFunction<?, ?>) fn);
+        return new FieldSelector<>(fn.getFieldName(), getReturnType((SFunction<?, ?>) fn), chain);
     }
 
     /**

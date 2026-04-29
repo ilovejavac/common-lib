@@ -3,10 +3,12 @@ package com.dev.lib.config;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonToken;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.StreamReadConstraints;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.core.StreamWriteFeature;
+import tools.jackson.core.type.WritableTypeId;
 import tools.jackson.core.json.JsonFactoryBuilder;
 import tools.jackson.core.json.JsonReadFeature;
 import tools.jackson.databind.DeserializationContext;
@@ -19,6 +21,7 @@ import tools.jackson.databind.ValueSerializer;
 import tools.jackson.databind.cfg.DateTimeFeature;
 import tools.jackson.databind.cfg.EnumFeature;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.jsontype.TypeSerializer;
 import tools.jackson.databind.module.SimpleModule;
 
 import java.math.BigDecimal;
@@ -121,6 +124,18 @@ public final class JacksonSupport {
             }
             gen.writeNumber(value.setScale(6, RoundingMode.HALF_UP).toPlainString());
         }
+
+        @Override
+        public void serializeWithType(
+                BigDecimal value,
+                JsonGenerator gen,
+                SerializationContext serializers,
+                TypeSerializer typeSer
+        ) throws JacksonException {
+
+            writeScalarWithType(value, JsonToken.VALUE_NUMBER_FLOAT, gen, serializers, typeSer, () ->
+                    serialize(value, gen, serializers));
+        }
     }
 
     static class BigDecimalDeserializer extends ValueDeserializer<BigDecimal> {
@@ -139,6 +154,18 @@ public final class JacksonSupport {
         public void serialize(LocalDateTime value, JsonGenerator gen, SerializationContext serializers) throws JacksonException {
 
             gen.writeString(value == null ? null : DATE_TIME_FORMATTER.format(value));
+        }
+
+        @Override
+        public void serializeWithType(
+                LocalDateTime value,
+                JsonGenerator gen,
+                SerializationContext serializers,
+                TypeSerializer typeSer
+        ) throws JacksonException {
+
+            writeScalarWithType(value, JsonToken.VALUE_STRING, gen, serializers, typeSer, () ->
+                    serialize(value, gen, serializers));
         }
     }
 
@@ -166,6 +193,18 @@ public final class JacksonSupport {
 
             gen.writeString(value == null ? null : DATE_FORMATTER.format(value));
         }
+
+        @Override
+        public void serializeWithType(
+                LocalDate value,
+                JsonGenerator gen,
+                SerializationContext serializers,
+                TypeSerializer typeSer
+        ) throws JacksonException {
+
+            writeScalarWithType(value, JsonToken.VALUE_STRING, gen, serializers, typeSer, () ->
+                    serialize(value, gen, serializers));
+        }
     }
 
     static class LocalDateDeserializer extends ValueDeserializer<LocalDate> {
@@ -185,6 +224,18 @@ public final class JacksonSupport {
 
             gen.writeString(value == null ? null : TIME_FORMATTER.format(value));
         }
+
+        @Override
+        public void serializeWithType(
+                LocalTime value,
+                JsonGenerator gen,
+                SerializationContext serializers,
+                TypeSerializer typeSer
+        ) throws JacksonException {
+
+            writeScalarWithType(value, JsonToken.VALUE_STRING, gen, serializers, typeSer, () ->
+                    serialize(value, gen, serializers));
+        }
     }
 
     static class LocalTimeDeserializer extends ValueDeserializer<LocalTime> {
@@ -203,6 +254,18 @@ public final class JacksonSupport {
         public void serialize(Instant value, JsonGenerator gen, SerializationContext serializers) throws JacksonException {
 
             gen.writeString(value == null ? null : DATE_TIME_FORMATTER.format(value.atZone(ZONE_ID)));
+        }
+
+        @Override
+        public void serializeWithType(
+                Instant value,
+                JsonGenerator gen,
+                SerializationContext serializers,
+                TypeSerializer typeSer
+        ) throws JacksonException {
+
+            writeScalarWithType(value, JsonToken.VALUE_STRING, gen, serializers, typeSer, () ->
+                    serialize(value, gen, serializers));
         }
     }
 
@@ -241,5 +304,40 @@ public final class JacksonSupport {
             }
             gen.writeNumber(value);
         }
+
+        @Override
+        public void serializeWithType(
+                Long value,
+                JsonGenerator gen,
+                SerializationContext serializers,
+                TypeSerializer typeSer
+        ) throws JacksonException {
+
+            JsonToken token = value != null && (value > JS_SAFE_INTEGER_MAX || value < -JS_SAFE_INTEGER_MAX)
+                    ? JsonToken.VALUE_STRING
+                    : JsonToken.VALUE_NUMBER_INT;
+            writeScalarWithType(value, token, gen, serializers, typeSer, () ->
+                    serialize(value, gen, serializers));
+        }
+    }
+
+    private static void writeScalarWithType(
+            Object value,
+            JsonToken token,
+            JsonGenerator gen,
+            SerializationContext serializers,
+            TypeSerializer typeSer,
+            ScalarWriter writer
+    ) throws JacksonException {
+
+        WritableTypeId typeId = typeSer.writeTypePrefix(gen, serializers, typeSer.typeId(value, token));
+        writer.write();
+        typeSer.writeTypeSuffix(gen, serializers, typeId);
+    }
+
+    @FunctionalInterface
+    private interface ScalarWriter {
+
+        void write() throws JacksonException;
     }
 }

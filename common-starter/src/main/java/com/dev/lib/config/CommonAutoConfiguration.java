@@ -14,12 +14,6 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 @AutoConfiguration
 @ComponentScan("com.dev.lib")
-@ComponentModelConfig
-@EnableAsync
-@EnableScheduling
-@EnableAspectJAutoProxy
-@EnableCaching
-@EnableWebMvc
 public class CommonAutoConfiguration {
 
     @Bean

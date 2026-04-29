@@ -194,6 +194,7 @@
     <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR" additivity="false"/>
     <logger name="org.hibernate.engine.internal" level="WARN" additivity="false"/>
     <logger name="org.hibernate.validator" level="WARN" additivity="false"/>
+    <logger name="org.hibernate.validator.internal.metadata.aggregated.CascadingMetaDataBuilder" level="OFF" additivity="false"/>
     <logger name="org.hibernate.orm.deprecation" level="ERROR"/>
 
     <!-- Redisson 客户端噪声 -->

@@ -14,7 +14,7 @@
 
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.4.2-RC1</version>
+    <version>1.4.3-RC1</version>
     <packaging>pom</packaging>
 
     <name>common-lib</name>
@@ -75,6 +75,7 @@
         <module>common-agent</module>
         <module>common-security-aes</module>
         <module>common-user</module>
+        <module>common-aksk</module>
     </modules>
 
     <properties>
@@ -85,7 +86,7 @@
 
         <!-- Internal coordinates -->
         <lib.groupId>io.github.ilovejavac</lib.groupId>
-        <lib.version>1.4.2-RC1</lib.version>
+        <lib.version>1.4.3-RC1</lib.version>
 
         <!-- Spring ecosystem -->
         <spring-boot.version>4.1.0-RC1</spring-boot.version>
@@ -139,7 +140,8 @@
         <!-- Build tooling -->
         <maven_os_plugin_version>1.7.1</maven_os_plugin_version>
         <maven_protobuf_plugin_version>0.6.1</maven_protobuf_plugin_version>
-        <skipTests>true</skipTests>
+        <gpg.skip>true</gpg.skip>
+
     </properties>
 
     <profiles>
@@ -604,6 +606,11 @@
                 <artifactId>common-user</artifactId>
                 <version>${lib.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.ilovejavac</groupId>
+                <artifactId>common-aksk</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -816,6 +823,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>3.2.7</version>
+                <configuration>
+                    <skip>${gpg.skip}</skip>
+                </configuration>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>

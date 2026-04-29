@@ -45,8 +45,9 @@ public class JpaDatasourceRegistrar
         implements ImportBeanDefinitionRegistrar, EnvironmentAware, ResourceLoaderAware {
 
     private static final String COMMON_LIB_PACKAGE = "com.dev.lib";
+    private static final String[] INTERNAL_REPOSITORY_PACKAGES = {"com.dev.lib.jpa.entity.log"};
     private static final String JPA_PROPERTIES_BEAN = "commonJpaResolvedHibernateProperties";
-    private static final String MANAGED_DATASOURCE_GROUP_BEAN_PREFIX = "commonJpaManagedDatasourceGroup#";
+    static final String MANAGED_DATASOURCE_GROUP_BEAN_PREFIX = "commonJpaManagedDatasourceGroup#";
 
     private Environment environment;
     private ResourceLoader resourceLoader;
@@ -94,6 +95,7 @@ public class JpaDatasourceRegistrar
             JpaDialect logicalDialect = explicitDialectConfigured
                     ? dialect
                     : appDialectProperties.getDialect();
+            String[] repositoryPackages = packages;
 
             boolean isPrimary = first;
             if (first) {
@@ -112,7 +114,10 @@ public class JpaDatasourceRegistrar
             registerTransactionManager(registry, tmName, emfName, isPrimary);
             registerSharedEntityManager(registry, sharedEmName, emfName);
             registerQueryFactory(registry, qfName, sharedEmName, isPrimary);
-            registerRepositories(registry, packages, emfName, tmName);
+            registerRepositories(registry, repositoryPackages, emfName, tmName);
+            if (isPrimary) {
+                registerRepositories(registry, INTERNAL_REPOSITORY_PACKAGES, emfName, tmName, false);
+            }
         }
     }
 
@@ -281,10 +286,27 @@ public class JpaDatasourceRegistrar
                                       String emfRef,
                                       String tmRef) {
 
+        registerRepositories(registry, packages, emfRef, tmRef, true);
+    }
+
+    private void registerRepositories(BeanDefinitionRegistry registry,
+                                      String[] packages,
+                                      String emfRef,
+                                      String tmRef,
+                                      boolean considerNestedRepositories) {
+
         RepositoryConfigurationExtension extension = new JpaRepositoryConfigExtension();
 
         SimpleRepositoryConfigurationSource source =
-                new SimpleRepositoryConfigurationSource(packages, emfRef, tmRef, resourceLoader, environment, registry);
+                new SimpleRepositoryConfigurationSource(
+                        packages,
+                        emfRef,
+                        tmRef,
+                        considerNestedRepositories,
+                        resourceLoader,
+                        environment,
+                        registry
+                );
 
         RepositoryConfigurationDelegate delegate =
                 new RepositoryConfigurationDelegate(source, resourceLoader, environment);

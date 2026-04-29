@@ -50,7 +50,7 @@ class GlobalExceptionHandlingTest {
 
         mockMvc.perform(get("/api/exception/biz"))
                 .andExpect(jsonPath("$.code").value(4999))
-                .andExpect(jsonPath("$.message").value("业务失败"))
+                .andExpect(jsonPath("$.message").value("response failed"))
                 .andExpect(jsonPath("$.error").value("业务失败"));
     }
 
@@ -59,7 +59,7 @@ class GlobalExceptionHandlingTest {
 
         MvcResult result = mockMvc.perform(get("/api/exception/runtime"))
                 .andExpect(jsonPath("$.code").value(5500))
-                .andExpect(jsonPath("$.message").value("系统繁忙，请稍后再试"))
+                .andExpect(jsonPath("$.message").value("response failed"))
                 .andExpect(jsonPath("$.error").value("系统繁忙，请稍后再试"))
                 .andReturn();
 
@@ -83,7 +83,7 @@ class GlobalExceptionHandlingTest {
 
         MvcResult result = mockMvc.perform(get("/api/exception/illegal-argument"))
                 .andExpect(jsonPath("$.code").value(4105))
-                .andExpect(jsonPath("$.message").value("参数错误"))
+                .andExpect(jsonPath("$.message").value("request failed"))
                 .andExpect(jsonPath("$.error").value("参数错误"))
                 .andReturn();
 
@@ -98,7 +98,8 @@ class GlobalExceptionHandlingTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{}"))
                 .andExpect(jsonPath("$.code").value(4101))
-                .andExpect(jsonPath("$.message").value("参数校验失败"))
+                .andExpect(jsonPath("$.message").value("request failed"))
+                .andExpect(jsonPath("$.error").value("参数校验失败"))
                 .andExpect(jsonPath("$.data.name").value("名称不能为空"));
     }
 
@@ -107,7 +108,7 @@ class GlobalExceptionHandlingTest {
 
         mockMvc.perform(get("/api/exception/required-param"))
                 .andExpect(jsonPath("$.code").value(4103))
-                .andExpect(jsonPath("$.message").value("缺少必需参数：name"))
+                .andExpect(jsonPath("$.message").value("request failed"))
                 .andExpect(jsonPath("$.error").value("缺少必需参数：name"));
     }
 
@@ -116,7 +117,7 @@ class GlobalExceptionHandlingTest {
 
         mockMvc.perform(get("/api/exception/not-found"))
                 .andExpect(jsonPath("$.code").value(4304))
-                .andExpect(jsonPath("$.message").value("接口不存在"))
+                .andExpect(jsonPath("$.message").value("request failed"))
                 .andExpect(jsonPath("$.error").value("接口不存在"));
     }
 

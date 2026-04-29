@@ -43,7 +43,7 @@ class DatabaseExceptionHandlerTest {
 
         mockMvc.perform(get("/database/duplicate"))
                 .andExpect(jsonPath("$.code").value(5101))
-                .andExpect(jsonPath("$.message").value("数据已存在，请勿重复提交"))
+                .andExpect(jsonPath("$.message").value("response failed"))
                 .andExpect(jsonPath("$.error").value("数据已存在，请勿重复提交"));
     }
 
@@ -52,7 +52,7 @@ class DatabaseExceptionHandlerTest {
 
         mockMvc.perform(get("/database/generic"))
                 .andExpect(jsonPath("$.code").value(5103))
-                .andExpect(jsonPath("$.message").value("数据库操作异常，请稍后重试"))
+                .andExpect(jsonPath("$.message").value("response failed"))
                 .andExpect(jsonPath("$.error").value("数据库操作异常，请稍后重试"));
     }
 

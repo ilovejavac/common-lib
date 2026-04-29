@@ -9,20 +9,9 @@
         <version>1.4.3-RC1</version>
     </parent>
 
-    <artifactId>common-security-sa</artifactId>
-    <name>common-security-sa</name>
-    <description>A common library module for Spring Boot microservices</description>
+    <artifactId>common-aksk</artifactId>
 
     <dependencies>
-        <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-spring-boot4-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.github.ilovejavac</groupId>
-            <artifactId>common-security</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-core</artifactId>

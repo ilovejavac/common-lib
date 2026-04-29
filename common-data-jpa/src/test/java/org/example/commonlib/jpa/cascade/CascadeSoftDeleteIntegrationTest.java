@@ -92,8 +92,9 @@ class CascadeSoftDeleteIntegrationTest {
 
             CascadeParentQuery query = new CascadeParentQuery();
             query.setId(parent.getId());
-            parentRepo.delete(query);
+            long affected = parentRepo.delete(query);
 
+            assertThat(affected).isEqualTo(1);
             assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1);
             assertThat(childRepo.onlyDeleted().count()).isEqualTo(1);
         });

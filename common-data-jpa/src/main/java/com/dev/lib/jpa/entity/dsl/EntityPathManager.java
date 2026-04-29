@@ -23,25 +23,37 @@ public class EntityPathManager {
         return (EntityPathBase<E>) CACHE.computeIfAbsent(
                 entityClass,
                 clazz -> {
+                    String qClassName = buildQueryDslClassName(clazz);
+                    String fieldName  = Character.toLowerCase(clazz.getSimpleName().charAt(0))
+                            + clazz.getSimpleName().substring(1);
                     try {
-                        String   qClassName = clazz.getPackage().getName() + ".Q" + clazz.getSimpleName();
-                        Class<?> qClass     = Class.forName(qClassName);
-
-                        String fieldName = Character.toLowerCase(clazz.getSimpleName().charAt(0))
-                                + clazz.getSimpleName().substring(1);
-
+                        Class<?> qClass = Class.forName(qClassName);
                         Field field = qClass.getDeclaredField(fieldName);
                         ReflectionUtils.makeAccessible(field);
 
                         return (EntityPathBase<?>) field.get(null);
                     } catch (Exception e) {
                         throw new IllegalStateException(
-                                "无法创建 Q 类实例: " + clazz.getName(),
+                                "无法创建 Q 类实例: " + clazz.getName()
+                                        + ", qClass=" + qClassName
+                                        + ", field=" + fieldName,
                                 e
                         );
                     }
                 }
         );
+    }
+
+    private static String buildQueryDslClassName(Class<?> entityClass) {
+
+        String packageName = entityClass.getPackageName();
+        String binaryName  = entityClass.getName();
+        String simpleName  = packageName.isEmpty()
+                ? binaryName
+                : binaryName.substring(packageName.length() + 1);
+        String qSimpleName = "Q" + simpleName.replace('$', '_');
+
+        return packageName.isEmpty() ? qSimpleName : packageName + "." + qSimpleName;
     }
 
 }

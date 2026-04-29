@@ -6,6 +6,7 @@ import com.dev.lib.entity.dsl.DslQuery;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
+import org.hibernate.resource.jdbc.spi.StatementInspector;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
@@ -14,6 +15,8 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,6 +33,7 @@ class DeleteBatchExecutionIntegrationTest {
                     "spring.jpa.open-in-view=false",
                     "spring.jpa.show-sql=true",
                     "spring.jpa.properties.hibernate.generate_statistics=true",
+                    "spring.jpa.properties.hibernate.session_factory.statement_inspector=org.example.commonlib.jpa.batch.DeleteBatchExecutionIntegrationTest$SqlCaptureInspector",
                     "spring.application.name=delete-batch-execution-test"
             );
 
@@ -103,6 +107,52 @@ class DeleteBatchExecutionIntegrationTest {
     }
 
     @Test
+    void softDeleteByDslQueryShouldNotDuplicateActiveDeletedPredicate() {
+
+        SqlCaptureInspector.clear();
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            repo.saveAll(buildEntities("soft-query-sql-", 2));
+            SqlCaptureInspector.clear();
+
+            repo.delete(new DeleteBatchThingQuery().setNameStartWith("soft-query-sql-"));
+
+            String updateSql = SqlCaptureInspector.statements().stream()
+                    .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(countOccurrences(updateSql.toLowerCase(Locale.ROOT), "deleted"))
+                    .isEqualTo(2);
+        });
+    }
+
+    @Test
+    void softDeleteByOnlyDeletedDslQueryShouldNotGenerateContradictoryDeletedPredicates() {
+
+        SqlCaptureInspector.clear();
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            repo.saveAll(buildEntities("only-deleted-query-", 2));
+            SqlCaptureInspector.clear();
+
+            repo.onlyDeleted().delete(new DeleteBatchThingQuery().setNameStartWith("only-deleted-query-"));
+
+            List<String> updateSqls = SqlCaptureInspector.statements().stream()
+                    .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
+                    .toList();
+            assertThat(updateSqls).isEmpty();
+            assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("only-deleted-query-")))
+                    .isEqualTo(2);
+            assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("only-deleted-query-")))
+                    .isZero();
+        });
+    }
+
+    @Test
     void physicalDeleteAllByIdShouldUseInClauseBatches() {
 
         contextRunner.run(context -> {
@@ -157,6 +207,39 @@ class DeleteBatchExecutionIntegrationTest {
             entities.add(new DeleteBatchThing(prefix + i));
         }
         return entities;
+    }
+
+    private static int countOccurrences(String text, String target) {
+
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(target, index)) >= 0) {
+            count++;
+            index += target.length();
+        }
+        return count;
+    }
+
+    public static class SqlCaptureInspector implements StatementInspector {
+
+        private static final List<String> STATEMENTS = new CopyOnWriteArrayList<>();
+
+        static void clear() {
+
+            STATEMENTS.clear();
+        }
+
+        static List<String> statements() {
+
+            return List.copyOf(STATEMENTS);
+        }
+
+        @Override
+        public String inspect(String sql) {
+
+            STATEMENTS.add(sql);
+            return sql;
+        }
     }
 
     @SpringBootConfiguration

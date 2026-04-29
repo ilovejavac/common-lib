@@ -33,9 +33,46 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
         return new QueryBuilder<>(RepositoryUtils.unwrap(this)).onlyDeleted();
     }
 
-    @SuppressWarnings("unchecked")
-    default QueryBuilder<T> select(SFunction<T, ?>... fields) {
-        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(fields);
+    default QueryBuilder<T> select(SFunction<? super T, ?> field1) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1);
+    }
+
+    default QueryBuilder<T> select(SFunction<? super T, ?> field1, SFunction<? super T, ?> field2) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2);
+    }
+
+    default QueryBuilder<T> select(SFunction<? super T, ?> field1, SFunction<? super T, ?> field2, SFunction<? super T, ?> field3) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2, field3);
+    }
+
+    default QueryBuilder<T> select(
+            SFunction<? super T, ?> field1,
+            SFunction<? super T, ?> field2,
+            SFunction<? super T, ?> field3,
+            SFunction<? super T, ?> field4
+    ) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2, field3, field4);
+    }
+
+    default QueryBuilder<T> select(
+            SFunction<? super T, ?> field1,
+            SFunction<? super T, ?> field2,
+            SFunction<? super T, ?> field3,
+            SFunction<? super T, ?> field4,
+            SFunction<? super T, ?> field5
+    ) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2, field3, field4, field5);
+    }
+
+    default QueryBuilder<T> select(
+            SFunction<? super T, ?> field1,
+            SFunction<? super T, ?> field2,
+            SFunction<? super T, ?> field3,
+            SFunction<? super T, ?> field4,
+            SFunction<? super T, ?> field5,
+            SFunction<? super T, ?> field6
+    ) {
+        return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2, field3, field4, field5, field6);
     }
 
     @SuppressWarnings("unchecked")
@@ -104,10 +141,10 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
 
     <R> List<R> aggregate(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-    void delete(DslQuery<T> dslQuery, BooleanExpression... expressions);
+    long delete(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-    default void delete(BooleanExpression... expressions) {
-        delete(null, expressions);
+    default long delete(BooleanExpression... expressions) {
+        return delete(null, expressions);
     }
 
     // ==================== 物理删除 ====================

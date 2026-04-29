@@ -1,5 +1,7 @@
 package com.dev.lib.biz.bootstrap.service;
 
+import com.dev.lib.biz.bootstrap.BootStrapException;
+import com.dev.lib.biz.bootstrap.BootstrapError;
 import com.dev.lib.biz.bootstrap.model.BootstrapCmd;
 import com.dev.lib.biz.bootstrap.repo.IBootstrapQueryRepo;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,9 @@ public class BootstrapSystemUseCase {
 
     public Boolean execute(@Validated BootstrapCmd.BootstrapSystem cmd) {
 
-        throw new UnsupportedOperationException();
+        if (Boolean.TRUE.equals(bootstrapQueryRepo.isSystemInitialized())) {
+            throw new BootStrapException(BootstrapError.SYSTEM_HAS_BEEN_INITIALIZED);
+        }
+        return true;
     }
 }

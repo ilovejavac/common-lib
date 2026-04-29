@@ -40,8 +40,19 @@ class SimpleRepositoryConfigurationSource extends AnnotationRepositoryConfigurat
                                         Environment environment,
                                         BeanDefinitionRegistry registry) {
 
+        this(packages, entityManagerFactoryRef, transactionManagerRef, true, resourceLoader, environment, registry);
+    }
+
+    SimpleRepositoryConfigurationSource(String[] packages,
+                                        String entityManagerFactoryRef,
+                                        String transactionManagerRef,
+                                        boolean considerNestedRepositories,
+                                        ResourceLoader resourceLoader,
+                                        Environment environment,
+                                        BeanDefinitionRegistry registry) {
+
         super(
-                buildMetadata(packages, entityManagerFactoryRef, transactionManagerRef),
+                buildMetadata(packages, entityManagerFactoryRef, transactionManagerRef, considerNestedRepositories),
                 EnableJpaRepositories.class,
                 resourceLoader,
                 environment,
@@ -54,7 +65,8 @@ class SimpleRepositoryConfigurationSource extends AnnotationRepositoryConfigurat
 
     private static AnnotationMetadata buildMetadata(String[] packages,
                                                     String entityManagerFactoryRef,
-                                                    String transactionManagerRef) {
+                                                    String transactionManagerRef,
+                                                    boolean considerNestedRepositories) {
 
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("value",                           new String[0]);
@@ -69,7 +81,7 @@ class SimpleRepositoryConfigurationSource extends AnnotationRepositoryConfigurat
         attrs.put("repositoryBaseClass",             DefaultRepositoryBaseClass.class);
         attrs.put("entityManagerFactoryRef",         entityManagerFactoryRef);
         attrs.put("transactionManagerRef",           transactionManagerRef);
-        attrs.put("considerNestedRepositories",      false);
+        attrs.put("considerNestedRepositories",      considerNestedRepositories);
         attrs.put("enableDefaultTransactions",       true);
         attrs.put("bootstrapMode",                   BootstrapMode.DEFAULT);
         attrs.put("escapeCharacter",                 '\\');

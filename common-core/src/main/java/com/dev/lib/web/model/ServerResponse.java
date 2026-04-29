@@ -28,6 +28,10 @@ public class ServerResponse<T> implements Serializable {
 
     private static final String DEFAULT_FAILURE_MESSAGE = "failed";
 
+    private static final String REQUEST_FAILURE_MESSAGE = "request failed";
+
+    private static final String RESPONSE_FAILURE_MESSAGE = "response failed";
+
     private static final String TRACE_ID_KEY = "trace_id";
 
     private static final String APPLICATION_JSON_UTF8 = "application/json;charset=UTF-8";
@@ -92,7 +96,8 @@ public class ServerResponse<T> implements Serializable {
 
     public static <T> ServerResponse<T> requestFail(Integer code, String message, T data) {
 
-        return failure(code, message, data);
+        String error = message != null ? message : DEFAULT_FAILURE_MESSAGE;
+        return response(code, REQUEST_FAILURE_MESSAGE, error, data, null);
     }
 
     public void to(HttpServletResponse response) {
@@ -111,8 +116,8 @@ public class ServerResponse<T> implements Serializable {
 
     private static <T> ServerResponse<T> failure(Integer code, String message, T data) {
 
-        String value = message != null ? message : DEFAULT_FAILURE_MESSAGE;
-        return response(code, value, value, data, null);
+        String error = message != null ? message : DEFAULT_FAILURE_MESSAGE;
+        return response(code, RESPONSE_FAILURE_MESSAGE, error, data, null);
     }
 
     private static <T> ServerResponse<T> response(

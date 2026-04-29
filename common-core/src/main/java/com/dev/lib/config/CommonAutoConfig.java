@@ -2,11 +2,25 @@ package com.dev.lib.config;
 
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.config.properties.AppSnowFlakeProperties;
+import io.github.linpeilie.annotations.ComponentModelConfig;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
+@ComponentModelConfig
+@EnableAsync
+@EnableScheduling
+@EnableAspectJAutoProxy
+@EnableCaching
+@EnableWebMvc
 @Configuration
 @EnableConfigurationProperties({AppSnowFlakeProperties.class, AppSecurityProperties.class})
 public class CommonAutoConfig {
@@ -16,11 +30,20 @@ public class CommonAutoConfig {
 
         ThreadPoolTaskScheduler pool = new ThreadPoolTaskScheduler();
 
-        pool.setPoolSize(10);
-        pool.setThreadNamePrefix("lib-scheduler-");
+        pool.setPoolSize(20);
+        pool.setThreadNamePrefix("schedule-");
         pool.initialize();
 
         return pool;
+    }
+
+    @Bean(name = "taskExecutor")
+    public AsyncTaskExecutor taskExecutor() {
+
+        SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor("async-vt-");
+        executor.setVirtualThreads(true);
+        executor.setConcurrencyLimit(200);
+        return executor;
     }
 
 }
