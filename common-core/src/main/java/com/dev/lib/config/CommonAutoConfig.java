@@ -8,19 +8,24 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.core.task.TaskDecorator;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
+import java.util.Map;
+
+import org.slf4j.MDC;
+
 @ComponentModelConfig
 @EnableAsync
 @EnableScheduling
 @EnableAspectJAutoProxy
 @EnableCaching
-@EnableWebMvc
 @Configuration
 @EnableConfigurationProperties({AppSnowFlakeProperties.class, AppSecurityProperties.class})
 public class CommonAutoConfig {
@@ -35,15 +40,6 @@ public class CommonAutoConfig {
         pool.initialize();
 
         return pool;
-    }
-
-    @Bean(name = "taskExecutor")
-    public AsyncTaskExecutor taskExecutor() {
-
-        SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor("async-vt-");
-        executor.setVirtualThreads(true);
-        executor.setConcurrencyLimit(200);
-        return executor;
     }
 
 }
