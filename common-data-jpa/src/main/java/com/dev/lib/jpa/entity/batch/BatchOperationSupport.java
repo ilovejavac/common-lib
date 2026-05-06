@@ -5,6 +5,7 @@ import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.jpa.entity.QueryContext;
 import com.dev.lib.jpa.entity.delete.CascadeFieldResolver;
+import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -65,16 +66,7 @@ public final class BatchOperationSupport {
             return;
         }
 
-        if (CascadeFieldResolver.hasCascadeFields(repository)) {
-            cascadeHardDeleteByIds(repository, List.of(id));
-            return;
-        }
-
-        repository.getQueryFactory().delete(repository.getPath())
-                .where(repository.getIdPath().eq(id))
-                .execute();
-        repository.getEntityManager().flush();
-        repository.getEntityManager().clear();
+        hardDeleteByIdsScoped(repository, List.of(id));
     }
 
     public static <T extends JpaEntity> void hardDeleteAll(BaseRepositoryImpl<T> repository, Iterable<? extends T> entities) {
@@ -91,12 +83,12 @@ public final class BatchOperationSupport {
                 }
             }
             if (!ids.isEmpty()) {
-                cascadeHardDeleteByIds(repository, ids);
+                hardDeleteByIdsScoped(repository, ids);
             }
             return;
         }
 
-        BatchHelper.forEachBatch(repository, entities, entity -> (entity != null && entity.getId() != null) ? entity.getId() : null, ids -> batchHardDeleteByIds(repository, ids));
+        BatchHelper.forEachBatch(repository, entities, entity -> (entity != null && entity.getId() != null) ? entity.getId() : null, ids -> hardDeleteByIdsScoped(repository, ids));
     }
 
     public static <T extends JpaEntity> void hardDeleteAllById(BaseRepositoryImpl<T> repository, Iterable<Long> ids) {
@@ -113,12 +105,12 @@ public final class BatchOperationSupport {
                 }
             }
             if (!idList.isEmpty()) {
-                cascadeHardDeleteByIds(repository, idList);
+                hardDeleteByIdsScoped(repository, idList);
             }
             return;
         }
 
-        BatchHelper.forEachBatch(repository, ids, id -> id, batch -> batchHardDeleteByIds(repository, batch));
+        BatchHelper.forEachBatch(repository, ids, id -> id, batch -> hardDeleteByIdsScoped(repository, batch));
     }
 
     public static <T extends JpaEntity> long hardDelete(
@@ -149,12 +141,8 @@ public final class BatchOperationSupport {
                 cascadeHardDeleteByIds(repository, ids);
                 totalAffected += ids.size();
             } else {
-                long affected = repository.getQueryFactory().delete(repository.getPath())
-                        .where(repository.getIdPath().in(ids))
-                        .execute();
+                long affected = batchHardDeleteByIdsScoped(repository, ids);
                 totalAffected += affected;
-                repository.getEntityManager().flush();
-                repository.getEntityManager().clear();
             }
 
             lastId = ids.getLast();
@@ -164,6 +152,11 @@ public final class BatchOperationSupport {
     }
 
     private static <T extends JpaEntity> void cascadeHardDeleteByIds(BaseRepositoryImpl<T> repository, List<Long> ids) {
+
+        ids = scopedIds(repository, ids);
+        if (ids.isEmpty()) {
+            return;
+        }
 
         for (int i = 0; i < ids.size(); i += repository.getInClauseBatchSize()) {
             List<Long> batch = ids.subList(i, Math.min(i + repository.getInClauseBatchSize(), ids.size()));
@@ -198,6 +191,61 @@ public final class BatchOperationSupport {
                 .execute();
         repository.getEntityManager().flush();
         repository.getEntityManager().clear();
+    }
+
+    private static <T extends JpaEntity> void hardDeleteByIdsScoped(BaseRepositoryImpl<T> repository, List<Long> ids) {
+
+        List<Long> scoped = scopedIds(repository, ids);
+        if (scoped.isEmpty()) {
+            return;
+        }
+        if (CascadeFieldResolver.hasCascadeFields(repository)) {
+            cascadeHardDeleteByIds(repository, scoped);
+            return;
+        }
+        batchHardDeleteByIds(repository, scoped);
+    }
+
+    private static <T extends JpaEntity> long batchHardDeleteByIdsScoped(BaseRepositoryImpl<T> repository, List<Long> ids) {
+
+        List<Long> scoped = scopedIds(repository, ids);
+        if (scoped.isEmpty()) {
+            return 0L;
+        }
+        long affected = repository.getQueryFactory().delete(repository.getPath())
+                .where(repository.getIdPath().in(scoped))
+                .execute();
+        repository.getEntityManager().flush();
+        repository.getEntityManager().clear();
+        return affected;
+    }
+
+    private static <T extends JpaEntity> List<Long> scopedIds(BaseRepositoryImpl<T> repository, List<Long> ids) {
+
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        BooleanExpression pluginExpr = QueryPluginChain.getInstance().apply(
+                repository.getPathBuilder(),
+                repository.getEntityClass()
+        );
+        if (pluginExpr == null) {
+            return ids;
+        }
+        Predicate scopedPredicate = RepositoryPredicateSupport.buildPluginAndBusinessPredicate(
+                repository.getPathBuilder(),
+                repository.getPath(),
+                null,
+                repository.getIdPath().in(ids)
+        );
+        if (RepositoryPredicateSupport.isEmptyPredicate(scopedPredicate)) {
+            return Collections.emptyList();
+        }
+        return repository.getQueryFactory()
+                .select(repository.getIdPath())
+                .from(repository.getPath())
+                .where(scopedPredicate)
+                .fetch();
     }
 
     private static void flushAndDetachEntities(BaseRepositoryImpl<?> repository, List<?> managedEntities) {

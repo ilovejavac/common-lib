@@ -5,6 +5,7 @@ import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.jpa.entity.QueryContext;
 import com.dev.lib.jpa.entity.batch.BatchHelper;
+import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.querydsl.core.BooleanBuilder;
@@ -65,11 +66,11 @@ public final class CascadeSoftDeleteSupport {
 
     public static <T extends JpaEntity> void deleteEntity(BaseRepositoryImpl<T> repository, T entity) {
 
-        Predicate identity = identityCondition(repository, entity);
+        BooleanExpression identity = identityCondition(repository, entity);
         if (identity == null) {
             return;
         }
-        Predicate condition = activeCondition(repository, identity);
+        Predicate condition = activeCondition(repository, scopedCondition(repository, identity));
         cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
         executeSoftDeleteUpdate(repository, condition);
     }
@@ -94,9 +95,16 @@ public final class CascadeSoftDeleteSupport {
 
     public static <T extends JpaEntity> void deleteAll(BaseRepositoryImpl<T> repository) {
 
+        Predicate scoped = RepositoryPredicateSupport.buildPredicate(
+                repository.getPathBuilder(),
+                repository.getPath(),
+                repository.getDeletedPath(),
+                new QueryContext(),
+                null
+        );
         Long lastId = null;
         while (true) {
-            List<Long> ids = BatchHelper.fetchIdsAfter(repository, repository.getDeletedPath().eq(false), lastId);
+            List<Long> ids = BatchHelper.fetchIdsAfter(repository, scoped, lastId);
             if (ids.isEmpty()) {
                 break;
             }
@@ -115,12 +123,12 @@ public final class CascadeSoftDeleteSupport {
         if (ids == null || ids.isEmpty()) {
             return;
         }
-        Predicate condition = activeCondition(repository, repository.getIdPath().in(ids));
+        Predicate condition = activeCondition(repository, scopedCondition(repository, repository.getIdPath().in(ids)));
         cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
         executeSoftDeleteUpdate(repository, condition);
     }
 
-    private static <T extends JpaEntity> Predicate identityCondition(BaseRepositoryImpl<T> repository, T entity) {
+    private static <T extends JpaEntity> BooleanExpression identityCondition(BaseRepositoryImpl<T> repository, T entity) {
 
         if (entity == null) {
             return null;
@@ -138,6 +146,23 @@ public final class CascadeSoftDeleteSupport {
     private static <T extends JpaEntity> Predicate activeCondition(BaseRepositoryImpl<T> repository, Predicate condition) {
 
         return activeCondition(repository.getPathBuilder(), condition);
+    }
+
+    private static <T extends JpaEntity> Predicate scopedCondition(BaseRepositoryImpl<T> repository, BooleanExpression expression) {
+
+        BooleanExpression pluginExpr = QueryPluginChain.getInstance().apply(
+                repository.getPathBuilder(),
+                repository.getEntityClass()
+        );
+        if (pluginExpr == null) {
+            return expression;
+        }
+        return RepositoryPredicateSupport.buildPluginAndBusinessPredicate(
+                repository.getPathBuilder(),
+                repository.getPath(),
+                null,
+                expression
+        );
     }
 
     private static Predicate activeCondition(PathBuilder<?> pathBuilder, Predicate condition) {
