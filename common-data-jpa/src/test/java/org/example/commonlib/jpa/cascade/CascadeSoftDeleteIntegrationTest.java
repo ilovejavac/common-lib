@@ -117,9 +117,9 @@ class CascadeSoftDeleteIntegrationTest {
             CascadeDeleteRoot root = new CascadeDeleteRoot();
             root.setBizId(parent.getBizId());
 
-            long affected = parentRepo.deleteRoot(root);
+            boolean deleted = parentRepo.deleteRoot(root);
 
-            assertThat(affected).isEqualTo(1L);
+            assertThat(deleted).isTrue();
             assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1L);
             assertThat(childRepo.onlyDeleted().count()).isEqualTo(1L);
         });
@@ -147,8 +147,9 @@ class CascadeSoftDeleteIntegrationTest {
             CascadeDeleteRoot byBizId = new CascadeDeleteRoot();
             byBizId.setBizId(parentByBizId.getBizId());
 
-            parentRepo.deleteRoots(List.of(byId, byBizId));
+            long affected = parentRepo.deleteRoots(List.of(byId, byBizId));
 
+            assertThat(affected).isEqualTo(2L);
             assertThat(parentRepo.onlyDeleted().count()).isEqualTo(2L);
             assertThat(childRepo.onlyDeleted().count()).isEqualTo(2L);
         });

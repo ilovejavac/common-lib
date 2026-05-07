@@ -174,9 +174,9 @@ public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Lo
         return delete(null, expressions);
     }
 
-    long deleteRoot(AggregateRoot root);
+    boolean deleteRoot(AggregateRoot root);
 
-    void deleteRoots(Collection<? extends AggregateRoot> roots);
+    long deleteRoots(Collection<? extends AggregateRoot> roots);
 
     // ==================== 物理删除 ====================
 

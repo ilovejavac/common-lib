@@ -167,9 +167,9 @@ class DeleteBatchExecutionIntegrationTest {
             root.setId(idTarget.getId());
             root.setBizId(bizTarget.getBizId());
 
-            long affected = repo.deleteRoot(root);
+            boolean deleted = repo.deleteRoot(root);
 
-            assertThat(affected).isEqualTo(1L);
+            assertThat(deleted).isTrue();
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-id-target"))).isEqualTo(1L);
             assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-biz-target"))).isEqualTo(1L);
         });
@@ -188,9 +188,9 @@ class DeleteBatchExecutionIntegrationTest {
             DeleteBatchRoot root = new DeleteBatchRoot();
             root.setBizId(target.getBizId());
 
-            long affected = repo.deleteRoot(root);
+            boolean deleted = repo.deleteRoot(root);
 
-            assertThat(affected).isEqualTo(1L);
+            assertThat(deleted).isTrue();
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-bizid-target"))).isEqualTo(1L);
             assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-bizid-survivor"))).isEqualTo(1L);
             assertThat(repo.findById(survivor.getId())).isPresent();
@@ -232,11 +232,12 @@ class DeleteBatchExecutionIntegrationTest {
             byBizId.setBizId(bizTarget.getBizId());
 
             SqlCaptureInspector.clear();
-            repo.deleteRoots(List.of(byId, byBizId));
+            long affected = repo.deleteRoots(List.of(byId, byBizId));
 
             List<String> updateSqls = SqlCaptureInspector.statements().stream()
                     .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
                     .toList();
+            assertThat(affected).isEqualTo(2L);
             assertThat(updateSqls).hasSize(2);
             assertThat(updateSqls).allSatisfy(sql -> assertThat(sql.toLowerCase(Locale.ROOT)).doesNotContain(" or "));
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-batch-id-target"))).isEqualTo(1L);
@@ -261,11 +262,12 @@ class DeleteBatchExecutionIntegrationTest {
             root.setBizId(bizTarget.getBizId());
 
             SqlCaptureInspector.clear();
-            repo.deleteRoots(List.of(root));
+            long affected = repo.deleteRoots(List.of(root));
 
             List<String> updateSqls = SqlCaptureInspector.statements().stream()
                     .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
                     .toList();
+            assertThat(affected).isEqualTo(1L);
             assertThat(updateSqls).hasSize(1);
             assertThat(updateSqls.getFirst().toLowerCase(Locale.ROOT)).doesNotContain("biz_id");
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-batch-prefer-id-target"))).isEqualTo(1L);
@@ -315,11 +317,12 @@ class DeleteBatchExecutionIntegrationTest {
             }
 
             SqlCaptureInspector.clear();
-            repo.deleteRoots(roots);
+            long affected = repo.deleteRoots(roots);
 
             List<String> updateSqls = SqlCaptureInspector.statements().stream()
                     .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
                     .toList();
+            assertThat(affected).isEqualTo(1025L);
             assertThat(updateSqls).hasSize(3);
             assertThat(updateSqls).allSatisfy(sql -> assertThat(sql.toLowerCase(Locale.ROOT)).doesNotContain(" or "));
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-batch-large-"))).isEqualTo(1025L);

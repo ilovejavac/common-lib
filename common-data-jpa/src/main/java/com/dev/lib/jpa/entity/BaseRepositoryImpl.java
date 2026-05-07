@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 @Getter
@@ -242,30 +243,31 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public long deleteRoot(AggregateRoot root) {
+    public boolean deleteRoot(AggregateRoot root) {
 
         if (root == null) {
             throw new IllegalArgumentException("root 条件不能为空");
         }
         Long id = root.getId();
         if (id != null) {
-            return deleteInternal(new QueryContext(), null, getIdPath().eq(id));
+            return deleteInternal(new QueryContext(), null, getIdPath().eq(id)) > 0;
         }
         String bizId = root.getBizId();
         if (bizId == null || bizId.isBlank()) {
             throw new IllegalArgumentException("root 条件不能为空");
         }
-        return deleteInternal(new QueryContext(), null, getPathBuilder().getString(BIZ_ID_FIELD_NAME).eq(bizId));
+        return deleteInternal(new QueryContext(), null, getPathBuilder().getString(BIZ_ID_FIELD_NAME).eq(bizId)) > 0;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteRoots(Collection<? extends AggregateRoot> roots) {
+    public long deleteRoots(Collection<? extends AggregateRoot> roots) {
 
         if (roots == null || roots.isEmpty()) {
-            return;
+            return 0L;
         }
 
+        AtomicLong affected = new AtomicLong();
         BatchHelper.<T, AggregateRoot, AggregateRoot>forEachBatch(
                 this,
                 roots,
@@ -282,14 +284,15 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
                     }
                     throw new IllegalArgumentException("root 条件不能为空");
                 },
-                this::deleteRootBatch
+                batch -> affected.addAndGet(deleteRootBatch(batch))
         );
+        return affected.get();
     }
 
-    private void deleteRootBatch(Collection<? extends AggregateRoot> roots) {
+    private long deleteRootBatch(Collection<? extends AggregateRoot> roots) {
 
         if (roots == null || roots.isEmpty()) {
-            return;
+            return 0L;
         }
 
         Collection<Long>   rootIds    = new LinkedHashSet<>();
@@ -303,12 +306,14 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             rootBizIds.add(root.getBizId());
         }
 
+        long affected = 0L;
         if (!rootIds.isEmpty()) {
-            CascadeSoftDeleteSupport.deleteAllById(this, rootIds);
+            affected += deleteInternal(new QueryContext(), null, getIdPath().in(rootIds));
         }
         if (!rootBizIds.isEmpty()) {
-            CascadeSoftDeleteSupport.deleteAllByBizId(this, rootBizIds);
+            affected += deleteInternal(new QueryContext(), null, getPathBuilder().getString(BIZ_ID_FIELD_NAME).in(rootBizIds));
         }
+        return affected;
     }
 
     long deleteInternal(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {

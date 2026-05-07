@@ -4,6 +4,7 @@ import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.web.model.QueryRequest;
 import jakarta.persistence.Entity;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
@@ -74,6 +75,32 @@ class PartialSelectPageSortIntegrationTest {
 
             assertThat(page.getContent()).hasSize(128);
             assertThat(page.getTotalElements()).isEqualTo(130);
+        });
+    }
+
+    @Test
+    void selectDtoPageWithQueryRequestShouldApplyPageSizeBounds() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            PageSortUserRepo repo = context.getBean(PageSortUserRepo.class);
+            repo.saveAll(buildUsers("request-page-", 24));
+
+            QueryRequest<PageSortUserQuery> request = new QueryRequest<>();
+            request.setQuery(new PageSortUserQuery());
+
+            PageSortUserQuery query = new PageSortUserQuery();
+            query.external(request);
+
+            Page<PageSortUserDto> page = repo.select(PageSortUser::getName)
+                    .page(PageSortUserDto.class, query);
+
+            assertThat(page.getContent()).hasSize(20);
+            assertThat(page.getTotalElements()).isEqualTo(24);
+            assertThat(page.getPageable().getPageNumber()).isZero();
+            assertThat(page.getPageable().getPageSize()).isEqualTo(20);
+            assertThat(page.hasNext()).isTrue();
         });
     }
 

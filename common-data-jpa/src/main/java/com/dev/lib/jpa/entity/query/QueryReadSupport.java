@@ -12,7 +12,7 @@ import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
-import org.hibernate.LockOptions;
+import org.hibernate.Timeouts;
 import org.hibernate.jpa.HibernateHints;
 import org.hibernate.jpa.SpecHints;
 import org.springframework.data.domain.Page;
@@ -548,7 +548,7 @@ public final class QueryReadSupport {
 
     private static void applyPageBounds(JPAQuery<?> query, DslQuery<?> dslQuery, Pageable pageable) {
 
-        if (dslQuery != null) {
+        if (dslQuery != null && (dslQuery.getLimit() != null || dslQuery.getOffset() != null)) {
             applyLimit(query, dslQuery);
             return;
         }
@@ -563,7 +563,7 @@ public final class QueryReadSupport {
         }
         query.setLockMode(ctx.getLockMode());
         if (ctx.isSkipLocked()) {
-            query.setHint(SpecHints.HINT_SPEC_LOCK_TIMEOUT, LockOptions.SKIP_LOCKED);
+            query.setHint(SpecHints.HINT_SPEC_LOCK_TIMEOUT, Timeouts.SKIP_LOCKED_MILLI);
         }
     }
 
