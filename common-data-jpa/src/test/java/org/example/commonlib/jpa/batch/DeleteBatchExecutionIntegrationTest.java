@@ -1,5 +1,6 @@
 package org.example.commonlib.jpa.batch;
 
+import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.entity.dsl.DslQuery;
@@ -19,6 +20,7 @@ import java.util.Locale;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DeleteBatchExecutionIntegrationTest {
 
@@ -31,7 +33,6 @@ class DeleteBatchExecutionIntegrationTest {
                     "spring.datasource.password=",
                     "spring.jpa.hibernate.ddl-auto=create-drop",
                     "spring.jpa.open-in-view=false",
-                    "spring.jpa.show-sql=true",
                     "spring.jpa.properties.hibernate.generate_statistics=true",
                     "spring.jpa.properties.hibernate.session_factory.statement_inspector=org.example.commonlib.jpa.batch.DeleteBatchExecutionIntegrationTest$SqlCaptureInspector",
                     "spring.application.name=delete-batch-execution-test"
@@ -123,7 +124,7 @@ class DeleteBatchExecutionIntegrationTest {
                     .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
                     .findFirst()
                     .orElseThrow();
-            assertThat(countOccurrences(updateSql.toLowerCase(Locale.ROOT), "deleted"))
+            assertThat(countOccurrences(updateSql.toLowerCase(Locale.ROOT), "deleted_at"))
                     .isEqualTo(2);
         });
     }
@@ -149,6 +150,179 @@ class DeleteBatchExecutionIntegrationTest {
                     .isEqualTo(2);
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("only-deleted-query-")))
                     .isZero();
+        });
+    }
+
+    @Test
+    void softDeleteByAggregateRootShouldPreferIdOverBizId() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            DeleteBatchThing idTarget = repo.saveAndFlush(new DeleteBatchThing("root-id-target"));
+            DeleteBatchThing bizTarget = repo.saveAndFlush(new DeleteBatchThing("root-biz-target"));
+
+            DeleteBatchRoot root = new DeleteBatchRoot();
+            root.setId(idTarget.getId());
+            root.setBizId(bizTarget.getBizId());
+
+            long affected = repo.deleteRoot(root);
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-id-target"))).isEqualTo(1L);
+            assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-biz-target"))).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void softDeleteByAggregateRootShouldDeleteByBizIdWhenIdMissing() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            DeleteBatchThing target = repo.saveAndFlush(new DeleteBatchThing("root-bizid-target"));
+            DeleteBatchThing survivor = repo.saveAndFlush(new DeleteBatchThing("root-bizid-survivor"));
+
+            DeleteBatchRoot root = new DeleteBatchRoot();
+            root.setBizId(target.getBizId());
+
+            long affected = repo.deleteRoot(root);
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-bizid-target"))).isEqualTo(1L);
+            assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-bizid-survivor"))).isEqualTo(1L);
+            assertThat(repo.findById(survivor.getId())).isPresent();
+        });
+    }
+
+    @Test
+    void softDeleteByAggregateRootShouldRejectRootWithoutIdentity() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            repo.saveAndFlush(new DeleteBatchThing("root-single-invalid-target"));
+
+            DeleteBatchRoot root = new DeleteBatchRoot();
+
+            assertThatThrownBy(() -> repo.deleteRoot(root))
+                    .hasMessageContaining("root 条件不能为空");
+            assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-single-invalid-target"))).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void softDeleteAllByAggregateRootsShouldUseSeparateIdAndBizIdConditions() {
+
+        SqlCaptureInspector.clear();
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            DeleteBatchThing idTarget = repo.saveAndFlush(new DeleteBatchThing("root-batch-id-target"));
+            DeleteBatchThing bizTarget = repo.saveAndFlush(new DeleteBatchThing("root-batch-biz-target"));
+            DeleteBatchThing survivor = repo.saveAndFlush(new DeleteBatchThing("root-batch-survivor"));
+
+            DeleteBatchRoot byId = new DeleteBatchRoot();
+            byId.setId(idTarget.getId());
+            DeleteBatchRoot byBizId = new DeleteBatchRoot();
+            byBizId.setBizId(bizTarget.getBizId());
+
+            SqlCaptureInspector.clear();
+            repo.deleteRoots(List.of(byId, byBizId));
+
+            List<String> updateSqls = SqlCaptureInspector.statements().stream()
+                    .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
+                    .toList();
+            assertThat(updateSqls).hasSize(2);
+            assertThat(updateSqls).allSatisfy(sql -> assertThat(sql.toLowerCase(Locale.ROOT)).doesNotContain(" or "));
+            assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-batch-id-target"))).isEqualTo(1L);
+            assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-batch-biz-target"))).isEqualTo(1L);
+            assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-batch-survivor"))).isEqualTo(1L);
+            assertThat(repo.findById(survivor.getId())).isPresent();
+        });
+    }
+
+    @Test
+    void softDeleteAllByAggregateRootShouldPreferIdOverBizId() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            DeleteBatchThing idTarget = repo.saveAndFlush(new DeleteBatchThing("root-batch-prefer-id-target"));
+            DeleteBatchThing bizTarget = repo.saveAndFlush(new DeleteBatchThing("root-batch-prefer-biz-target"));
+
+            DeleteBatchRoot root = new DeleteBatchRoot();
+            root.setId(idTarget.getId());
+            root.setBizId(bizTarget.getBizId());
+
+            SqlCaptureInspector.clear();
+            repo.deleteRoots(List.of(root));
+
+            List<String> updateSqls = SqlCaptureInspector.statements().stream()
+                    .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
+                    .toList();
+            assertThat(updateSqls).hasSize(1);
+            assertThat(updateSqls.getFirst().toLowerCase(Locale.ROOT)).doesNotContain("biz_id");
+            assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-batch-prefer-id-target"))).isEqualTo(1L);
+            assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-batch-prefer-biz-target"))).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void softDeleteAllByAggregateRootsShouldRejectRootWithoutIdentity() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            DeleteBatchThing idTarget = repo.saveAndFlush(new DeleteBatchThing("root-batch-invalid-id-target"));
+
+            DeleteBatchRoot validRoot = new DeleteBatchRoot();
+            validRoot.setId(idTarget.getId());
+            DeleteBatchRoot invalidRoot = new DeleteBatchRoot();
+
+            assertThatThrownBy(() -> repo.deleteRoots(List.of(validRoot, invalidRoot)))
+                    .hasMessageContaining("root 条件不能为空");
+            assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-batch-invalid-id-target"))).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void softDeleteAllByAggregateRootsShouldBatchByRootIdentityCount() {
+
+        SqlCaptureInspector.clear();
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            List<DeleteBatchThing> saved = repo.saveAll(buildEntities("root-batch-large-", 1025));
+
+            List<DeleteBatchRoot> roots = new ArrayList<>(saved.size());
+            for (int i = 0; i < saved.size(); i++) {
+                DeleteBatchThing entity = saved.get(i);
+                DeleteBatchRoot root = new DeleteBatchRoot();
+                if (i % 2 == 0) {
+                    root.setId(entity.getId());
+                } else {
+                    root.setBizId(entity.getBizId());
+                }
+                roots.add(root);
+            }
+
+            SqlCaptureInspector.clear();
+            repo.deleteRoots(roots);
+
+            List<String> updateSqls = SqlCaptureInspector.statements().stream()
+                    .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
+                    .toList();
+            assertThat(updateSqls).hasSize(3);
+            assertThat(updateSqls).allSatisfy(sql -> assertThat(sql.toLowerCase(Locale.ROOT)).doesNotContain(" or "));
+            assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-batch-large-"))).isEqualTo(1025L);
         });
     }
 
@@ -274,4 +448,7 @@ class DeleteBatchThingQuery extends DslQuery<DeleteBatchThing> {
         this.nameStartWith = nameStartWith;
         return this;
     }
+}
+
+class DeleteBatchRoot extends AggregateRoot {
 }

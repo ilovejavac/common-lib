@@ -4,11 +4,10 @@ import com.dev.lib.web.BaseVO;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
-import org.eclipse.collections.impl.factory.Lists;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 @EqualsAndHashCode
@@ -18,14 +17,14 @@ public abstract class AggregateRoot extends BaseVO {
     @Setter
     private Long id;
 
-    private final List<DomainEvent> domainEvents = Lists.mutable.empty();
+    private final List<DomainEvent> domainEvents = new ArrayList<>();
 
     Collection<DomainEvent> domainEvents() {
 
-        return Collections.unmodifiableList(domainEvents);
+        return domainEvents;
     }
 
-    protected <T extends DomainEvent> void registerEvent(T... events) {
+    protected void registerEvent(DomainEvent... events) {
 
         this.domainEvents.addAll(Arrays.asList(events));
     }
@@ -35,7 +34,7 @@ public abstract class AggregateRoot extends BaseVO {
         this.domainEvents.clear();
     }
 
-    public void publishAndClear() {
+    public void emit() {
 
         DomainEventPublisher.publishAndClear(this);
     }

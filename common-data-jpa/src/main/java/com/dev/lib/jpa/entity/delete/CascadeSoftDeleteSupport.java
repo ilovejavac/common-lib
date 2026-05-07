@@ -33,6 +33,7 @@ import java.util.Set;
 public final class CascadeSoftDeleteSupport {
 
     private CascadeSoftDeleteSupport() {
+
     }
 
     public static <T extends JpaEntity> long delete(
@@ -60,7 +61,13 @@ public final class CascadeSoftDeleteSupport {
                         expressions
                 )
         );
-        cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
+        cascadeSoftDeleteChildren(
+                repository,
+                repository.getEntityClass(),
+                repository.getPathBuilder(),
+                condition,
+                new HashSet<>()
+        );
         return executeSoftDeleteUpdate(repository, condition);
     }
 
@@ -71,7 +78,13 @@ public final class CascadeSoftDeleteSupport {
             return;
         }
         Predicate condition = activeCondition(repository, scopedCondition(repository, identity));
-        cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
+        cascadeSoftDeleteChildren(
+                repository,
+                repository.getEntityClass(),
+                repository.getPathBuilder(),
+                condition,
+                new HashSet<>()
+        );
         executeSoftDeleteUpdate(repository, condition);
     }
 
@@ -85,12 +98,32 @@ public final class CascadeSoftDeleteSupport {
 
     public static <T extends JpaEntity> void deleteAll(BaseRepositoryImpl<T> repository, Iterable<? extends T> entities) {
 
-        BatchHelper.forEachBatch(repository, entities, entity -> (entity != null && entity.getId() != null) ? entity.getId() : null, ids -> softDeleteByIds(repository, ids));
+        BatchHelper.forEachBatch(
+                repository,
+                entities,
+                entity -> (entity != null && entity.getId() != null) ? entity.getId() : null,
+                ids -> softDeleteByIds(repository, ids)
+        );
     }
 
     public static <T extends JpaEntity> void deleteAllById(BaseRepositoryImpl<T> repository, Iterable<? extends Long> ids) {
 
-        BatchHelper.forEachBatch(repository, ids, id -> id, batch -> softDeleteByIds(repository, batch));
+        BatchHelper.<T, Long, Long>forEachBatch(
+                repository,
+                ids,
+                id -> id,
+                batch -> softDeleteByIds(repository, batch)
+        );
+    }
+
+    public static <T extends JpaEntity> void deleteAllByBizId(BaseRepositoryImpl<T> repository, Iterable<? extends String> ids) {
+
+        BatchHelper.<T, String, String>forEachBatch(
+                repository,
+                ids,
+                id -> id,
+                batch -> softDeleteByBizIds(repository, batch)
+        );
     }
 
     public static <T extends JpaEntity> void deleteAll(BaseRepositoryImpl<T> repository) {
@@ -98,7 +131,7 @@ public final class CascadeSoftDeleteSupport {
         Predicate scoped = RepositoryPredicateSupport.buildPredicate(
                 repository.getPathBuilder(),
                 repository.getPath(),
-                repository.getDeletedPath(),
+                repository.getDeletedAtPath(),
                 new QueryContext(),
                 null
         );
@@ -118,13 +151,35 @@ public final class CascadeSoftDeleteSupport {
         softDeleteByIds(repository, List.of(id));
     }
 
-    private static <T extends JpaEntity> void softDeleteByIds(BaseRepositoryImpl<T> repository, List<Long> ids) {
+    private static <T extends JpaEntity> void softDeleteByIds(BaseRepositoryImpl<T> repository, Collection<Long> ids) {
 
         if (ids == null || ids.isEmpty()) {
             return;
         }
         Predicate condition = activeCondition(repository, scopedCondition(repository, repository.getIdPath().in(ids)));
-        cascadeSoftDeleteChildren(repository, repository.getEntityClass(), repository.getPathBuilder(), condition, new HashSet<>());
+        cascadeSoftDeleteChildren(
+                repository,
+                repository.getEntityClass(),
+                repository.getPathBuilder(),
+                condition,
+                new HashSet<>()
+        );
+        executeSoftDeleteUpdate(repository, condition);
+    }
+
+    private static <T extends JpaEntity> void softDeleteByBizIds(BaseRepositoryImpl<T> repository, Collection<String> ids) {
+
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        Predicate condition = activeCondition(repository, scopedCondition(repository, repository.getBizIdPath().in(ids)));
+        cascadeSoftDeleteChildren(
+                repository,
+                repository.getEntityClass(),
+                repository.getPathBuilder(),
+                condition,
+                new HashSet<>()
+        );
         executeSoftDeleteUpdate(repository, condition);
     }
 
@@ -167,7 +222,7 @@ public final class CascadeSoftDeleteSupport {
 
     private static Predicate activeCondition(PathBuilder<?> pathBuilder, Predicate condition) {
 
-        BooleanBuilder where = new BooleanBuilder(pathBuilder.getBoolean("deleted").eq(false));
+        BooleanBuilder where = new BooleanBuilder(pathBuilder.getDateTime("deletedAt", LocalDateTime.class).isNull());
         if (condition != null) {
             where.and(condition);
         }
@@ -181,9 +236,10 @@ public final class CascadeSoftDeleteSupport {
 
     private static long executeSoftDeleteUpdate(BaseRepositoryImpl<?> repository, EntityPath<?> path, PathBuilder<?> pathBuilder, Predicate condition) {
 
+        LocalDateTime now = LocalDateTime.now();
         long affected = repository.getQueryFactory().update(path)
-                .set(pathBuilder.getBoolean("deleted"), true)
-                .set(pathBuilder.getDateTime("updatedAt", LocalDateTime.class), LocalDateTime.now())
+                .set(pathBuilder.getDateTime("deletedAt", LocalDateTime.class), now)
+                .set(pathBuilder.getDateTime("updatedAt", LocalDateTime.class), now)
                 .set(pathBuilder.getNumber("modifierId", Long.class), SecurityContextHolder.getUserId())
                 .where(condition)
                 .execute();
@@ -214,8 +270,14 @@ public final class CascadeSoftDeleteSupport {
                     continue;
                 }
 
-                PathBuilder<?> targetPath = CascadeFieldResolver.createPathBuilder(targetClass);
-                Predicate targetRelationPredicate = buildCascadeTargetPredicate(sourcePath, sourcePredicate, field, targetClass, targetPath);
+                PathBuilder<?> targetPath              = CascadeFieldResolver.createPathBuilder(targetClass);
+                Predicate      targetRelationPredicate = buildCascadeTargetPredicate(
+                        sourcePath,
+                        sourcePredicate,
+                        field,
+                        targetClass,
+                        targetPath
+                );
                 if (targetRelationPredicate == null) {
                     continue;
                 }
@@ -262,7 +324,7 @@ public final class CascadeSoftDeleteSupport {
             PathBuilder<?> targetPath
     ) {
 
-        PathBuilder<?> targetAlias = new PathBuilder(targetClass, "__cascade_" + field.getName());
+        PathBuilder<?>       targetAlias    = new PathBuilder(targetClass, "__cascade_" + field.getName());
         CollectionExpression collectionPath = collectionPath(sourcePath, field, targetClass);
         JPQLSubQuery<Long> targetIds = JPAExpressions
                 .select(targetAlias.getNumber("id", Long.class))
@@ -281,8 +343,8 @@ public final class CascadeSoftDeleteSupport {
             PathBuilder<?> targetPath
     ) {
 
-        PathBuilder<?> relationPath = sourcePath.get(fieldName, targetClass);
-        NumberPath<Long> relationId = relationPath.getNumber("id", Long.class);
+        PathBuilder<?>   relationPath = sourcePath.get(fieldName, targetClass);
+        NumberPath<Long> relationId   = relationPath.getNumber("id", Long.class);
         JPQLSubQuery<Long> targetIds = JPAExpressions
                 .select(relationId)
                 .from(sourcePath)
@@ -331,4 +393,5 @@ public final class CascadeSoftDeleteSupport {
         }
         return null;
     }
+
 }

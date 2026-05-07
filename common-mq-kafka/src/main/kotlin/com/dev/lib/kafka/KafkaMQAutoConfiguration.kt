@@ -1,7 +1,7 @@
 package com.dev.lib.kafka
 
-import com.dev.lib.local.task.message.poller.core.PollerEngineRegistry
 import com.dev.lib.mq.MQ
+import com.dev.lib.task.api.TaskClient
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -60,17 +60,17 @@ class KafkaMQAutoConfiguration {
     @ConditionalOnMissingBean
     fun mqTemplateInitializer(
         template: KafkaTemplate<String, Any>,
-        pollerRegistry: PollerEngineRegistry?
+        taskClient: TaskClient
     ): MQTemplateInitializer {
-        return MQTemplateInitializer(template, pollerRegistry)
+        return MQTemplateInitializer(template, taskClient)
     }
 }
 
 class MQTemplateInitializer(
     template: KafkaTemplate<String, Any>,
-    pollerRegistry: PollerEngineRegistry?
+    taskClient: TaskClient
 ) {
     init {
-        MQ.init(KafkaMQTemplate(template, pollerRegistry))
+        MQ.init(KafkaMQTemplate(template, taskClient))
     }
 }

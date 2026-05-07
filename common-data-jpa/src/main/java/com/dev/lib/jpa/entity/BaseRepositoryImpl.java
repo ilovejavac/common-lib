@@ -1,21 +1,20 @@
 package com.dev.lib.jpa.entity;
 
+import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.agg.AggregateSpec;
 import com.dev.lib.jpa.entity.aggregate.AggregateExecutor;
+import com.dev.lib.jpa.entity.batch.BatchHelper;
 import com.dev.lib.jpa.entity.batch.BatchOperationSupport;
 import com.dev.lib.jpa.entity.delete.CascadeSoftDeleteSupport;
+import com.dev.lib.jpa.entity.dsl.SelectBuilder;
 import com.dev.lib.jpa.entity.query.QueryReadSupport;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
-import com.dev.lib.jpa.entity.dsl.SelectBuilder;
 import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
 import com.dev.lib.jpa.entity.write.RepositoryWritePluginChain;
 import com.querydsl.core.types.EntityPath;
 import com.querydsl.core.types.Predicate;
-import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.BooleanPath;
-import com.querydsl.core.types.dsl.NumberPath;
-import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.core.types.dsl.*;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -27,6 +26,9 @@ import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.data.querydsl.SimpleEntityPathResolver;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -50,9 +52,10 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private final PathBuilder<T> pathBuilder;
 
-    private final BooleanPath deletedPath;
+    private final DateTimePath<LocalDateTime> deletedAtPath;
 
     private final NumberPath<Long> idPath;
+    private final StringPath bizIdPath;
 
     private final int jdbcBatchSize;
 
@@ -67,8 +70,9 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         this.path = SimpleEntityPathResolver.INSTANCE.createPath(entityClass);
         this.pathBuilder = new PathBuilder<>(path.getType(), path.getMetadata());
-        this.deletedPath = pathBuilder.getBoolean("deleted");
+        this.deletedAtPath = pathBuilder.getDateTime("deletedAt", LocalDateTime.class);
         this.idPath = pathBuilder.getNumber("id", Long.class);
+        this.bizIdPath = pathBuilder.getString("bizId");
 
         this.jdbcBatchSize = resolveConfiguredBatchSize(em, JDBC_BATCH_SIZE_PROPERTY, DEFAULT_JDBC_BATCH_SIZE);
         this.inClauseBatchSize = 1024;
@@ -139,7 +143,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         Predicate predicate = RepositoryPredicateSupport.buildPredicate(
                 pathBuilder,
                 path,
-                deletedPath,
+                deletedAtPath,
                 new QueryContext(),
                 dslQuery,
                 expressions
@@ -233,10 +237,81 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     @Transactional(rollbackFor = Exception.class)
     public long delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return delete(new QueryContext(), dslQuery, expressions);
+        return deleteInternal(new QueryContext(), dslQuery, expressions);
     }
 
-    long delete(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public long deleteRoot(AggregateRoot root) {
+
+        if (root == null) {
+            throw new IllegalArgumentException("root 条件不能为空");
+        }
+        Long id = root.getId();
+        if (id != null) {
+            return deleteInternal(new QueryContext(), null, getIdPath().eq(id));
+        }
+        String bizId = root.getBizId();
+        if (bizId == null || bizId.isBlank()) {
+            throw new IllegalArgumentException("root 条件不能为空");
+        }
+        return deleteInternal(new QueryContext(), null, getPathBuilder().getString(BIZ_ID_FIELD_NAME).eq(bizId));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteRoots(Collection<? extends AggregateRoot> roots) {
+
+        if (roots == null || roots.isEmpty()) {
+            return;
+        }
+
+        BatchHelper.<T, AggregateRoot, AggregateRoot>forEachBatch(
+                this,
+                roots,
+                root -> {
+                    if (root == null) {
+                        throw new IllegalArgumentException("root 条件不能为空");
+                    }
+                    if (root.getId() != null) {
+                        return root;
+                    }
+                    String bizId = root.getBizId();
+                    if (bizId != null && !bizId.isBlank()) {
+                        return root;
+                    }
+                    throw new IllegalArgumentException("root 条件不能为空");
+                },
+                this::deleteRootBatch
+        );
+    }
+
+    private void deleteRootBatch(Collection<? extends AggregateRoot> roots) {
+
+        if (roots == null || roots.isEmpty()) {
+            return;
+        }
+
+        Collection<Long>   rootIds    = new LinkedHashSet<>();
+        Collection<String> rootBizIds = new LinkedHashSet<>();
+        for (AggregateRoot root : roots) {
+            Long id = root.getId();
+            if (id != null) {
+                rootIds.add(id);
+                continue;
+            }
+            rootBizIds.add(root.getBizId());
+        }
+
+        if (!rootIds.isEmpty()) {
+            CascadeSoftDeleteSupport.deleteAllById(this, rootIds);
+        }
+        if (!rootBizIds.isEmpty()) {
+            CascadeSoftDeleteSupport.deleteAllByBizId(this, rootBizIds);
+        }
+    }
+
+    long deleteInternal(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         ensureNonAggregateQuery(dslQuery, "delete");
         return CascadeSoftDeleteSupport.delete(this, ctx, dslQuery, expressions);
@@ -328,10 +403,27 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         return Math.max(1, value);
     }
 
+    private long deleteIdBatch(Collection<Long> ids) {
+
+        if (ids.isEmpty()) {
+            return 0L;
+        }
+        return deleteInternal(new QueryContext(), null, getIdPath().in(ids));
+    }
+
+    private long deleteBizIdBatch(Collection<String> bizIds) {
+
+        if (bizIds.isEmpty()) {
+            return 0L;
+        }
+        return deleteInternal(new QueryContext(), null, getPathBuilder().getString(BIZ_ID_FIELD_NAME).in(bizIds));
+    }
+
     private void ensureNonAggregateQuery(DslQuery<T> dslQuery, String operation) {
 
         if (dslQuery != null && dslQuery.hasAgg()) {
             throw new IllegalStateException("检测到 agg() 聚合配置，" + operation + " 不支持聚合查询，请使用 aggregate()");
         }
     }
+
 }

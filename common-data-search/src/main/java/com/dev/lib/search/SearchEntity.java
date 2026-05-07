@@ -20,6 +20,8 @@ public abstract class SearchEntity extends CoreEntity {
 
     private Long modifierId;
 
+    private LocalDateTime deletedAt;
+
     public boolean isNew() {
 
         return createdAt == null;

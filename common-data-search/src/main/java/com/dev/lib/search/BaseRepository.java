@@ -16,8 +16,10 @@ import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch.core.*;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.search.Hit;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
@@ -32,19 +34,30 @@ import java.util.stream.StreamSupport;
 
 @Slf4j
 @SuppressWarnings("all")
-public abstract class BaseRepository<T extends SearchEntity> {
+public abstract class BaseRepository<T extends SearchEntity> implements SearchRepository<T> {
 
     private static final int BATCH_SIZE = 256;
+
+    private static final int DEFAULT_PAGE_SIZE = 128;
+
+    private static final int DEFAULT_LOADS_SIZE = 10000;
 
     @Resource
     protected OpenSearchClient client;
 
-    @Resource
+    @Autowired(required = false)
     private OpenSearchConfig.OpenSearchProperties properties;
 
     protected String indexName() {
 
-        return properties.getIndex();
+        SearchIndex searchIndex = entityClass().getAnnotation(SearchIndex.class);
+        if (searchIndex != null && !searchIndex.value().isBlank()) {
+            return searchIndex.value();
+        }
+        if (properties != null && properties.getIndex() != null && !properties.getIndex().isBlank()) {
+            return properties.getIndex();
+        }
+        return entityClass().getSimpleName().toLowerCase(Locale.ROOT);
     }
 
     private volatile Class<T> entityClassCache;
@@ -155,6 +168,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     s -> s
                             .index(indexName())
                             .query(q -> q.matchAll(m -> m))
+                            .size(DEFAULT_LOADS_SIZE)
                             .sort(SortBuilder.build(sort, fieldTypes)),
                     entityClass()
             );
@@ -194,6 +208,9 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
     public List<T> findAllById(Iterable<String> ids) {
 
+        if (ids == null) {
+            return Collections.emptyList();
+        }
         List<String> idList = toList(ids).stream()
                 .map(String::valueOf)
                 .toList();
@@ -251,6 +268,9 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
     public void deleteAllById(Iterable<? extends String> ids) {
 
+        if (ids == null) {
+            return;
+        }
         List<BulkOperation> batch = new ArrayList<>(BATCH_SIZE + 1);
         for (String id : ids) {
             if (id == null) continue;
@@ -269,6 +289,9 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
     public void deleteAll(Iterable<? extends T> entities) {
 
+        if (entities == null) {
+            return;
+        }
         List<String> ids = toList(entities).stream()
                 .map(SearchEntity::getBizId)
                 .filter(Objects::nonNull)
@@ -425,9 +448,10 @@ public abstract class BaseRepository<T extends SearchEntity> {
     public List<T> loads(DslQuery<T> dslQuery, Query... extraQueries) {
 
         ensureNonAggregateQuery(dslQuery, "loads");
-        int                   size       = Optional.ofNullable(dslQuery.getLimit()).orElse(100);
-        int                   from       = Optional.ofNullable(dslQuery.getOffset()).orElse(0);
+        int                   size       = dslQuery != null ? Optional.ofNullable(dslQuery.getLimit()).orElse(DEFAULT_LOADS_SIZE) : DEFAULT_LOADS_SIZE;
+        int                   from       = dslQuery != null ? Optional.ofNullable(dslQuery.getOffset()).orElse(0) : 0;
         Map<String, Class<?>> fieldTypes = getFieldTypes();
+        Sort                  sort       = dslQuery != null ? dslQuery.toSort(fieldTypes.keySet()) : Sort.by(Sort.Order.desc("id"));
         try {
             SearchResponse<T> response = client.search(
                     s -> s
@@ -435,7 +459,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
                             .query(toQuery(dslQuery, extraQueries))
                             .from(from)
                             .size(size)
-                            .sort(SortBuilder.build(dslQuery.toSort(fieldTypes.keySet()), fieldTypes)),
+                            .sort(SortBuilder.build(sort, fieldTypes)),
                     entityClass()
             );
             return response.hits().hits().stream()
@@ -450,7 +474,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
         ensureNonAggregateQuery(dslQuery, "page");
         Map<String, Class<?>> fieldTypes = getFieldTypes();
-        Pageable              pageable   = dslQuery.toPageable(fieldTypes.keySet());
+        Pageable              pageable   = resolvePageable(dslQuery, fieldTypes.keySet());
         return findAll(toQuery(dslQuery, extraQueries), pageable);
     }
 
@@ -469,6 +493,9 @@ public abstract class BaseRepository<T extends SearchEntity> {
     public long delete(DslQuery<T> dslQuery, Query... extraQueries) {
 
         ensureNonAggregateQuery(dslQuery, "delete");
+        if (!hasBusinessCondition(dslQuery, extraQueries)) {
+            throw new IllegalArgumentException("批量删除必须指定业务条件，防止误删全表");
+        }
         return delete(toQuery(dslQuery, extraQueries));
     }
 
@@ -486,6 +513,7 @@ public abstract class BaseRepository<T extends SearchEntity> {
         if (entity.getBizId() == null) {
             entity.setBizId(IDWorker.newId());
         }
+        entity.setDeletedAt(null);
         if (entity.getCreatedAt() == null) {
             entity.setCreatedAt(now);
         }
@@ -507,7 +535,8 @@ public abstract class BaseRepository<T extends SearchEntity> {
     // ═══════════════════════════════════════════════════════════════
     private Query toQuery(DslQuery<T> dslQuery, Query... extraQueries) {
 
-        if (dslQuery == null && extraQueries.length == 0) {
+        Query[] normalizedExtraQueries = extraQueries == null ? new Query[0] : extraQueries;
+        if (dslQuery == null && normalizedExtraQueries.length == 0) {
             return Query.of(q -> q.matchAll(m -> m));
         }
 
@@ -518,7 +547,29 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     DslQueryFieldResolver.OverridePolicy.EXTERNAL_OVERRIDE_SELF
             );
         }
-        return PredicateAssembler.assemble(dslQuery, fields, extraQueries);
+        return PredicateAssembler.assemble(dslQuery, fields, normalizedExtraQueries);
+    }
+
+    private Pageable resolvePageable(DslQuery<T> dslQuery, Set<String> allowedFields) {
+
+        if (dslQuery == null) {
+            return PageRequest.of(0, DEFAULT_PAGE_SIZE, Sort.by(Sort.Order.desc("id")));
+        }
+        return dslQuery.toPageable(allowedFields);
+    }
+
+    private boolean hasBusinessCondition(DslQuery<T> dslQuery, Query... extraQueries) {
+
+        if (extraQueries != null && Arrays.stream(extraQueries).anyMatch(Objects::nonNull)) {
+            return true;
+        }
+        if (dslQuery == null) {
+            return false;
+        }
+        return !DslQueryFieldResolver.resolveMerged(
+                dslQuery,
+                DslQueryFieldResolver.OverridePolicy.EXTERNAL_OVERRIDE_SELF
+        ).isEmpty();
     }
 
     private void ensureNonAggregateQuery(DslQuery<T> query, String operation) {
@@ -533,10 +584,20 @@ public abstract class BaseRepository<T extends SearchEntity> {
     private Map<String, Class<?>> getFieldTypes() {
 
         return FIELD_TYPE_CACHE.computeIfAbsent(
-                entityClass(), clazz ->
-                        Arrays.stream(clazz.getDeclaredFields())
-                                .collect(Collectors.toMap(Field::getName, Field::getType))
+                entityClass(), BaseRepository::scanFieldTypes
         );
+    }
+
+    private static Map<String, Class<?>> scanFieldTypes(Class<?> clazz) {
+
+        Map<String, Class<?>> types = new LinkedHashMap<>();
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            Arrays.stream(current.getDeclaredFields())
+                    .forEach(field -> types.putIfAbsent(field.getName(), field.getType()));
+            current = current.getSuperclass();
+        }
+        return types;
     }
 
     private void executeBulk(List<BulkOperation> operations) {
@@ -547,7 +608,14 @@ public abstract class BaseRepository<T extends SearchEntity> {
                     .refresh(refresh())
             );
             if (response.errors()) {
-                log.error("批量操作部分失败");
+                String errorMessage = response.items().stream()
+                        .filter(item -> item.error() != null)
+                        .findFirst()
+                        .map(item -> "批量操作部分失败: id=" + item.id()
+                                     + ", type=" + item.error().type()
+                                     + ", reason=" + item.error().reason())
+                        .orElse("批量操作部分失败");
+                throw new RuntimeException(errorMessage);
             }
         } catch (IOException e) {
             throw new RuntimeException("批量操作失败", e);
@@ -556,6 +624,9 @@ public abstract class BaseRepository<T extends SearchEntity> {
 
     private <E> List<E> toList(Iterable<E> iterable) {
 
+        if (iterable == null) {
+            return Collections.emptyList();
+        }
         if (iterable instanceof List) {
             return (List<E>) iterable;
         }

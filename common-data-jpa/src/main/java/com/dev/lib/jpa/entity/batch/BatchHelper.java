@@ -29,24 +29,24 @@ public final class BatchHelper {
                 .fetch();
     }
 
-    public static <T extends JpaEntity, E> void forEachBatch(
+    public static <T extends JpaEntity, E, K> void forEachBatch(
             BaseRepositoryImpl<T> repository,
             Iterable<? extends E> source,
-            Function<E, Long> idExtractor,
-            Consumer<List<Long>> batchAction
+            Function<? super E, ? extends K> idExtractor,
+            Consumer<List<K>> batchAction
     ) {
 
         if (source == null) {
             return;
         }
 
-        List<Long> batch = new ArrayList<>(repository.getInClauseBatchSize() + 1);
+        List<K> batch = new ArrayList<>(repository.getInClauseBatchSize() + 1);
         for (E item : source) {
-            Long id = idExtractor.apply(item);
-            if (id == null) {
+            K key = idExtractor.apply(item);
+            if (key == null) {
                 continue;
             }
-            batch.add(id);
+            batch.add(key);
             if (batch.size() >= repository.getInClauseBatchSize()) {
                 batchAction.accept(batch);
                 batch.clear();

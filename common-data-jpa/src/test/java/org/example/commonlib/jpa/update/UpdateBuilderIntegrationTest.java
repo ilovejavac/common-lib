@@ -1,5 +1,6 @@
 package org.example.commonlib.jpa.update;
 
+import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.encrypt.Encrypt;
 import com.dev.lib.jpa.entity.BaseRepository;
@@ -170,6 +171,109 @@ class UpdateBuilderIntegrationTest {
     }
 
     @Test
+    void byIdShouldDeclareIdentityConditionExplicitly() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
+            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-by-id", "plain-before"));
+
+            long affected = repo.update()
+                    .byId(saved.getId())
+                    .set(UpdateCaseThing::getName, "after-by-id")
+                    .execute();
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-by-id");
+        });
+    }
+
+    @Test
+    void byBizIdShouldDeclareIdentityConditionExplicitly() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
+            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-by-biz", "plain-before"));
+
+            long affected = repo.update()
+                    .byId(saved.getBizId())
+                    .set(UpdateCaseThing::getName, "after-by-biz")
+                    .execute();
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-by-biz");
+        });
+    }
+
+    @Test
+    void byAggregateRootShouldDeclareIdentityConditionExplicitly() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
+            UpdateCaseThing idTarget = repo.saveAndFlush(new UpdateCaseThing("before-id-target", PlanState.WAITING, "remark-by-root", "plain-before"));
+            UpdateCaseThing bizTarget = repo.saveAndFlush(new UpdateCaseThing("before-biz-target", PlanState.WAITING, "remark-by-root", "plain-before"));
+
+            TestAggregateRoot root = new TestAggregateRoot();
+            root.setId(idTarget.getId());
+            root.setBizId(bizTarget.getBizId());
+
+            long affected = repo.update()
+                    .byId(root)
+                    .set(UpdateCaseThing::getName, "after-by-root")
+                    .execute();
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(repo.findById(idTarget.getId())).map(UpdateCaseThing::getName).contains("after-by-root");
+            assertThat(repo.findById(bizTarget.getId())).map(UpdateCaseThing::getName).contains("before-biz-target");
+        });
+    }
+
+    @Test
+    void byAggregateRootShouldFallbackToBizIdWhenIdIsMissing() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
+            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before-by-root-biz", PlanState.WAITING, "remark-by-root-biz", "plain-before"));
+
+            TestAggregateRoot root = new TestAggregateRoot();
+            root.setBizId(saved.getBizId());
+
+            long affected = repo.update()
+                    .byId(root)
+                    .set(UpdateCaseThing::getName, "after-by-root-biz")
+                    .execute();
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-by-root-biz");
+        });
+    }
+
+    @Test
+    void byAggregateRootShouldFailWhenRootOrBothRootIdentifiersAreMissing() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
+            Assertions.assertThatThrownBy(() -> repo.update().byId((TestAggregateRoot) null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("root 条件不能为空");
+
+            TestAggregateRoot missingIdRoot = new TestAggregateRoot();
+            Assertions.assertThatThrownBy(() -> repo.update().byId(missingIdRoot))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("bizId 条件不能为空");
+        });
+    }
+
+    @Test
     void updateBuilderShouldEncryptAnnotatedFieldBeforeBulkUpdate() {
 
         contextRunner.run(context -> {
@@ -271,4 +375,7 @@ interface UpdateCaseRepo extends BaseRepository<UpdateCaseThing> {
 }
 
 class UpdateCaseQuery extends DslQuery<UpdateCaseThing> {
+}
+
+class TestAggregateRoot extends AggregateRoot {
 }

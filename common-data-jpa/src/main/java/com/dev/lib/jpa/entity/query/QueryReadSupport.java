@@ -12,7 +12,9 @@ import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
+import org.hibernate.LockOptions;
 import org.hibernate.jpa.HibernateHints;
+import org.hibernate.jpa.SpecHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -180,11 +182,12 @@ public final class QueryReadSupport {
     ) {
 
         Predicate predicate = buildPredicate(repository, ctx, dslQuery, expressions);
+        Pageable pageable = resolvePageable(dslQuery);
 
         List<D> content;
         long total;
         try {
-            WindowPageResult<D> pageResult = doQueryWithWindowCount(repository, predicate, select, resultClass, dslQuery);
+            WindowPageResult<D> pageResult = doQueryWithWindowCount(repository, predicate, select, resultClass, dslQuery, pageable);
             content = pageResult.content();
             total = pageResult.total();
         } catch (RuntimeException ex) {
@@ -192,13 +195,14 @@ public final class QueryReadSupport {
                 throw ex;
             }
             JPAQuery<Tuple> fallbackQuery = createTupleQuery(repository, predicate, select.buildExpressions(repository.getPathBuilder()), dslQuery);
-            if (dslQuery != null) {
-                applyLimit(fallbackQuery, dslQuery);
+            if (dslQuery == null) {
+                applySort(fallbackQuery, repository.getPathBuilder(), pageable.getSort());
             }
+            applyPageBounds(fallbackQuery, dslQuery, pageable);
             content = mapTuples(repository, fallbackQuery.fetch(), select, resultClass);
             total = countByPredicate(repository, predicate);
         }
-        return new PageImpl<>(content, resolvePageable(dslQuery), total);
+        return new PageImpl<>(content, pageable, total);
     }
 
     public static <T extends JpaEntity> long count(
@@ -235,7 +239,7 @@ public final class QueryReadSupport {
         return RepositoryPredicateSupport.buildPredicate(
                 repository.getPathBuilder(),
                 repository.getPath(),
-                repository.getDeletedPath(),
+                repository.getDeletedAtPath(),
                 ctx,
                 dslQuery,
                 expressions
@@ -292,7 +296,8 @@ public final class QueryReadSupport {
             Predicate predicate,
             SelectBuilder<T> select,
             Class<D> resultClass,
-            DslQuery<T> dslQuery
+            DslQuery<T> dslQuery,
+            Pageable pageable
     ) {
 
         Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
@@ -302,9 +307,10 @@ public final class QueryReadSupport {
         queryExprs[selectExprs.length] = PageQuerySupport.WINDOW_TOTAL_EXPRESSION;
 
         JPAQuery<Tuple> query = createTupleQuery(repository, predicate, queryExprs, dslQuery);
-        if (dslQuery != null) {
-            applyLimit(query, dslQuery);
+        if (dslQuery == null) {
+            applySort(query, repository.getPathBuilder(), pageable.getSort());
         }
+        applyPageBounds(query, dslQuery, pageable);
 
         List<Tuple> tuples = query.fetch();
 
@@ -338,6 +344,9 @@ public final class QueryReadSupport {
                 dslQuery
         );
         applyStreamFetchSize(query, repository.getInClauseBatchSize());
+        if (dslQuery != null) {
+            applyLimit(query, dslQuery);
+        }
 
         return mapTupleStream(repository, query.stream(), select, resultClass);
     }
@@ -448,7 +457,7 @@ public final class QueryReadSupport {
 
             List<Tuple> tuples = query.fetch();
             if (tuples.isEmpty()) {
-                return new PageImpl<>(List.of(), pageable, 0L);
+                return new PageImpl<>(List.of(), pageable, countByPredicate(repository, predicate));
             }
             List<T> content = tuples.stream()
                     .map(tuple -> tuple.get(repository.getPath()))
@@ -484,6 +493,7 @@ public final class QueryReadSupport {
 
         if (dslQuery != null) {
             applySort(query, repository.getPathBuilder(), dslQuery);
+            applyLimit(query, dslQuery);
         }
 
         return query.stream();
@@ -536,6 +546,16 @@ public final class QueryReadSupport {
         }
     }
 
+    private static void applyPageBounds(JPAQuery<?> query, DslQuery<?> dslQuery, Pageable pageable) {
+
+        if (dslQuery != null) {
+            applyLimit(query, dslQuery);
+            return;
+        }
+        query.offset(pageable.getOffset());
+        query.limit(pageable.getPageSize());
+    }
+
     private static void applyLockOptions(JPAQuery<?> query, QueryContext ctx) {
 
         if (!ctx.hasLock()) {
@@ -543,7 +563,7 @@ public final class QueryReadSupport {
         }
         query.setLockMode(ctx.getLockMode());
         if (ctx.isSkipLocked()) {
-            query.setHint("org.hibernate.lockMode", "UPGRADE_SKIPLOCKED");
+            query.setHint(SpecHints.HINT_SPEC_LOCK_TIMEOUT, LockOptions.SKIP_LOCKED);
         }
     }
 

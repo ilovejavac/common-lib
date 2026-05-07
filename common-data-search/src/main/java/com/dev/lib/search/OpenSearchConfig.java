@@ -1,23 +1,18 @@
 package com.dev.lib.search;
 
 import lombok.Data;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
-@Configuration
+@AutoConfiguration
 @ConditionalOnProperty(prefix = "app.opensearch", name = "enabled", havingValue = "true")
+@EnableConfigurationProperties(OpenSearchConfig.OpenSearchProperties.class)
 public class OpenSearchConfig {
 
-    @Bean
-    @ConfigurationProperties(prefix = "app.opensearch")
-    public OpenSearchProperties openSearchProperties() {
-
-        return new OpenSearchProperties();
-    }
-
     @Data
+    @ConfigurationProperties(prefix = "app.opensearch")
     public static class OpenSearchProperties {
 
         private boolean enabled = false;

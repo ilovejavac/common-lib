@@ -1,5 +1,6 @@
 package com.dev.lib.jpa.entity;
 
+import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.encrypt.Encrypt;
 import com.dev.lib.jpa.TransactionHelper;
@@ -50,6 +51,38 @@ public class UpdateBuilder<T extends JpaEntity> {
         this.impl = impl;
     }
 
+    public UpdateBuilder<T> byId(Long id) {
+
+        if (id == null) {
+            throw new IllegalArgumentException("id 条件不能为空");
+        }
+        identityExpression = impl.getIdPath().eq(id);
+        idIdentityPresent = true;
+        return this;
+    }
+
+    public UpdateBuilder<T> byId(String bizId) {
+
+        if (bizId == null || bizId.isBlank()) {
+            throw new IllegalArgumentException("bizId 条件不能为空");
+        }
+        if (!idIdentityPresent) {
+            identityExpression = impl.getPathBuilder().getString(BIZ_ID_FIELD_NAME).eq(bizId);
+        }
+        return this;
+    }
+
+    public UpdateBuilder<T> byId(AggregateRoot root) {
+
+        if (root == null) {
+            throw new IllegalArgumentException("root 条件不能为空");
+        }
+        if (root.getId() != null) {
+            return byId(root.getId());
+        }
+        return byId(root.getBizId());
+    }
+
     public UpdateBuilder<T> set(SFunction<T, ?> field, Object value) {
 
         if (value == null) {
@@ -94,19 +127,21 @@ public class UpdateBuilder<T extends JpaEntity> {
 
         ensureAuditAssignments();
 
-        return TransactionHelper.callWithEntityManagerFactory(impl.getEntityManagerFactory(), () -> {
-            JPAUpdateClause clause = impl.getQueryFactory().update(impl.getPath());
-            for (Assignment assignment : assignments.values()) {
-                applyAssignment(clause, assignment);
-            }
+        return TransactionHelper.callWithEntityManagerFactory(
+                impl.getEntityManagerFactory(), () -> {
+                    JPAUpdateClause clause = impl.getQueryFactory().update(impl.getPath());
+                    for (Assignment assignment : assignments.values()) {
+                        applyAssignment(clause, assignment);
+                    }
 
-            long affected = clause.where(predicate).execute();
-            if (affected > 0) {
-                impl.getEntityManager().flush();
-                impl.getEntityManager().clear();
-            }
-            return affected;
-        });
+                    long affected = clause.where(predicate).execute();
+                    if (affected > 0) {
+                        impl.getEntityManager().flush();
+                        impl.getEntityManager().clear();
+                    }
+                    return affected;
+                }
+        );
     }
 
     private boolean applyIdentityCondition(FieldMeta meta, Object value) {
@@ -151,7 +186,7 @@ public class UpdateBuilder<T extends JpaEntity> {
         this.predicate = RepositoryPredicateSupport.buildPredicate(
                 impl.getPathBuilder(),
                 impl.getPath(),
-                impl.getDeletedPath(),
+                impl.getDeletedAtPath(),
                 new QueryContext(),
                 dslQuery,
                 mergedExpressions
@@ -220,19 +255,21 @@ public class UpdateBuilder<T extends JpaEntity> {
 
     private static Map<String, FieldMeta> scanFieldMeta(Class<?> entityClass) {
 
-        Map<String, FieldMeta> map = new ConcurrentHashMap<>();
-        Class<?> current = entityClass;
+        Map<String, FieldMeta> map     = new ConcurrentHashMap<>();
+        Class<?>               current = entityClass;
         while (current != null && current != Object.class) {
             for (Field field : current.getDeclaredFields()) {
                 ReflectionUtils.makeAccessible(field);
-                Column column = field.getAnnotation(Column.class);
+                Column  column   = field.getAnnotation(Column.class);
                 boolean nullable = column == null ? !field.getType().isPrimitive() : column.nullable();
-                map.putIfAbsent(field.getName(), new FieldMeta(
-                        field.getName(),
-                        field.getType(),
-                        nullable,
-                        field.isAnnotationPresent(Encrypt.class)
-                ));
+                map.putIfAbsent(
+                        field.getName(), new FieldMeta(
+                                field.getName(),
+                                field.getType(),
+                                nullable,
+                                field.isAnnotationPresent(Encrypt.class)
+                        )
+                );
             }
             current = current.getSuperclass();
         }
@@ -244,4 +281,5 @@ public class UpdateBuilder<T extends JpaEntity> {
 
     private record Assignment(FieldMeta meta, Object value, boolean isNull) {
     }
+
 }

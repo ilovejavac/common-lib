@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PopulateFieldBeanSerializerModifier extends ValueSerializerModifier {
 
-    private static final Set<String> EXCLUDE_FIELDS = Set.of("reversion", "deleted");
+    private static final Set<String> EXCLUDE_FIELDS = Set.of("reversion", "deletedAt");
 
     private static final Map<Class<?>, FieldMeta[]> CACHE = new ConcurrentHashMap<>();
 

@@ -13,6 +13,8 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ScopedWriteProtectionIntegrationTest {
@@ -68,10 +70,10 @@ class ScopedWriteProtectionIntegrationTest {
 
             ScopedWriteThing softVictim = saveAs(repo, 3003L, "soft-victim");
             runAsVoid(1001L, () -> repo.deleteById(softVictim.getId()));
-            assertThat(queryDeletedFlag(jdbcTemplate, softVictim.getId())).isFalse();
+            assertThat(queryDeletedAt(jdbcTemplate, softVictim.getId())).isNull();
 
             runAsVoid(3003L, () -> repo.deleteById(softVictim.getId()));
-            assertThat(queryDeletedFlag(jdbcTemplate, softVictim.getId())).isTrue();
+            assertThat(queryDeletedAt(jdbcTemplate, softVictim.getId())).isNotNull();
 
             ScopedWriteThing hardVictim = saveAs(repo, 4004L, "hard-victim");
             runAsVoid(1001L, () -> repo.physicalDelete().deleteById(hardVictim.getId()));
@@ -121,14 +123,13 @@ class ScopedWriteProtectionIntegrationTest {
         );
     }
 
-    private static boolean queryDeletedFlag(JdbcTemplate jdbcTemplate, Long id) {
+    private static LocalDateTime queryDeletedAt(JdbcTemplate jdbcTemplate, Long id) {
 
-        Boolean deleted = jdbcTemplate.queryForObject(
-                "select deleted from scoped_write_thing where id = ?",
-                Boolean.class,
+        return jdbcTemplate.queryForObject(
+                "select deleted_at from scoped_write_thing where id = ?",
+                LocalDateTime.class,
                 id
         );
-        return Boolean.TRUE.equals(deleted);
     }
 
     private static long queryRowCountById(JdbcTemplate jdbcTemplate, Long id) {

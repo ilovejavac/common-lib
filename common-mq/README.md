@@ -22,7 +22,7 @@ common-mq/                 # 抽象层
   └── reliability/          # 可靠性配置
 
 common-mq-rabbit/          # RabbitMQ 实现
-common-local-task-message/ # 本地消息表
+common-task-kernel/        # 统一任务内核（异步/可靠/周期任务）
 ```
 
 ## 快速开始
@@ -36,10 +36,10 @@ common-local-task-message/ # 本地消息表
     <artifactId>common-mq-rabbit</artifactId>
 </dependency>
 
-<!-- 包含本地消息表 -->
+<!-- 包含任务内核 -->
 <dependency>
     <groupId>com.dev.lib</groupId>
-    <artifactId>common-local-task-message</artifactId>
+    <artifactId>common-task-kernel</artifactId>
 </dependency>
 ```
 
@@ -90,8 +90,8 @@ MQ.publish("order.queue", msg)
 MQ.publishAsync("order.queue", msg) {
     onSuccess { m -> log.info("发送成功: ${m.id}") }
     onFailure { m, e ->
-        log.error("发送失败，已落本地消息表", e)
-        // 本地消息表会在定时任务中重新发送
+        log.error("发送失败，已落任务内核", e)
+        // 失败消息会由可靠任务自动重试发送
     }
 }
 ```

@@ -1,7 +1,7 @@
 package com.dev.lib.rabbit
 
-import com.dev.lib.local.task.message.poller.core.PollerTaskSubmitter
 import com.dev.lib.mq.MQ
+import com.dev.lib.task.api.TaskClient
 import org.springframework.amqp.core.AcknowledgeMode
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory
 import org.springframework.amqp.rabbit.connection.ConnectionFactory
@@ -34,21 +34,20 @@ class RabbitMQAutoConfiguration {
     @ConditionalOnMissingBean
     fun mqTemplateInitializer(
         template: RabbitTemplate,
-        taskSubmitter: PollerTaskSubmitter,
+        taskClient: TaskClient,
         messageConverter: MessageConverter
     ): MQTemplateInitializer {
-        return MQTemplateInitializer(template, taskSubmitter, messageConverter)
+        return MQTemplateInitializer(template, taskClient, messageConverter)
     }
 }
 
 class MQTemplateInitializer(
     template: RabbitTemplate,
-    taskSubmitter: PollerTaskSubmitter,
+    taskClient: TaskClient,
     messageConverter: MessageConverter
 ) {
     init {
         template.messageConverter = messageConverter
-        MQ.init(RabbitMQTemplate(template, taskSubmitter))
+        MQ.init(RabbitMQTemplate(template, taskClient))
     }
 }
-

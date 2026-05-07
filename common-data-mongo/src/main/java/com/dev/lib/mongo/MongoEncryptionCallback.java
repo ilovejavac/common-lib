@@ -8,7 +8,6 @@ import org.springframework.core.Ordered;
 import org.springframework.data.mongodb.core.mapping.event.AfterConvertCallback;
 import org.springframework.data.mongodb.core.mapping.event.AfterSaveCallback;
 import org.springframework.data.mongodb.core.mapping.event.BeforeConvertCallback;
-import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
 import java.util.Arrays;
@@ -17,7 +16,6 @@ import java.util.Arrays;
  * 等效于 JPA 的 EncryptionListener
  */
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class MongoEncryptionCallback implements
         BeforeConvertCallback<Object>,

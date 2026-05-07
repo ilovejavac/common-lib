@@ -1,5 +1,6 @@
 package org.example.commonlib.jpa.cascade;
 
+import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
@@ -100,6 +101,59 @@ class CascadeSoftDeleteIntegrationTest {
         });
     }
 
+    @Test
+    void deleteRootShouldSoftDeleteOneToOneCascadeChild() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            SingleParentRepo parentRepo = context.getBean(SingleParentRepo.class);
+            SingleChildRepo childRepo = context.getBean(SingleChildRepo.class);
+
+            SingleParent parent = new SingleParent();
+            parent.setChild(new SingleChild());
+            parent = parentRepo.saveAndFlush(parent);
+
+            CascadeDeleteRoot root = new CascadeDeleteRoot();
+            root.setBizId(parent.getBizId());
+
+            long affected = parentRepo.deleteRoot(root);
+
+            assertThat(affected).isEqualTo(1L);
+            assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1L);
+            assertThat(childRepo.onlyDeleted().count()).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void deleteRootsShouldSoftDeleteOneToManyCascadeChildren() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            CascadeParentRepo parentRepo = context.getBean(CascadeParentRepo.class);
+            CascadeChildRepo childRepo = context.getBean(CascadeChildRepo.class);
+
+            CascadeParent parentById = new CascadeParent();
+            parentById.addChild(new CascadeChild());
+            parentById = parentRepo.saveAndFlush(parentById);
+
+            CascadeParent parentByBizId = new CascadeParent();
+            parentByBizId.addChild(new CascadeChild());
+            parentByBizId = parentRepo.saveAndFlush(parentByBizId);
+
+            CascadeDeleteRoot byId = new CascadeDeleteRoot();
+            byId.setId(parentById.getId());
+            CascadeDeleteRoot byBizId = new CascadeDeleteRoot();
+            byBizId.setBizId(parentByBizId.getBizId());
+
+            parentRepo.deleteRoots(List.of(byId, byBizId));
+
+            assertThat(parentRepo.onlyDeleted().count()).isEqualTo(2L);
+            assertThat(childRepo.onlyDeleted().count()).isEqualTo(2L);
+        });
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     static class CascadeSoftDeleteApplication {
@@ -160,4 +214,7 @@ interface SingleParentRepo extends BaseRepository<SingleParent> {
 }
 
 interface SingleChildRepo extends BaseRepository<SingleChild> {
+}
+
+class CascadeDeleteRoot extends AggregateRoot {
 }

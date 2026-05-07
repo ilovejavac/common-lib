@@ -202,7 +202,7 @@ public class QueryBuilder<T extends JpaEntity> {
 
     public long delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return impl.delete(context, dslQuery, expressions);
+        return impl.deleteInternal(context, dslQuery, expressions);
     }
 
     public long delete(BooleanExpression... expressions) {

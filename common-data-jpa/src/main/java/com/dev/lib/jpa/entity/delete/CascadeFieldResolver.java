@@ -47,7 +47,7 @@ public final class CascadeFieldResolver {
     /**
      * Collect all cascade-reachable entities from roots into a type→ids map.
      * The map is ordered parent-first (insertion order).
-     * Skips entities already marked as deleted.
+     * Skips entities already soft-deleted.
      */
     public static void collectCascadeEntities(Object entity, Set<Object> visited, Map<Class<?>, Set<Long>> toDeleteByType) {
         if (entity == null || visited.contains(entity)) {
@@ -58,7 +58,7 @@ public final class CascadeFieldResolver {
         Class<?> realClass = Hibernate.getClass(entity);
 
         if (entity instanceof JpaEntity jpaEntity) {
-            if (Boolean.TRUE.equals(jpaEntity.getDeleted())) {
+            if (jpaEntity.getDeletedAt() != null) {
                 return;
             }
             Long id = jpaEntity.getId();
@@ -86,7 +86,7 @@ public final class CascadeFieldResolver {
     }
 
     /**
-     * Same as collectCascadeEntities but for hard delete — does NOT skip deleted entities.
+     * Same as collectCascadeEntities but for hard delete — does NOT skip soft-deleted entities.
      */
     public static void collectCascadeEntitiesIncludeDeleted(Object entity, Set<Object> visited, Map<Class<?>, Set<Long>> toDeleteByType) {
         if (entity == null || visited.contains(entity)) {

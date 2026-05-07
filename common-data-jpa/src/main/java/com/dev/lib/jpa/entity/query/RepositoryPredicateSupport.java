@@ -12,9 +12,10 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.EntityPath;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.BooleanPath;
+import com.querydsl.core.types.dsl.DateTimePath;
 import com.querydsl.core.types.dsl.PathBuilder;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
@@ -27,7 +28,7 @@ public final class RepositoryPredicateSupport {
     public static <T extends JpaEntity> Predicate buildPredicate(
             PathBuilder<T> pathBuilder,
             EntityPath<T> path,
-            BooleanPath deletedPath,
+            DateTimePath<LocalDateTime> deletedAtPath,
             QueryContext ctx,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
@@ -36,8 +37,8 @@ public final class RepositoryPredicateSupport {
         BooleanBuilder builder = new BooleanBuilder();
 
         switch (ctx.getDeletedFilter()) {
-            case EXCLUDE_DELETED -> builder.and(deletedPath.eq(false));
-            case ONLY_DELETED -> builder.and(deletedPath.eq(true));
+            case EXCLUDE_DELETED -> builder.and(deletedAtPath.isNull());
+            case ONLY_DELETED -> builder.and(deletedAtPath.isNotNull());
         }
 
         Predicate scopedPredicate = buildPluginAndBusinessPredicate(pathBuilder, path, dslQuery, expressions);

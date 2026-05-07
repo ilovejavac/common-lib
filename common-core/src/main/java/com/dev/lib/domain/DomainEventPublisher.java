@@ -15,7 +15,7 @@ public class DomainEventPublisher implements ApplicationEventPublisherAware {
     /**
      * 发布并清空聚合根的领域事件
      */
-    public static void publishAndClear(AggregateRoot root) {
+    static void publishAndClear(AggregateRoot root) {
 
         if (root == null || root.domainEvents().isEmpty()) {
             return;

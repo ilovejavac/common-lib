@@ -40,6 +40,8 @@ public abstract class MongoEntity extends CoreEntity implements Persistable<Long
 
     private Long modifierId;
 
+    private LocalDateTime deletedAt;
+
     @Version
     @ToString.Include
     @EqualsAndHashCode.Include
