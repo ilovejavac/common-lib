@@ -26,7 +26,7 @@ public abstract class JpaEntity extends CoreEntity implements Persistable<Long> 
     @Id
     private Long id;
 
-    @Column(nullable = false, length = 13, unique = true, updatable = false)
+    @Column(nullable = false, length = 15, unique = true, updatable = false)
     private String bizId;
 
     @Column(nullable = false, updatable = false)

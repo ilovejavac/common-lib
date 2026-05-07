@@ -16,7 +16,7 @@ public final class TypeDefaults {
     /**
      * String -> varchar(?) 默认长度
      */
-    public static final long STRING_LENGTH = 500L;
+    public static final long STRING_LENGTH = 512L;
 
     // ==================== 数值类型 ====================
 
@@ -50,7 +50,7 @@ public final class TypeDefaults {
     /**
      * byte[] -> varbinary(?) 默认长度
      */
-    public static final long BYTE_ARRAY_LENGTH = 4000L;
+    public static final long BYTE_ARRAY_LENGTH = 8192L;
 
     // ==================== 时间类型 ====================
 
