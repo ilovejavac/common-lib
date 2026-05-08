@@ -3,7 +3,6 @@ package com.dev.lib.security.interceptor;
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.security.config.properties.SecurityValidProperties;
-import com.dev.lib.security.service.AuthenticateService;
 import com.dev.lib.security.service.PermissionService;
 import com.dev.lib.security.service.TokenService;
 import com.dev.lib.security.service.annotation.Anonymous;
@@ -31,6 +30,10 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class PermissionValidator implements InitializingBean {
+
+    private static final String ADMIN_PATH_PATTERN = "/admin/**";
+
+    private static final String ADMIN_ROLE = "admin";
 
     private final PermissionService permissionService;
 
@@ -105,6 +108,30 @@ public class PermissionValidator implements InitializingBean {
         // 10. 类级别 @RequirePermission
         RequirePermission classPermission = controllerClass.getAnnotation(RequirePermission.class);
         if (classPermission != null && !permissionService.hasPermission(classPermission.value())) {
+            throw new BizException(
+                    StandardErrorCodes.PERMISSION_DENIED,
+                    "无权限访问"
+            );
+        }
+    }
+
+    public boolean isAdminPath(HttpServletRequest request) {
+
+        return pathMatcher.match(ADMIN_PATH_PATTERN, request.getRequestURI());
+    }
+
+    public void validAdmin(HttpServletRequest request) {
+
+        if (!SecurityContextHolder.isLogin()) {
+            throw new BizException(
+                    StandardErrorCodes.AUTHENTICATION_FAILED,
+                    "认证失败，请先登录"
+            );
+        }
+
+        boolean admin = SecurityContextHolder.getRoles().stream()
+                .anyMatch(role -> ADMIN_ROLE.equalsIgnoreCase(role));
+        if (!admin) {
             throw new BizException(
                     StandardErrorCodes.PERMISSION_DENIED,
                     "无权限访问"

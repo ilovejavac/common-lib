@@ -1,6 +1,7 @@
 package com.dev.lib.security.config;
 
 import com.dev.lib.security.interceptor.AuthInterceptor;
+import com.dev.lib.security.interceptor.AkskAuthenticationInterceptor;
 import com.dev.lib.security.interceptor.InternalInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.ComponentScan;
@@ -17,17 +18,23 @@ public class WebSecurityConfig implements WebMvcConfigurer {
 
     private final InternalInterceptor internalFilter;
 
+    private final AkskAuthenticationInterceptor akskAuthenticationInterceptor;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
 
         registry.addInterceptor(internalFilter)
                 .order(10)
-                .addPathPatterns("/api/**")
+                .addPathPatterns("/api/**", "/admin/**")
                 .excludePathPatterns("/api/auth/**", "/api/public/**");
+
+        registry.addInterceptor(akskAuthenticationInterceptor)
+                .order(15)
+                .addPathPatterns("/**");
 
         registry.addInterceptor(authInterceptor)
                 .order(20)
-                .addPathPatterns("/api/**")
+                .addPathPatterns("/api/**", "/admin/**")
                 .excludePathPatterns("/api/auth/**", "/api/public/**");
     }
 

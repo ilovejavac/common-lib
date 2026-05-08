@@ -31,6 +31,13 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        if (validator.isAdminPath(request)) {
+            validator.setContextInfo(request);
+            validator.validAdmin(request);
+            validator.valid(handlerMethod);
+            return true;
+        }
+
         if (validator.anonymous(handlerMethod)) {
             return true;
         }

@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.5.0-RC1</version>
+        <version>1.5.1-RC0</version>
     </parent>
 
     <artifactId>common-aksk</artifactId>
@@ -15,6 +15,16 @@
         <dependency>
             <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.ilovejavac</groupId>
+            <artifactId>common-data-jpa</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

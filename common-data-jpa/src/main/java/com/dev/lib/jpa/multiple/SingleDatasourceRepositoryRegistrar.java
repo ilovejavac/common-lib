@@ -16,6 +16,7 @@ import org.springframework.data.jpa.repository.config.JpaRepositoryConfigExtensi
 import org.springframework.data.repository.config.RepositoryConfigurationDelegate;
 import org.springframework.data.repository.config.RepositoryConfigurationExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,7 +26,6 @@ import java.util.List;
 public class SingleDatasourceRepositoryRegistrar
         implements ImportBeanDefinitionRegistrar, EnvironmentAware, ResourceLoaderAware, BeanFactoryAware {
 
-    private static final String COMMON_LIB_PACKAGE = "com.dev.lib";
     private static final String[] INTERNAL_REPOSITORY_PACKAGES = {"com.dev.lib.jpa.entity.log"};
     private static final String ENTITY_MANAGER_FACTORY_REF = "entityManagerFactory";
     private static final String TRANSACTION_MANAGER_REF = "transactionManager";
@@ -62,12 +62,29 @@ public class SingleDatasourceRepositoryRegistrar
         if (!AutoConfigurationPackages.has(beanFactory)) {
             return;
         }
-        List<String> packages = AutoConfigurationPackages.get(beanFactory);
-        String[] applicationPackages = packages.stream()
-                .filter(packageName -> !COMMON_LIB_PACKAGE.equals(packageName))
-                .toArray(String[]::new);
+        List<String> packages = new ArrayList<>(AutoConfigurationPackages.get(beanFactory));
+        packages.addAll(List.of(INTERNAL_REPOSITORY_PACKAGES));
+        String[] applicationPackages = repositoryPackages(packages);
         registerRepositories(registry, applicationPackages, true);
-        registerRepositories(registry, INTERNAL_REPOSITORY_PACKAGES, false);
+    }
+
+    private String[] repositoryPackages(List<String> packages) {
+
+        List<String> selected = new ArrayList<>();
+        packages.stream()
+                .distinct()
+                .sorted((left, right) -> Integer.compare(left.length(), right.length()))
+                .forEach(packageName -> {
+                    if (selected.stream().noneMatch(selectedPackage -> isSameOrSubPackage(packageName, selectedPackage))) {
+                        selected.add(packageName);
+                    }
+                });
+        return selected.toArray(String[]::new);
+    }
+
+    private boolean isSameOrSubPackage(String packageName, String candidateParent) {
+
+        return packageName.equals(candidateParent) || packageName.startsWith(candidateParent + ".");
     }
 
     private void registerRepositories(BeanDefinitionRegistry registry,

@@ -6,6 +6,7 @@ import com.dev.lib.jpa.entity.JpaEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.support.JpaRepositoryFactoryBean;
+import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.core.support.RepositoryFactoryBeanSupport;
 
 import java.lang.reflect.Field;
@@ -70,12 +71,15 @@ class BaseRepositoryFactoryBeanPostProcessorTest {
         throw new IllegalStateException("Unexpected repositoryBaseClass type: " + value.getClass().getName());
     }
 
+    @NoRepositoryBean
     interface DemoBaseRepository extends BaseRepository<DemoEntity> {
     }
 
+    @NoRepositoryBean
     interface DemoPlainRepository extends JpaRepository<DemoEntity, Long> {
     }
 
+    @NoRepositoryBean
     interface ExternalPlainRepository extends JpaRepository<ExternalEntity, Long> {
     }
 

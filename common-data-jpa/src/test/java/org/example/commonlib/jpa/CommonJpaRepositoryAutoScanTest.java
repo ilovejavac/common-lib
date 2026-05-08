@@ -1,6 +1,8 @@
 package org.example.commonlib.jpa;
 
 import com.dev.lib.jpa.TransactionHelper;
+import com.dev.lib.jpa.entity.log.OperateLogRepo;
+import com.dev.lib.testsupport.repository.CommonLibNestedLedger;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,8 @@ class CommonJpaRepositoryAutoScanTest {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
-//            assertThat(context).hasSingleBean(AuditRepo.class);
+            assertThat(context).hasSingleBean(OperateLogRepo.class);
+            assertThat(context).hasSingleBean(CommonLibNestedLedger.Mapper.class);
             assertThat(context).hasSingleBean(BusinessOrderRepo.class);
             assertThat(context).hasSingleBean(TransactionHelper.class);
         });

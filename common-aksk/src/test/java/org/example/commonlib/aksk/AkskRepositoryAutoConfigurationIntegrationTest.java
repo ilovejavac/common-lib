@@ -1,0 +1,51 @@
+package org.example.commonlib.aksk;
+
+import com.dev.lib.aksk.data.AkskCredential;
+import com.dev.lib.config.properties.AppSecurityProperties;
+import com.dev.lib.util.encrypt.EncryptionServiceImpl;
+import com.dev.lib.util.encrypt.factory.EncryptionStrategyFactory;
+import com.dev.lib.util.encrypt.impl.Base64EncryptionStrategy;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.context.annotation.Import;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class AkskRepositoryAutoConfigurationIntegrationTest {
+
+    private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
+            .withUserConfiguration(BusinessApplication.class)
+            .withPropertyValues(
+                    "spring.datasource.url=jdbc:h2:mem:aksk_repository_auto_config;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+                    "spring.datasource.driver-class-name=org.h2.Driver",
+                    "spring.datasource.username=sa",
+                    "spring.datasource.password=",
+                    "spring.jpa.hibernate.ddl-auto=create-drop",
+                    "spring.jpa.open-in-view=false",
+                    "spring.application.name=aksk-repository-auto-config-test",
+                    "app.security.encrypt-version=base64"
+            );
+
+    @Test
+    void shouldRegisterAkskRepositoryWhenBusinessApplicationPackageIsOutsideCommonLib() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context).hasSingleBean(AkskCredential.Mapper.class);
+        });
+    }
+
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    @EnableConfigurationProperties(AppSecurityProperties.class)
+    @Import({
+            EncryptionStrategyFactory.class,
+            EncryptionServiceImpl.class,
+            Base64EncryptionStrategy.class
+    })
+    static class BusinessApplication {
+    }
+}
