@@ -2,25 +2,27 @@
 
 `common-aksk` provides AccessKey/SecretKey credential management and signed-request verification for third-party API access.
 
-Use it when a caller cannot use the normal user token flow but still needs a stable, revocable identity with scoped permissions. The module owns credential lifecycle, signing primitives, `@Aksk`, scope checks, and `AkskContextHolder`. `common-security` integrates it into Spring MVC and writes successful AK/SK authentication into `SecurityContextHolder`.
+Use it when a caller cannot use the normal user token flow but still needs a stable, revocable identity with scoped permissions. The module owns credential lifecycle, signing primitives, `@Aksk`, scope checks, Spring MVC AK/SK interception, request body caching, and `AkskContextHolder`.
+
+`common-aksk` uses the `common-core` MVC interceptor hook, so a service that depends on `common-aksk` directly is enough to verify `@Aksk` endpoints. Add `common-security` only when the service also needs token authentication, admin path protection, role/permission checks, or `SecurityContextHolder` integration.
 
 ## Dependencies
 
-Business server modules normally depend on `common-security`. `common-security` depends on `common-aksk` and registers the AK/SK interceptor.
-
-```xml
-<dependency>
-    <groupId>io.github.ilovejavac</groupId>
-    <artifactId>common-security</artifactId>
-</dependency>
-```
-
-If a module only needs AK/SK domain APIs without the security interceptor, depend on `common-aksk` directly.
+For AK/SK-only services, depend on `common-aksk` directly:
 
 ```xml
 <dependency>
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-aksk</artifactId>
+</dependency>
+```
+
+For services that also need token/admin/permission security, depend on `common-security`. It depends on `common-aksk`, registers only its internal/token auth interceptors through the same `common-core` hook, and contributes an AK/SK success handler that writes validated AK/SK authentication into `SecurityContextHolder`.
+
+```xml
+<dependency>
+    <groupId>io.github.ilovejavac</groupId>
+    <artifactId>common-security</artifactId>
 </dependency>
 ```
 
@@ -188,10 +190,10 @@ The example above accepts a credential that has `order:read` or `order:export`. 
 After successful verification:
 
 - `AkskContextHolder` contains the AK/SK authentication details.
-- `SecurityContextHolder` contains a non-admin `UserDetails`.
-- The user role is `AKSK`.
-- Credential scopes are mirrored as permissions.
-- `validated` is `true`.
+- If `common-security` is present, `SecurityContextHolder` contains a validated non-admin `UserDetails`.
+- If `common-security` is present, the user role is `AKSK`.
+- If `common-security` is present, credential scopes are mirrored as permissions.
+- If `common-security` is present, `validated` is `true`.
 
 ## Security Notes
 

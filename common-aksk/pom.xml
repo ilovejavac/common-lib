@@ -19,7 +19,6 @@
         <dependency>
             <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-data-jpa</artifactId>
-            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>

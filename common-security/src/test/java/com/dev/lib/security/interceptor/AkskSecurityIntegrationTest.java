@@ -1,16 +1,10 @@
 package com.dev.lib.security.interceptor;
 
 import com.dev.lib.aksk.config.AkskProperties;
-import com.dev.lib.aksk.domain.model.AkskAuthentication;
-import com.dev.lib.aksk.domain.model.AkskVerificationRequest;
-import com.dev.lib.aksk.domain.service.AkskHeaderResolver;
-import com.dev.lib.aksk.domain.service.AkskSigner;
-import com.dev.lib.aksk.domain.service.AkskVerifier;
+import com.dev.lib.aksk.web.AkskRequestBodyFilter;
+import com.dev.lib.aksk.web.CachedBodyHttpServletRequest;
 import com.dev.lib.config.properties.AppSecurityProperties;
-import com.dev.lib.security.aksk.AkskRequestBodyFilter;
-import com.dev.lib.security.aksk.AkskSecurityContextAdapter;
-import com.dev.lib.security.aksk.CachedBodyHttpServletRequest;
-import com.dev.lib.security.config.WebSecurityConfig;
+import com.dev.lib.security.config.SecurityMvcInterceptorRegistration;
 import com.dev.lib.security.config.properties.SecurityValidProperties;
 import com.dev.lib.security.service.PermissionService;
 import com.dev.lib.security.service.TokenService;
@@ -27,8 +21,8 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.handler.MappedInterceptor;
 import org.springframework.web.util.ServletRequestPathUtils;
+import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -78,7 +72,7 @@ class AkskSecurityIntegrationTest {
     }
 
     @Test
-    void webSecurityConfigShouldRegisterAkskInterceptorBroadlyBeforeAuth() throws Exception {
+    void securityRegistrationShouldRegisterOnlyInternalAndAuthInterceptors() throws Exception {
 
         PermissionValidator validator = new PermissionValidator(
                 new ContextPermissionService(),
@@ -89,27 +83,56 @@ class AkskSecurityIntegrationTest {
         validator.afterPropertiesSet();
         AuthInterceptor authInterceptor = new AuthInterceptor(validator);
         InternalInterceptor internalInterceptor = new InternalInterceptor(validator);
-        AkskAuthenticationInterceptor akskInterceptor = new AkskAuthenticationInterceptor(
-                new NoopVerifier(),
-                new AkskHeaderResolver(),
-                new AkskProperties(),
-                new AkskSecurityContextAdapter()
+        SecurityMvcInterceptorRegistration registration = new SecurityMvcInterceptorRegistration(
+                authInterceptor,
+                internalInterceptor
         );
-        WebSecurityConfig config = new WebSecurityConfig(authInterceptor, internalInterceptor, akskInterceptor);
         InterceptorRegistry registry = new InterceptorRegistry();
 
-        config.addInterceptors(registry);
+        registration.addInterceptors(registry);
 
         List<MappedInterceptor> mappings = mappedInterceptors(registry);
-        MappedInterceptor akskMapping = mappingFor(mappings, akskInterceptor);
+        assertThat(mappings).hasSize(2);
+        MappedInterceptor internalMapping = mappingFor(mappings, internalInterceptor);
         MappedInterceptor authMapping = mappingFor(mappings, authInterceptor);
-        MockHttpServletRequest businessRequest = new MockHttpServletRequest("POST", "/partner/aksk");
-        businessRequest.setRequestURI("/partner/aksk");
-        ServletRequestPathUtils.parseAndCache(businessRequest);
+        MockHttpServletRequest publicRequest = new MockHttpServletRequest("POST", "/partner/aksk");
+        publicRequest.setRequestURI("/partner/aksk");
+        ServletRequestPathUtils.parseAndCache(publicRequest);
 
-        assertThat(akskMapping.getIncludePathPatterns()).containsExactly("/**");
-        assertThat(akskMapping.matches(businessRequest)).isTrue();
-        assertThat(mappings.indexOf(akskMapping)).isLessThan(mappings.indexOf(authMapping));
+        assertThat(internalMapping.getIncludePathPatterns()).containsExactly("/api/**", "/admin/**");
+        assertThat(authMapping.getIncludePathPatterns()).containsExactly("/api/**", "/admin/**");
+        assertThat(internalMapping.matches(publicRequest)).isFalse();
+        assertThat(authMapping.matches(publicRequest)).isFalse();
+        assertThat(mappings).containsExactly(internalMapping, authMapping);
+    }
+
+    @Test
+    void legacySecurityAkskWebRuntimeShouldNotBeComponentScanned() {
+
+        assertThat(com.dev.lib.security.interceptor.AkskAuthenticationInterceptor.class.isAnnotationPresent(Component.class))
+                .isFalse();
+        assertThat(com.dev.lib.security.aksk.AkskRequestBodyFilter.class.isAnnotationPresent(Component.class))
+                .isFalse();
+    }
+
+    @Test
+    void legacySecurityAkskWebRuntimeShouldBeDeprecatedBridgesToCommonAkskRuntime() {
+
+        assertThat(com.dev.lib.aksk.web.AkskAuthenticationInterceptor.class.isAssignableFrom(
+                com.dev.lib.security.interceptor.AkskAuthenticationInterceptor.class
+        )).isTrue();
+        assertThat(com.dev.lib.aksk.web.AkskRequestBodyFilter.class.isAssignableFrom(
+                com.dev.lib.security.aksk.AkskRequestBodyFilter.class
+        )).isTrue();
+        assertThat(com.dev.lib.aksk.web.CachedBodyHttpServletRequest.class.isAssignableFrom(
+                com.dev.lib.security.aksk.CachedBodyHttpServletRequest.class
+        )).isTrue();
+        assertThat(com.dev.lib.security.interceptor.AkskAuthenticationInterceptor.class.isAnnotationPresent(Deprecated.class))
+                .isTrue();
+        assertThat(com.dev.lib.security.aksk.AkskRequestBodyFilter.class.isAnnotationPresent(Deprecated.class))
+                .isTrue();
+        assertThat(com.dev.lib.security.aksk.CachedBodyHttpServletRequest.class.isAnnotationPresent(Deprecated.class))
+                .isTrue();
     }
 
     private List<MappedInterceptor> mappedInterceptors(InterceptorRegistry registry) throws Exception {
@@ -138,20 +161,6 @@ class AkskSecurityIntegrationTest {
         public void doFilter(ServletRequest request, ServletResponse response) {
 
             this.request = request;
-        }
-    }
-
-    private static class NoopVerifier extends AkskVerifier {
-
-        private NoopVerifier() {
-
-            super(null, new AkskSigner(), new AkskProperties());
-        }
-
-        @Override
-        public AkskAuthentication verify(AkskVerificationRequest request) {
-
-            return new AkskAuthentication();
         }
     }
 

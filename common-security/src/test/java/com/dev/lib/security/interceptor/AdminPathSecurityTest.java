@@ -1,15 +1,8 @@
 package com.dev.lib.security.interceptor;
 
-import com.dev.lib.aksk.config.AkskProperties;
-import com.dev.lib.aksk.domain.model.AkskAuthentication;
-import com.dev.lib.aksk.domain.model.AkskVerificationRequest;
-import com.dev.lib.aksk.domain.service.AkskHeaderResolver;
-import com.dev.lib.aksk.domain.service.AkskSigner;
-import com.dev.lib.aksk.domain.service.AkskVerifier;
 import com.dev.lib.config.properties.AppSecurityProperties;
 import com.dev.lib.exceptions.BizException;
-import com.dev.lib.security.aksk.AkskSecurityContextAdapter;
-import com.dev.lib.security.config.WebSecurityConfig;
+import com.dev.lib.security.config.SecurityMvcInterceptorRegistration;
 import com.dev.lib.security.config.properties.SecurityValidProperties;
 import com.dev.lib.security.service.PermissionService;
 import com.dev.lib.security.service.TokenService;
@@ -45,29 +38,30 @@ class AdminPathSecurityTest {
     }
 
     @Test
-    void webSecurityConfigShouldInterceptAdminPaths() throws Exception {
+    void securityMvcInterceptorRegistrationShouldInterceptAdminAndApiPathsOnlyWithInternalAndAuth() throws Exception {
 
         PermissionValidator validator = validator(List.of());
         AuthInterceptor authInterceptor = new AuthInterceptor(validator);
         InternalInterceptor internalInterceptor = new InternalInterceptor(validator);
-        AkskAuthenticationInterceptor akskInterceptor = new AkskAuthenticationInterceptor(
-                new NoopVerifier(),
-                new AkskHeaderResolver(),
-                new AkskProperties(),
-                new AkskSecurityContextAdapter()
+        SecurityMvcInterceptorRegistration registration = new SecurityMvcInterceptorRegistration(
+                authInterceptor,
+                internalInterceptor
         );
-        WebSecurityConfig config = new WebSecurityConfig(authInterceptor, internalInterceptor, akskInterceptor);
         InterceptorRegistry registry = new InterceptorRegistry();
 
-        config.addInterceptors(registry);
+        registration.addInterceptors(registry);
 
         List<MappedInterceptor> mappedInterceptors = mappedInterceptors(registry);
+        assertThat(mappedInterceptors).hasSize(2);
         MappedInterceptor authMapping = mappingFor(mappedInterceptors, authInterceptor);
         MappedInterceptor internalMapping = mappingFor(mappedInterceptors, internalInterceptor);
 
         assertThat(authMapping.getIncludePathPatterns()).contains("/api/**", "/admin/**");
+        assertThat(authMapping.getExcludePathPatterns()).contains("/api/auth/**", "/api/public/**");
         assertThat(internalMapping.getIncludePathPatterns()).contains("/api/**", "/admin/**");
+        assertThat(internalMapping.getExcludePathPatterns()).contains("/api/auth/**", "/api/public/**");
         assertThat(authMapping.matches(request("/admin/demo"))).isTrue();
+        assertThat(mappedInterceptors).containsExactly(internalMapping, authMapping);
     }
 
     @Test
@@ -277,17 +271,4 @@ class AdminPathSecurityTest {
         }
     }
 
-    private static class NoopVerifier extends AkskVerifier {
-
-        private NoopVerifier() {
-
-            super(null, new AkskSigner(), new AkskProperties());
-        }
-
-        @Override
-        public AkskAuthentication verify(AkskVerificationRequest request) {
-
-            return new AkskAuthentication();
-        }
-    }
 }
