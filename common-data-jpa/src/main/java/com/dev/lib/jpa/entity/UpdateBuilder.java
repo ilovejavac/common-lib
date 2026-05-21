@@ -186,7 +186,7 @@ public class UpdateBuilder<T extends JpaEntity> {
         this.predicate = RepositoryPredicateSupport.buildPredicate(
                 impl.getPathBuilder(),
                 impl.getPath(),
-                impl.getDeletedAtPath(),
+                impl.getDeletedPath(),
                 new QueryContext(),
                 dslQuery,
                 mergedExpressions

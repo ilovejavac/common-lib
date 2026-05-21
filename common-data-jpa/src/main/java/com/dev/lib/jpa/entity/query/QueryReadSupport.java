@@ -239,7 +239,7 @@ public final class QueryReadSupport {
         return RepositoryPredicateSupport.buildPredicate(
                 repository.getPathBuilder(),
                 repository.getPath(),
-                repository.getDeletedAtPath(),
+                repository.getDeletedPath(),
                 ctx,
                 dslQuery,
                 expressions

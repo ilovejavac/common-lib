@@ -24,7 +24,6 @@ import jakarta.persistence.OneToOne;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -131,7 +130,7 @@ public final class CascadeSoftDeleteSupport {
         Predicate scoped = RepositoryPredicateSupport.buildPredicate(
                 repository.getPathBuilder(),
                 repository.getPath(),
-                repository.getDeletedAtPath(),
+                repository.getDeletedPath(),
                 new QueryContext(),
                 null
         );
@@ -222,7 +221,7 @@ public final class CascadeSoftDeleteSupport {
 
     private static Predicate activeCondition(PathBuilder<?> pathBuilder, Predicate condition) {
 
-        BooleanBuilder where = new BooleanBuilder(pathBuilder.getDateTime("deletedAt", LocalDateTime.class).isNull());
+        BooleanBuilder where = new BooleanBuilder(pathBuilder.getNumber("deleted", Long.class).eq(0L));
         if (condition != null) {
             where.and(condition);
         }
@@ -236,10 +235,9 @@ public final class CascadeSoftDeleteSupport {
 
     private static long executeSoftDeleteUpdate(BaseRepositoryImpl<?> repository, EntityPath<?> path, PathBuilder<?> pathBuilder, Predicate condition) {
 
-        LocalDateTime now = LocalDateTime.now();
         long affected = repository.getQueryFactory().update(path)
-                .set(pathBuilder.getDateTime("deletedAt", LocalDateTime.class), now)
-                .set(pathBuilder.getDateTime("updatedAt", LocalDateTime.class), now)
+                .set(pathBuilder.getNumber("deleted", Long.class), pathBuilder.getNumber("id", Long.class))
+                .set(pathBuilder.getDateTime("updatedAt", java.time.LocalDateTime.class), java.time.LocalDateTime.now())
                 .set(pathBuilder.getNumber("modifierId", Long.class), SecurityContextHolder.getUserId())
                 .where(condition)
                 .execute();

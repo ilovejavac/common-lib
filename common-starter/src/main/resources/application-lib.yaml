@@ -27,6 +27,13 @@ spring:
       include-exception: false
       whitelabel:
         enabled: false
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 5000
+            read-timeout: 10000
 
 server:
   shutdown: graceful

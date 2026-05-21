@@ -21,7 +21,7 @@ public class BaseEntityListener {
             entity.setId(IDWorker.nextID());
         }
         entity.setBizId(IntEncoder.encode36(entity.getId()));
-        entity.setDeletedAt(null);
+        entity.setDeleted(0L);
 
         // 2. 设置创建时间
         entity.setCreatedAt(now);

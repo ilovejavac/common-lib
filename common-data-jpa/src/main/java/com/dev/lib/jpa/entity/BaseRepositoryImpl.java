@@ -14,7 +14,10 @@ import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
 import com.dev.lib.jpa.entity.write.RepositoryWritePluginChain;
 import com.querydsl.core.types.EntityPath;
 import com.querydsl.core.types.Predicate;
-import com.querydsl.core.types.dsl.*;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.NumberPath;
+import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.core.types.dsl.StringPath;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -26,7 +29,6 @@ import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.data.querydsl.SimpleEntityPathResolver;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -53,9 +55,10 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private final PathBuilder<T> pathBuilder;
 
-    private final DateTimePath<LocalDateTime> deletedAtPath;
+    private final NumberPath<Long> deletedPath;
 
     private final NumberPath<Long> idPath;
+
     private final StringPath bizIdPath;
 
     private final int jdbcBatchSize;
@@ -71,7 +74,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
         this.path = SimpleEntityPathResolver.INSTANCE.createPath(entityClass);
         this.pathBuilder = new PathBuilder<>(path.getType(), path.getMetadata());
-        this.deletedAtPath = pathBuilder.getDateTime("deletedAt", LocalDateTime.class);
+        this.deletedPath = pathBuilder.getNumber("deleted", Long.class);
         this.idPath = pathBuilder.getNumber("id", Long.class);
         this.bizIdPath = pathBuilder.getString("bizId");
 
@@ -144,7 +147,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         Predicate predicate = RepositoryPredicateSupport.buildPredicate(
                 pathBuilder,
                 path,
-                deletedAtPath,
+                deletedPath,
                 new QueryContext(),
                 dslQuery,
                 expressions
@@ -311,7 +314,11 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
             affected += deleteInternal(new QueryContext(), null, getIdPath().in(rootIds));
         }
         if (!rootBizIds.isEmpty()) {
-            affected += deleteInternal(new QueryContext(), null, getPathBuilder().getString(BIZ_ID_FIELD_NAME).in(rootBizIds));
+            affected += deleteInternal(
+                    new QueryContext(),
+                    null,
+                    getPathBuilder().getString(BIZ_ID_FIELD_NAME).in(rootBizIds)
+            );
         }
         return affected;
     }

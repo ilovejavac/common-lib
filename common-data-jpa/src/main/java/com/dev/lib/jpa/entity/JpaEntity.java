@@ -40,7 +40,8 @@ public abstract class JpaEntity extends CoreEntity implements Persistable<Long> 
 
     private Long modifierId;
 
-    private LocalDateTime deletedAt;
+    @Column(nullable = false)
+    private Long deleted;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")

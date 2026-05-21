@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +44,7 @@ class CascadeSoftDeleteIntegrationTest {
 
             CascadeParentRepo parentRepo = context.getBean(CascadeParentRepo.class);
             CascadeChildRepo childRepo = context.getBean(CascadeChildRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
 
             CascadeParent parent = new CascadeParent();
             CascadeChild child = new CascadeChild();
@@ -54,6 +56,8 @@ class CascadeSoftDeleteIntegrationTest {
 
             assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1);
             assertThat(childRepo.onlyDeleted().count()).isEqualTo(1);
+            assertThat(queryDeleted(jdbcTemplate, "cascade_parent", parent.getId())).isEqualTo(parent.getId());
+            assertThat(queryDeleted(jdbcTemplate, "cascade_child", child.getId())).isEqualTo(child.getId());
         });
     }
 
@@ -158,6 +162,16 @@ class CascadeSoftDeleteIntegrationTest {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     static class CascadeSoftDeleteApplication {
+    }
+
+    private static long queryDeleted(JdbcTemplate jdbcTemplate, String tableName, Long id) {
+
+        Long deleted = jdbcTemplate.queryForObject(
+                "select deleted from " + tableName + " where id = ?",
+                Long.class,
+                id
+        );
+        return deleted == null ? 0L : deleted;
     }
 }
 

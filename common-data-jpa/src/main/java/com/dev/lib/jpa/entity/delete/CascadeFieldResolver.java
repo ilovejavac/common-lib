@@ -58,7 +58,7 @@ public final class CascadeFieldResolver {
         Class<?> realClass = Hibernate.getClass(entity);
 
         if (entity instanceof JpaEntity jpaEntity) {
-            if (jpaEntity.getDeletedAt() != null) {
+            if (jpaEntity.getDeleted() != null && jpaEntity.getDeleted() > 0L) {
                 return;
             }
             Long id = jpaEntity.getId();

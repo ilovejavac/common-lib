@@ -1,12 +1,16 @@
-Current checkpoint: `common-storage` now auto-selects the only fully configured backend, fails fast on ambiguous multi-backend config without `app.storage.type`, and persists the resolved backend type into storage metadata.
+Current checkpoint: `common-data-jpa` now uses `Long deleted` for soft-delete state, where `0` means active and soft delete writes the row `id` into `deleted`.
 
 Evidence:
-- Added `StorageBackendSelectionTest` covering local-only auto-selection, minio-only auto-selection, ambiguous multi-backend failure, and explicit-type-missing-config failure.
-- Verification command: `mvn -pl common-storage -Dtest=StorageBackendSelectionTest test`
-- Verification result: 4 tests run, 0 failures, 0 errors, build success on 2026-05-21 Asia/Shanghai.
+- Replaced entity, predicate, batch, update, and cascade-delete logic to use numeric `deleted` semantics.
+- Updated serializer exclusion to hide `deleted` instead of `deletedAt`.
+- Verification command: `mvn -pl common-data-jpa -Dtest=ScopedWriteProtectionIntegrationTest,DeleteBatchExecutionIntegrationTest,CascadeSoftDeleteIntegrationTest test`
+- Verification result: 21 tests run, 0 failures, 0 errors, build success on 2026-05-21 Asia/Shanghai.
+- Additional verification:
+  - `mvn -pl common-data-jpa test` -> 108 tests run, 0 failures, 0 errors, build success.
+  - `mvn -pl common-data-datalake -Dtest=DatalakeRepositoryWritePluginTest test` -> 4 tests run, 0 failures, 0 errors, build success.
 
 Open risk:
-- `rustfs` is recognized by config resolution but still has no runtime storage adapter implementation in `common-storage`.
+- This change intentionally removes deletion timestamp semantics from JPA entities; any downstream code that depended on deletion time must be redesigned separately.
 
 Exact next task:
-- None for this scope unless the user wants `rustfs` implemented as a real storage backend.
+- None for this scope unless the user wants a wider regression pass across other modules that build on `JpaEntity`.

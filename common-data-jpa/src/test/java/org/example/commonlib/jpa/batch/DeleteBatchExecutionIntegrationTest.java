@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +46,7 @@ class DeleteBatchExecutionIntegrationTest {
             assertThat(context).hasNotFailed();
 
             DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
             List<Long> ids = repo.saveAll(buildEntities("soft-", 2050))
                     .stream()
                     .map(DeleteBatchThing::getId)
@@ -60,6 +62,8 @@ class DeleteBatchExecutionIntegrationTest {
             long preparedStatementCount = statistics.getPrepareStatementCount();
             assertThat(preparedStatementCount).isEqualTo(3);
             assertThat(repo.onlyDeleted().count()).isEqualTo(2050);
+            assertThat(queryDeleted(jdbcTemplate, ids.getFirst())).isEqualTo(ids.getFirst());
+            assertThat(queryDeleted(jdbcTemplate, ids.getLast())).isEqualTo(ids.getLast());
         });
     }
 
@@ -124,8 +128,10 @@ class DeleteBatchExecutionIntegrationTest {
                     .filter(sql -> sql.toLowerCase(Locale.ROOT).startsWith("update delete_batch_thing "))
                     .findFirst()
                     .orElseThrow();
-            assertThat(countOccurrences(updateSql.toLowerCase(Locale.ROOT), "deleted_at"))
+            String lowerSql = updateSql.toLowerCase(Locale.ROOT);
+            assertThat(countOccurrences(lowerSql, "deleted"))
                     .isEqualTo(2);
+            assertThat(lowerSql).contains(" set deleted=");
         });
     }
 
@@ -160,6 +166,7 @@ class DeleteBatchExecutionIntegrationTest {
             assertThat(context).hasNotFailed();
 
             DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
             DeleteBatchThing idTarget = repo.saveAndFlush(new DeleteBatchThing("root-id-target"));
             DeleteBatchThing bizTarget = repo.saveAndFlush(new DeleteBatchThing("root-biz-target"));
 
@@ -172,6 +179,8 @@ class DeleteBatchExecutionIntegrationTest {
             assertThat(deleted).isTrue();
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-id-target"))).isEqualTo(1L);
             assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-biz-target"))).isEqualTo(1L);
+            assertThat(queryDeleted(jdbcTemplate, idTarget.getId())).isEqualTo(idTarget.getId());
+            assertThat(queryDeleted(jdbcTemplate, bizTarget.getId())).isZero();
         });
     }
 
@@ -182,6 +191,7 @@ class DeleteBatchExecutionIntegrationTest {
             assertThat(context).hasNotFailed();
 
             DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
             DeleteBatchThing target = repo.saveAndFlush(new DeleteBatchThing("root-bizid-target"));
             DeleteBatchThing survivor = repo.saveAndFlush(new DeleteBatchThing("root-bizid-survivor"));
 
@@ -194,6 +204,8 @@ class DeleteBatchExecutionIntegrationTest {
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-bizid-target"))).isEqualTo(1L);
             assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-bizid-survivor"))).isEqualTo(1L);
             assertThat(repo.findById(survivor.getId())).isPresent();
+            assertThat(queryDeleted(jdbcTemplate, target.getId())).isEqualTo(target.getId());
+            assertThat(queryDeleted(jdbcTemplate, survivor.getId())).isZero();
         });
     }
 
@@ -222,6 +234,7 @@ class DeleteBatchExecutionIntegrationTest {
             assertThat(context).hasNotFailed();
 
             DeleteBatchThingRepo repo = context.getBean(DeleteBatchThingRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
             DeleteBatchThing idTarget = repo.saveAndFlush(new DeleteBatchThing("root-batch-id-target"));
             DeleteBatchThing bizTarget = repo.saveAndFlush(new DeleteBatchThing("root-batch-biz-target"));
             DeleteBatchThing survivor = repo.saveAndFlush(new DeleteBatchThing("root-batch-survivor"));
@@ -244,6 +257,9 @@ class DeleteBatchExecutionIntegrationTest {
             assertThat(repo.onlyDeleted().count(new DeleteBatchThingQuery().setNameStartWith("root-batch-biz-target"))).isEqualTo(1L);
             assertThat(repo.count(new DeleteBatchThingQuery().setNameStartWith("root-batch-survivor"))).isEqualTo(1L);
             assertThat(repo.findById(survivor.getId())).isPresent();
+            assertThat(queryDeleted(jdbcTemplate, idTarget.getId())).isEqualTo(idTarget.getId());
+            assertThat(queryDeleted(jdbcTemplate, bizTarget.getId())).isEqualTo(bizTarget.getId());
+            assertThat(queryDeleted(jdbcTemplate, survivor.getId())).isZero();
         });
     }
 
@@ -395,6 +411,16 @@ class DeleteBatchExecutionIntegrationTest {
             index += target.length();
         }
         return count;
+    }
+
+    private static long queryDeleted(JdbcTemplate jdbcTemplate, Long id) {
+
+        Long deleted = jdbcTemplate.queryForObject(
+                "select deleted from delete_batch_thing where id = ?",
+                Long.class,
+                id
+        );
+        return deleted == null ? 0L : deleted;
     }
 
     public static class SqlCaptureInspector implements StatementInspector {
