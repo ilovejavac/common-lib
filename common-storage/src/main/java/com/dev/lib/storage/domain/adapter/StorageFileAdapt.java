@@ -5,7 +5,7 @@ import com.dev.lib.storage.data.SysFileBizIdRepository;
 import com.dev.lib.storage.data.SysFileToStorageFileMapper;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.model.StorageFileToSysFileMapper;
-import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
+import com.dev.lib.storage.domain.service.StorageServiceNameProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +31,9 @@ public class StorageFileAdapt implements StorageFileRepo {
     @Transactional(rollbackFor = Exception.class)
     public void remove(String bizId) {
 
-        Optional<SysFile> loadedFile = fileRepository.findByBizId(
-                bizId
+        Optional<SysFile> loadedFile = fileRepository.findByBizIdAndServiceName(
+                bizId,
+                serviceNameProvider.currentServiceName()
         );
         loadedFile.ifPresent(fileRepository::delete);
     }
@@ -41,7 +42,10 @@ public class StorageFileAdapt implements StorageFileRepo {
     public StorageFile findByBizId(String value) {
 
         return storageFileMapper.convert(
-                fileRepository.findByBizId(value).orElse(null)
+                fileRepository.findByBizIdAndServiceName(
+                        value,
+                        serviceNameProvider.currentServiceName()
+                ).orElse(null)
         );
     }
 
@@ -58,7 +62,10 @@ public class StorageFileAdapt implements StorageFileRepo {
     @Override
     public List<StorageFile> findByIds(Collection<String> ids) {
 
-        return fileRepository.findAllByBizIdIn(ids)
+        return fileRepository.findAllByBizIdInAndServiceName(
+                        ids,
+                        serviceNameProvider.currentServiceName()
+                )
                 .stream()
                 .map(storageFileMapper::convert)
                 .toList();
@@ -73,9 +80,8 @@ public class StorageFileAdapt implements StorageFileRepo {
         );
         HashSet<String> paths = new HashSet<>();
         for (SysFile file : files) {
-            paths.add(file.getStoragePath());
-            if (file.getOldStoragePaths() != null) {
-                paths.addAll(file.getOldStoragePaths());
+            if (file.getStoragePath() != null && !file.getStoragePath().isBlank()) {
+                paths.add(file.getStoragePath());
             }
         }
 

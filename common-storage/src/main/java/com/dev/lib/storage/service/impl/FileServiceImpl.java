@@ -2,7 +2,7 @@ package com.dev.lib.storage.service.impl;
 
 import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.data.SysFileBizIdRepository;
-import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
+import com.dev.lib.storage.domain.service.StorageServiceNameProvider;
 import com.dev.lib.storage.service.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

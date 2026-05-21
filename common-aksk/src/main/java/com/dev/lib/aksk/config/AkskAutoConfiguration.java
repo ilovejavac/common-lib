@@ -18,13 +18,20 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 @AutoConfiguration
-@EnableConfigurationProperties(AkskProperties.class)
 public class AkskAutoConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConfigurationProperties(prefix = "app.aksk")
+    public AkskProperties akskProperties() {
+
+        return new AkskProperties();
+    }
 
     @Bean
     @ConditionalOnMissingBean

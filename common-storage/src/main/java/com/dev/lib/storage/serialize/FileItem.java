@@ -3,8 +3,6 @@ package com.dev.lib.storage.serialize;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
-import java.time.LocalDateTime;
-
 @Data
 public class FileItem {
 
@@ -20,11 +18,5 @@ public class FileItem {
     private Long size;              // 文件大小(字节)
 
     private String category;        // 分类(avatar/document/image)
-
-    private Boolean temporary = false; // 临时文件
-
-    private LocalDateTime expirationAt; // 过期时间
-
-    private LocalDateTime createAt;
 
 }

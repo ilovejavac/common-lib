@@ -3,9 +3,7 @@ package com.dev.lib.aksk.domain.service;
 import com.dev.lib.aksk.annotation.Aksk;
 import com.dev.lib.aksk.config.AkskProperties;
 import com.dev.lib.aksk.domain.model.AkskHeaders;
-import org.springframework.stereotype.Component;
 
-@Component
 public class AkskHeaderResolver {
 
     public AkskHeaders resolve(Aksk annotation, AkskProperties properties) {

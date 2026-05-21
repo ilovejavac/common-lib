@@ -9,6 +9,7 @@ import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -20,6 +21,7 @@ import java.util.Objects;
 @AllArgsConstructor
 public class ServerResponse<T> implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private static final Integer SUCCESS_CODE = 200;

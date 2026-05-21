@@ -9,7 +9,6 @@ import com.dev.lib.aksk.domain.model.AkskVerificationRequest;
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.web.model.StandardErrorCodes;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.Clock;
@@ -21,7 +20,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-@Service
 public class AkskVerifier {
 
     private static final Duration DEFAULT_TIMESTAMP_TOLERANCE = Duration.ofMinutes(5);
@@ -33,6 +31,10 @@ public class AkskVerifier {
     private final AkskProperties properties;
 
     private final Clock clock;
+
+    static void main(String[] args) {
+        System.out.println(Clock.systemUTC().millis());
+    }
 
     @Autowired
     public AkskVerifier(AkskService service, AkskSigner signer, AkskProperties properties) {

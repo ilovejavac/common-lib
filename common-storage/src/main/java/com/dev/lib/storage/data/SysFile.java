@@ -8,20 +8,13 @@ import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "sys_storage_file",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"serviceName", "virtualPath"}),
+        uniqueConstraints = @UniqueConstraint(columnNames = {"serviceName", "bucketName", "objectKey"}),
         indexes = {
                 @Index(name = "idx_service_name", columnList = "serviceName"),
-                @Index(name = "idx_service_virtual_path", columnList = "serviceName,virtualPath"),
-                @Index(name = "idx_parent_path", columnList = "parentPath"),
-                @Index(name = "idx_virtual_path_prefix", columnList = "virtualPath")
+                @Index(name = "idx_service_bucket_object", columnList = "serviceName,bucketName,objectKey")
         })
 @Data
 @AutoMappers({
@@ -54,25 +47,13 @@ public class SysFile extends JpaEntity {
     @Column(length = 128)
     private String serviceName;     // 服务归属（默认 spring.application.name）
 
-    private Boolean temporary = false; // 临时文件
+    @Column(nullable = false, length = 128)
+    private String bucketName;      // 存储桶名称
 
-    private LocalDateTime expirationAt; // 过期时间
-
-    private String virtualPath;       // 逻辑路径: "/a/d/d3.md"
-
-    private String parentPath;        // 父路径: "/a/d" (加速查询)
-
-    private Boolean isDirectory = false;  // 是否目录
-
-    private Boolean hidden = false;       // 是否隐藏文件（以.开头）
+    @Column(nullable = false, length = 1024)
+    private String objectKey;       // 对象键
 
     @Version
     private Long version;             // 乐观锁版本号
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "text")
-    private List<String> oldStoragePaths;    // 旧存储路径（用于延迟删除，FIFO 顺序）
-
-    private LocalDateTime deleteAfter; // 延迟删除时间
 
 }

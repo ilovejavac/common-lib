@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.5.1-RC0</version>
+        <version>1.5.2-RC0</version>
     </parent>
 
     <artifactId>common-agent</artifactId>
@@ -44,23 +44,20 @@
     <dependencies>
         <dependency>
             <groupId>io.github.ilovejavac</groupId>
-            <artifactId>common-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-core</artifactId>
         </dependency>
         <dependency>
             <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-data-jpa</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.github.ilovejavac</groupId>
-            <artifactId>common-bash</artifactId>
-        </dependency>
+
         <dependency>
             <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-web-notify</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.ilovejavac</groupId>
+            <artifactId>common-storage</artifactId>
         </dependency>
 
         <dependency>
@@ -92,11 +89,4 @@
 
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <artifactId>maven-jar-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
 </project>

@@ -1,17 +1,17 @@
 package com.dev.lib.storage.domain.service.chain;
 
 import com.dev.lib.storage.config.AppStorageProperties;
-import com.dev.lib.storage.data.VfsPathRepository;
+import com.dev.lib.storage.config.condition.ConditionalOnResolvedStorageType;
+import com.dev.lib.storage.data.SysFileObjectRepository;
 import com.dev.lib.storage.Storage;
-import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
-import com.dev.lib.storage.domain.service.write.SysFileCowService;
+import com.dev.lib.storage.domain.model.StorageType;
+import com.dev.lib.storage.domain.service.StorageServiceNameProvider;
 import io.minio.*;
 import io.minio.http.Method;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,18 +31,17 @@ import static java.util.Arrays.asList;
 @Component
 @Primary
 @ConditionalOnClass(name = "io.minio.MinioClient")
-@ConditionalOnProperty(prefix = "app.storage", name = "type", havingValue = "minio")
+@ConditionalOnResolvedStorageType(StorageType.MINIO)
 public class MinioChainStorage extends AbstractChainStorage implements ChainStorageService, InitializingBean {
 
     private MinioClient minioClient;
 
     public MinioChainStorage(
             AppStorageProperties fileProperties,
-            VfsPathRepository fileRepository,
-            StorageServiceNameProvider serviceNameProvider,
-            SysFileCowService sysFileCowService
+            SysFileObjectRepository fileRepository,
+            StorageServiceNameProvider serviceNameProvider
     ) {
-        super(fileProperties, fileRepository, serviceNameProvider, sysFileCowService);
+        super(fileProperties, fileRepository, serviceNameProvider);
     }
 
     @Override
@@ -344,105 +343,6 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                 java.nio.file.Files.deleteIfExists(tempOutput);
             } catch (Exception ignored) {
             }
-        }
-    }
-
-    // ==================== 纯 I/O 操作 ====================
-
-    @Override
-    public void putObject(String bucketName, String objectKey, InputStream input) throws IOException {
-        ensureBucketExists(bucketName);
-        try {
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(objectKey)
-                            .stream(input, -1, -1)
-                            .build()
-            );
-        } catch (Exception e) {
-            throw new IOException("MinIO putObject failed", e);
-        }
-    }
-
-    @Override
-    public void copyObject(String bucketName, String sourceKey, String targetKey) throws IOException {
-        try {
-            minioClient.copyObject(
-                    CopyObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(targetKey)
-                            .source(CopySource.builder()
-                                    .bucket(bucketName)
-                                    .object(sourceKey)
-                                    .build())
-                            .build()
-            );
-        } catch (Exception e) {
-            throw new IOException("MinIO copyObject failed", e);
-        }
-    }
-
-    @Override
-    public void removeObject(String bucketName, String objectKey) throws IOException {
-        try {
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(objectKey)
-                            .build()
-            );
-        } catch (Exception e) {
-            throw new IOException("MinIO removeObject failed", e);
-        }
-    }
-
-    @Override
-    public void appendObject(String bucketName, String objectKey, byte[] bytes) throws IOException {
-        ensureBucketExists(bucketName);
-        try {
-            String tempPath = objectKey + ".tmp." + com.dev.lib.entity.id.IDWorker.newId();
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(tempPath)
-                            .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
-                            .build()
-            );
-
-            boolean originalExists;
-            try {
-                minioClient.statObject(StatObjectArgs.builder().bucket(bucketName).object(objectKey).build());
-                originalExists = true;
-            } catch (Exception e) {
-                originalExists = false;
-            }
-
-            if (originalExists) {
-                minioClient.composeObject(
-                        ComposeObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(objectKey)
-                                .sources(asList(
-                                        ComposeSource.builder().bucket(bucketName).object(objectKey).build(),
-                                        ComposeSource.builder().bucket(bucketName).object(tempPath).build()
-                                ))
-                                .build()
-                );
-            } else {
-                minioClient.putObject(
-                        PutObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(objectKey)
-                                .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
-                                .build()
-                );
-            }
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder().bucket(bucketName).object(tempPath).build()
-            );
-        } catch (Exception e) {
-            throw new IOException("MinIO appendObject failed", e);
         }
     }
 

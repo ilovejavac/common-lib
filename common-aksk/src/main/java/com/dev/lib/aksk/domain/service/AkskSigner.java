@@ -1,7 +1,5 @@
 package com.dev.lib.aksk.domain.service;
 
-import org.springframework.stereotype.Component;
-
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -10,7 +8,6 @@ import java.util.HexFormat;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-@Component
 public class AkskSigner {
 
     private static final String HMAC_SHA256 = "HmacSHA256";

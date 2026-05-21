@@ -6,15 +6,15 @@ import com.aliyun.oss.model.AppendObjectRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.dev.lib.storage.config.AppStorageProperties;
-import com.dev.lib.storage.data.VfsPathRepository;
+import com.dev.lib.storage.config.condition.ConditionalOnResolvedStorageType;
+import com.dev.lib.storage.data.SysFileObjectRepository;
 import com.dev.lib.storage.Storage;
-import com.dev.lib.storage.domain.service.virtual.StorageServiceNameProvider;
-import com.dev.lib.storage.domain.service.write.SysFileCowService;
+import com.dev.lib.storage.domain.model.StorageType;
+import com.dev.lib.storage.domain.service.StorageServiceNameProvider;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,18 +33,17 @@ import java.io.FilterInputStream;
 @Component
 @Primary
 @ConditionalOnClass(name = "com.aliyun.oss.OSS")
-@ConditionalOnProperty(prefix = "app.storage", name = "type", havingValue = "oss")
+@ConditionalOnResolvedStorageType(StorageType.OSS)
 public class OssChainStorage extends AbstractChainStorage implements ChainStorageService, InitializingBean {
 
     private OSS ossClient;
 
     public OssChainStorage(
             AppStorageProperties fileProperties,
-            VfsPathRepository fileRepository,
-            StorageServiceNameProvider serviceNameProvider,
-            SysFileCowService sysFileCowService
+            SysFileObjectRepository fileRepository,
+            StorageServiceNameProvider serviceNameProvider
     ) {
-        super(fileProperties, fileRepository, serviceNameProvider, sysFileCowService);
+        super(fileProperties, fileRepository, serviceNameProvider);
     }
 
     @Override
@@ -227,53 +226,6 @@ public class OssChainStorage extends AbstractChainStorage implements ChainStorag
                 java.nio.file.Files.deleteIfExists(tempOutput);
             } catch (Exception ignored) {
             }
-        }
-    }
-
-    // ==================== 纯 I/O 操作 ====================
-
-    @Override
-    public void putObject(String bucketName, String objectKey, InputStream input) throws IOException {
-        ensureBucketExists(bucketName);
-        ossClient.putObject(bucketName, objectKey, input);
-    }
-
-    @Override
-    public void copyObject(String bucketName, String sourceKey, String targetKey) throws IOException {
-        try {
-            ossClient.copyObject(bucketName, sourceKey, bucketName, targetKey);
-        } catch (Exception e) {
-            throw new IOException("OSS copyObject failed", e);
-        }
-    }
-
-    @Override
-    public void removeObject(String bucketName, String objectKey) throws IOException {
-        ossClient.deleteObject(bucketName, objectKey);
-    }
-
-    @Override
-    public void appendObject(String bucketName, String objectKey, byte[] bytes) throws IOException {
-        ensureBucketExists(bucketName);
-        try {
-            long position;
-            try {
-                position = ossClient.getObjectMetadata(bucketName, objectKey).getContentLength();
-            } catch (Exception e) {
-                position = 0;
-            }
-
-            ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentLength(bytes.length);
-
-            AppendObjectRequest appendRequest = new AppendObjectRequest(
-                    bucketName, objectKey,
-                    new ByteArrayInputStream(bytes), metadata
-            );
-            appendRequest.setPosition(position);
-            ossClient.appendObject(appendRequest);
-        } catch (Exception e) {
-            throw new IOException("OSS appendObject failed", e);
         }
     }
 

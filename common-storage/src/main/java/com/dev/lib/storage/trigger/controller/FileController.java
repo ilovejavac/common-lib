@@ -1,8 +1,8 @@
 package com.dev.lib.storage.trigger.controller;
 
+import com.dev.lib.storage.domain.service.chain.ChainStorageService;
 import com.dev.lib.storage.domain.adapter.StorageFileRepo;
 import com.dev.lib.storage.domain.model.StorageFile;
-import com.dev.lib.storage.domain.service.virtual.storage.VfsFileStorageService;
 import com.dev.lib.util.parallel.ParallelExecutor;
 import com.dev.lib.web.model.ServerResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,49 +28,7 @@ public class FileController {
 
     private final StorageFileRepo storageFileRepo;
 
-    private final VfsFileStorageService storageService;
-
-//    /**
-//     * 文件上传（支持多文件、文件夹结构保留）
-//     * @param files 文件数组（前端传 webkitRelativePath 作为 filename）
-//     * @param category 分类（用于构建路径，如 "document" -> /document/）
-//     * @return 文件 ID 列表
-//     */
-//    @PostMapping("/upload")
-//    @OperateLog(module = "file", type = "upload", description = "上传文件", recordParams = false)
-//    public ServerResponse<List<String>> upload(
-//            @RequestParam("files") MultipartFile[] files,
-//            @RequestParam(required = false, defaultValue = "/") String category
-//    ) {
-//
-//        // 构建目标路径
-//        String targetPath = category.startsWith("/") ? category : "/" + category;
-//
-//        // 从 MultipartFile.getOriginalFilename() 获取相对路径
-//        // 前端使用 FormData.append('files', file, file.webkitRelativePath)
-//        String[] relativePaths = new String[files.length];
-//        for (int i = 0; i < files.length; i++) {
-//            relativePaths[i] = files[i].getOriginalFilename();
-//        }
-//
-//        List<String> fileIds = vfs.uploadFiles(VfsContext.of(null), targetPath, files, relativePaths);
-//        return ServerResponse.success(fileIds);
-//    }
-//
-//    /**
-//     * 上传 ZIP 并解压到 VFS
-//     * @return 解压后的文件 ID 列表
-//     */
-//    @PostMapping("/upload/zip")
-//    @OperateLog(module = "file", type = "upload", description = "上传ZIP", recordParams = false)
-//    public ServerResponse<List<String>> uploadZip(
-//            @RequestParam("file") MultipartFile file,
-//            @RequestParam(required = false, defaultValue = "/") String path
-//    ) throws IOException {
-//
-//        List<String> fileIds = vfs.uploadZip(VfsContext.of(null), path, file.getInputStream());
-//        return ServerResponse.success(fileIds);
-//    }
+    private final ChainStorageService storageService;
 
     /**
      * 文件下载
@@ -82,7 +40,7 @@ public class FileController {
     ) throws IOException {
 
         StorageFile file = storageFileRepo.findByBizId(id);
-        InputStream is   = downloadByStoragePath(file.getStoragePath());
+        InputStream is   = download(file);
 
         String filename = (name != null && !name.isBlank()) ? name : file.getOriginalName();
 
@@ -108,7 +66,7 @@ public class FileController {
     public ResponseEntity<String> getPresignedUrl(@PathVariable String id) {
 
         StorageFile file = storageFileRepo.findByBizId(id);
-        String      url  = presignedUrlByStoragePath(file.getStoragePath(), 6 * 24 * 60 * 60);
+        String      url  = presignedUrl(file, 6 * 24 * 60 * 60);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(6, TimeUnit.DAYS).mustRevalidate())
                 .body(url);
@@ -127,34 +85,37 @@ public class FileController {
         Map<String, String> result = new ConcurrentHashMap<>();
         ParallelExecutor.with(ids).apply(id -> {
             StorageFile file = storageFileRepo.findByBizId(id);
-            if (file != null && file.getStoragePath() != null) {
-                String url = presignedUrlByStoragePath(file.getStoragePath(), 6 * 24 * 60 * 60);
+            if (hasStorageCoordinates(file)) {
+                String url = presignedUrl(file, 6 * 24 * 60 * 60);
                 result.put(id, url);
             }
         });
         return ServerResponse.success(result);
     }
 
-    private InputStream downloadByStoragePath(String storagePath) throws IOException {
+    private InputStream download(StorageFile file) throws IOException {
 
-        return storageService.download(storagePath);
+        if (!hasStorageCoordinates(file)) {
+            throw new IllegalArgumentException("file storage coordinates are missing");
+        }
+        return storageService.download(file.getBucketName(), file.getObjectKey());
     }
 
-    private String presignedUrlByStoragePath(String storagePath, int expireSeconds) {
+    private String presignedUrl(StorageFile file, int expireSeconds) {
 
-        return storageService.getPresignedUrl(storagePath, expireSeconds);
+        if (!hasStorageCoordinates(file)) {
+            throw new IllegalArgumentException("file storage coordinates are missing");
+        }
+        return storageService.getPresignedUrl(file.getBucketName(), file.getObjectKey(), expireSeconds);
     }
 
-//    /**
-//     * 批量删除文件
-//     * @param ids 文件 ID 列表
-//     */
-//    @PostMapping
-//    @OperateLog(module = "file", type = "delete", description = "批量删除文件")
-//    public ServerResponse<Void> delete(@RequestBody List<String> ids) {
-//
-//        fileService.deleteAll(ids);
-//        return ServerResponse.ok();
-//    }
+    private boolean hasStorageCoordinates(StorageFile file) {
+
+        return file != null
+               && file.getBucketName() != null
+               && !file.getBucketName().isBlank()
+               && file.getObjectKey() != null
+               && !file.getObjectKey().isBlank();
+    }
 
 }

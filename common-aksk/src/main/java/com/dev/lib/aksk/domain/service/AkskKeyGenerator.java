@@ -1,11 +1,8 @@
 package com.dev.lib.aksk.domain.service;
 
-import org.springframework.stereotype.Component;
-
 import java.security.SecureRandom;
 import java.util.Base64;
 
-@Component
 public class AkskKeyGenerator {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();

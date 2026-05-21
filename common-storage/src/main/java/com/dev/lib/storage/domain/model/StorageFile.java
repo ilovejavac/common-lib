@@ -37,9 +37,9 @@ public class StorageFile {
 
     private String category;        // 分类(avatar/document/image)
 
-    private Boolean temporary = false; // 临时文件
+    private String bucketName;      // 存储桶名称
 
-    private LocalDateTime expirationAt; // 过期时间
+    private String objectKey;       // 对象键
 
     private LocalDateTime createAt;
 

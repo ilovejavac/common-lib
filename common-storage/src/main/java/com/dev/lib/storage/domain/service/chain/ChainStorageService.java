@@ -129,26 +129,4 @@ public interface ChainStorageService {
      */
     String replaceLines(String bucketName, String objectKey, Storage.LineTransformer transformer) throws IOException;
 
-    // ==================== 纯 I/O 操作（不同步 DB） ====================
-    // 供 VFS 层使用，VFS 自行管理 SysFile 记录
-
-    /**
-     * 写入对象（纯 I/O）
-     */
-    void putObject(String bucketName, String objectKey, InputStream input) throws IOException;
-
-    /**
-     * 复制对象（纯 I/O）
-     */
-    void copyObject(String bucketName, String sourceKey, String targetKey) throws IOException;
-
-    /**
-     * 删除对象（纯 I/O）
-     */
-    void removeObject(String bucketName, String objectKey) throws IOException;
-
-    /**
-     * 追加内容到对象（纯 I/O）
-     */
-    void appendObject(String bucketName, String objectKey, byte[] content) throws IOException;
 }
