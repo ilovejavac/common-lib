@@ -102,6 +102,6 @@ Last updated: 2026-05-08 15:12 Asia/Shanghai.
 - Evidence: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl common-aksk -am -Dtest=AkskRepositoryAutoConfigurationIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test` passed.
 - Evidence: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl common-aksk -am test` passed; `common-data-jpa` ran 108 tests and `common-aksk` ran 44 tests.
 - Evidence: `git diff --check` passed.
-- Local install: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl common-data-jpa,common-aksk -am install -DskipTests` passed and installed updated `1.5.2-RC0` jars into `~/.m2`.
-- Installed jar check: `common-aksk-1.5.2-RC0.jar` no longer contains `AkskAutoConfiguration` or `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`; installed `common-data-jpa` contains the merged package scanner.
+- Local install: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl common-data-jpa,common-aksk -am install -DskipTests` passed and installed updated `1.5.2-RC1` jars into `~/.m2`.
+- Installed jar check: `common-aksk-1.5.2-RC1.jar` no longer contains `AkskAutoConfiguration` or `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`; installed `common-data-jpa` contains the merged package scanner.
 - Datalake startup check: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl datalake-server spring-boot:run -Dspring-boot.run.profiles=dev` still blocks before application startup while resolving `com.ware4u:datalake-bom:1.0` as `datalake-bom-1.0.jar` from `http://10.10.24.243:8081/repository/maven-public/`, so it cannot validate the Spring context in this session.
