@@ -26,7 +26,15 @@ import java.lang.annotation.Target;
  * <pre>
  * @Condition(field = "customer.name")
  * private String customerNameLike;             // customer.name LIKE %?%
+ *
+ * @BizRef("customer")
+ * private String anyFieldName;                 // customer.bizId = ?
+ *
+ * private String customerBizId;                // customer.bizId = ? when customer is a relation
+ * private Collection&lt;String&gt; customerBizIdIn; // customer.bizId IN (...)
  * </pre>
+ * <p>
+ * 字段路径优先级：@Condition(field = "...") &gt; @BizRef("...") &gt; xxxBizId 关联约定 &gt; 字段名后缀解析。
  *
  * <h2>三、子查询</h2>
  * <pre>

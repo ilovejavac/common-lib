@@ -14,7 +14,7 @@
 
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.5.2-RC1</version>
+    <version>1.5.3-RC1</version>
     <packaging>pom</packaging>
 
     <name>common-lib</name>
@@ -89,7 +89,7 @@
 
         <!-- Internal coordinates -->
         <lib.groupId>io.github.ilovejavac</lib.groupId>
-        <lib.version>1.5.2-RC1</lib.version>
+        <lib.version>1.5.3-RC1</lib.version>
 
         <!-- Spring ecosystem -->
         <spring-boot.version>4.1.0-RC1</spring-boot.version>
@@ -699,7 +699,7 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
     </dependencies>
@@ -904,6 +904,7 @@
                             <jvmTarget>${java.version}</jvmTarget>
                             <sourceDirs>
                                 <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
+                                <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
                             </sourceDirs>
                             <annotationProcessorPaths>
                                 <path>

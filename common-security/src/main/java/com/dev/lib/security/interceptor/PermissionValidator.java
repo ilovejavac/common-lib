@@ -31,192 +31,158 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PermissionValidator implements InitializingBean {
 
-    private static final String ADMIN_PATH_PATTERN = "/admin/**";
+	private static final String ADMIN_PATH_PATTERN = "/admin/**";
 
-    private static final String ADMIN_ROLE = "admin";
+	private static final String ADMIN_ROLE = "admin";
 
-    private final PermissionService permissionService;
+	private final PermissionService permissionService;
 
-    private final TokenService tokenService;
+	private final TokenService tokenService;
 
-    private final SecurityValidProperties validProperties;
+	private final SecurityValidProperties validProperties;
 
-    public boolean anonymous(HandlerMethod handlerMethod) {
+	public boolean anonymous(HandlerMethod handlerMethod) {
 
-        Class<?> controllerClass = handlerMethod.getBeanType();
+		Class<?> controllerClass = handlerMethod.getBeanType();
 
-        // 2. 方法级别 @Anonymous 优先检查
-        if (handlerMethod.hasMethodAnnotation(Anonymous.class)) {
-            anonymous();
-            return true;
-        }
+		// 2. 方法级别 @Anonymous 优先检查
+		if (handlerMethod.hasMethodAnnotation(Anonymous.class)) {
+			anonymous();
+			return true;
+		}
 
-        // 3. 类级别 @Anonymous
-        if (controllerClass.isAnnotationPresent(Anonymous.class)) {
-            anonymous();
-            return true;
-        }
+		// 3. 类级别 @Anonymous
+		if (controllerClass.isAnnotationPresent(Anonymous.class)) {
+			anonymous();
+			return true;
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    public void valid(HandlerMethod handlerMethod) {
+	public void valid(HandlerMethod handlerMethod) {
 
-        Class<?> controllerClass = handlerMethod.getBeanType();
+		Class<?> controllerClass = handlerMethod.getBeanType();
 
-        // 6. 必须登录
-        if (!SecurityContextHolder.isLogin()) {
-            throw new BizException(
-                    StandardErrorCodes.AUTHENTICATION_FAILED,
-                    "认证失败，请先登录"
-            );
-        }
+		// 6. 必须登录
+		if (!SecurityContextHolder.isLogin()) {
+			throw new BizException(StandardErrorCodes.AUTHENTICATION_FAILED, "认证失败，请先登录");
+		}
 
-        // 7. 方法级别 @RequireRole
-        RequireRole methodRole = handlerMethod.getMethodAnnotation(RequireRole.class);
-        if (methodRole != null) {
-            if (!permissionService.hasRole(methodRole.value())) {
-                throw new BizException(
-                        StandardErrorCodes.PERMISSION_DENIED,
-                        "无权限访问"
-                );
-            }
-            return;
-        }
+		// 7. 方法级别 @RequireRole
+		RequireRole methodRole = handlerMethod.getMethodAnnotation(RequireRole.class);
+		if (methodRole != null) {
+			if (!permissionService.hasRole(methodRole.value())) {
+				throw new BizException(StandardErrorCodes.PERMISSION_DENIED, "无权限访问");
+			}
+			return;
+		}
 
-        // 8. 类级别 @RequireRole
-        RequireRole classRole = controllerClass.getAnnotation(RequireRole.class);
-        if (classRole != null && !permissionService.hasRole(classRole.value())) {
-            throw new BizException(
-                    StandardErrorCodes.PERMISSION_DENIED,
-                    "无权限访问"
-            );
-        }
+		// 8. 类级别 @RequireRole
+		RequireRole classRole = controllerClass.getAnnotation(RequireRole.class);
+		if (classRole != null && !permissionService.hasRole(classRole.value())) {
+			throw new BizException(StandardErrorCodes.PERMISSION_DENIED, "无权限访问");
+		}
 
-        // 9. 方法级别 @RequirePermission
-        RequirePermission methodPermission = handlerMethod.getMethodAnnotation(RequirePermission.class);
-        if (methodPermission != null) {
-            if (!permissionService.hasPermission(methodPermission.value())) {
-                throw new BizException(
-                        StandardErrorCodes.PERMISSION_DENIED,
-                        "无权限访问"
-                );
-            }
-            return;
-        }
+		// 9. 方法级别 @RequirePermission
+		RequirePermission methodPermission = handlerMethod.getMethodAnnotation(RequirePermission.class);
+		if (methodPermission != null) {
+			if (!permissionService.hasPermission(methodPermission.value())) {
+				throw new BizException(StandardErrorCodes.PERMISSION_DENIED, "无权限访问");
+			}
+			return;
+		}
 
-        // 10. 类级别 @RequirePermission
-        RequirePermission classPermission = controllerClass.getAnnotation(RequirePermission.class);
-        if (classPermission != null && !permissionService.hasPermission(classPermission.value())) {
-            throw new BizException(
-                    StandardErrorCodes.PERMISSION_DENIED,
-                    "无权限访问"
-            );
-        }
-    }
+		// 10. 类级别 @RequirePermission
+		RequirePermission classPermission = controllerClass.getAnnotation(RequirePermission.class);
+		if (classPermission != null && !permissionService.hasPermission(classPermission.value())) {
+			throw new BizException(StandardErrorCodes.PERMISSION_DENIED, "无权限访问");
+		}
+	}
 
-    public boolean isAdminPath(HttpServletRequest request) {
+	public boolean isAdminPath(HttpServletRequest request) {
 
-        return pathMatcher.match(ADMIN_PATH_PATTERN, request.getRequestURI());
-    }
+		return pathMatcher.match(ADMIN_PATH_PATTERN, request.getRequestURI());
+	}
 
-    public void validAdmin(HttpServletRequest request) {
+	public void validAdmin(HttpServletRequest request) {
 
-        if (!SecurityContextHolder.isLogin()) {
-            throw new BizException(
-                    StandardErrorCodes.AUTHENTICATION_FAILED,
-                    "认证失败，请先登录"
-            );
-        }
+		if (!SecurityContextHolder.isLogin()) {
+			throw new BizException(StandardErrorCodes.AUTHENTICATION_FAILED, "认证失败，请先登录");
+		}
 
-        boolean admin = SecurityContextHolder.getRoles().stream()
-                .anyMatch(role -> ADMIN_ROLE.equalsIgnoreCase(role));
-        if (!admin) {
-            throw new BizException(
-                    StandardErrorCodes.PERMISSION_DENIED,
-                    "无权限访问"
-            );
-        }
-    }
+		boolean admin = SecurityContextHolder.getRoles().stream().anyMatch(ADMIN_ROLE::equalsIgnoreCase);
+		if (!admin) {
+			throw new BizException(StandardErrorCodes.PERMISSION_DENIED, "无权限访问");
+		}
+	}
 
-    private void anonymous() {
+	private void anonymous() {
 
-        if (!SecurityContextHolder.isLogin()) {
-            SecurityContextHolder.set(UserDetails.Anonymous);
-        }
-    }
+		if (!SecurityContextHolder.isLogin()) {
+			SecurityContextHolder.set(UserDetails.Anonymous);
+		}
+	}
 
-    public boolean shouldSkip(HttpServletRequest request) {
+	public boolean shouldSkip(HttpServletRequest request) {
 
-        // 可能被 internal 认证过了
-        if (SecurityContextHolder.validated()) {
-            return true;
-        }
-        return isWhitelistRequest(request.getRequestURI());
-    }
+		// 可能被 internal 认证过了
+		if (SecurityContextHolder.validated()) {
+			return true;
+		}
+		return isWhitelistRequest(request.getRequestURI());
+	}
 
-    private final AppSecurityProperties securityProperties;
+	private final AppSecurityProperties securityProperties;
 
-    // 以下接口放行
-    private final Set<String> whitelistPatterns = new HashSet<>(
-            Arrays.asList(
-                    "/healthz",
-                    "/api/login",
-                    "/api/register",
-                    "/api/public/**",
-                    "/api/bootstrap/**"
-            )
-    );
+	// 以下接口放行
+	private final Set<String> whitelistPatterns = new HashSet<>(Arrays.asList("/healthz", "/api/login", "/api/register", "/api/public/**", "/api/bootstrap/**"));
 
-    private final PathMatcher pathMatcher = new AntPathMatcher();
+	private final PathMatcher pathMatcher = new AntPathMatcher();
 
-    private boolean isWhitelistRequest(String uri) {
+	private boolean isWhitelistRequest(String uri) {
 
-        return whitelistPatterns.stream()
-                .anyMatch(pattern -> pathMatcher.match(
-                        pattern,
-                        uri
-                ));
-    }
+		return whitelistPatterns.stream().anyMatch(pattern -> pathMatcher.match(pattern, uri));
+	}
 
-    @Override
-    public void afterPropertiesSet() {
+	@Override
+	public void afterPropertiesSet() {
 
-        if (securityProperties.getWhiteListRequest() != null) {
-            whitelistPatterns.addAll(securityProperties.getWhiteListRequest());
-        }
+		if (securityProperties.getWhiteListRequest() != null) {
+			whitelistPatterns.addAll(securityProperties.getWhiteListRequest());
+		}
 
-        if (validProperties.getSkipPatterns() != null) {
-            whitelistPatterns.addAll(validProperties.getSkipPatterns());
-        }
-    }
+		if (validProperties.getSkipPatterns() != null) {
+			whitelistPatterns.addAll(validProperties.getSkipPatterns());
+		}
+	}
 
-    private String extractToken(HttpServletRequest request) {
+	private String extractToken(HttpServletRequest request) {
 
-        String bearerToken = request.getHeader("Authorization");
-        return (bearerToken != null && bearerToken.startsWith("Bearer "))
-               ? bearerToken.substring(7)
-               : null;
-    }
+		String bearerToken = request.getHeader("Authorization");
+		return (bearerToken != null && bearerToken.startsWith("Bearer "))
+		       ? bearerToken.substring(7)
+		       : null;
+	}
 
-    public void setContextInfo(HttpServletRequest request) {
+	public void setContextInfo(HttpServletRequest request) {
 
-        try {
-            String token = extractToken(request);
-            if (StringUtils.isBlank(token)) {
-                return;
-            }
-            UserDetails userDetail = tokenService.parseToken(token);
-            if (userDetail != null) {
-                userDetail.setClientIp(ClientInfoExtractor.getClientIp(request));
-                userDetail.setClientType(ClientInfoExtractor.getClientType(request));
-                userDetail.setDeviceId(request.getHeader("X-Device-Id"));
+		try {
+			String token = extractToken(request);
+			if (StringUtils.isBlank(token)) {
+				return;
+			}
+			UserDetails userDetail = tokenService.parseToken(token);
+			if (userDetail != null) {
+				userDetail.setClientIp(ClientInfoExtractor.getClientIp(request));
+				userDetail.setClientType(ClientInfoExtractor.getClientType(request));
+				userDetail.setDeviceId(request.getHeader("X-Device-Id"));
 
-                SecurityContextHolder.set(userDetail);
-            }
-        } finally {
-            log.warn("access with anonymous");
-        }
-    }
+				SecurityContextHolder.set(userDetail);
+			}
+		} finally {
+			log.warn("access with anonymous");
+		}
+	}
 
 }

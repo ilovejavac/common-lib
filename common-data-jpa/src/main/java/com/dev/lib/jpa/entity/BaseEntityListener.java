@@ -33,7 +33,7 @@ public class BaseEntityListener {
         entity.setModifierId(user.getId());
 
 //        entity.setReversion(0L);
-        entity.setFeatures(Maps.mutable.empty());
+        entity.setAttributes(Maps.mutable.empty());
     }
 
     @PreUpdate

@@ -1,5 +1,6 @@
 package com.dev.lib.jpa.entity.dsl;
 
+import com.dev.lib.entity.dsl.BizRef;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
@@ -14,6 +15,7 @@ import com.querydsl.core.types.SubQueryExpression;
 import com.querydsl.core.types.dsl.EntityPathBase;
 import com.querydsl.core.types.dsl.PathInits;
 import com.querydsl.core.types.dsl.StringPath;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -25,8 +27,15 @@ import java.util.stream.Collectors;
 
 import static com.querydsl.core.types.PathMetadataFactory.forVariable;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PredicateAssemblerLogicTest {
+
+    @BeforeAll
+    static void registerRelationResolver() {
+
+        new JpaRelationResolver().init();
+    }
 
     @Test
     void shouldUseAndOnlyForFlatQuery() {
@@ -279,6 +288,91 @@ class PredicateAssemblerLogicTest {
     }
 
     @Test
+    void shouldResolveBizRefToRelationBizIdRegardlessOfFieldName() {
+
+        QueryBizRefCondition query = new QueryBizRefCondition();
+        query.setAnyName("G-1");
+
+        Predicate predicate = assemble(query);
+        List<String> groups = toCanonicalGroups(predicate);
+
+        assertThat(groups).containsExactly("testJpaEntity.goods.bizId");
+    }
+
+    @Test
+    void conditionFieldShouldOverrideBizRef() {
+
+        QueryConditionOverridesBizRef query = new QueryConditionOverridesBizRef();
+        query.setAnyName("Widget");
+
+        Predicate predicate = assemble(query);
+        List<String> groups = toCanonicalGroups(predicate);
+
+        assertThat(groups).containsExactly("testJpaEntity.goods.name");
+    }
+
+    @Test
+    void blankBizRefShouldFailFastDuringMetadataResolution() {
+
+        QueryBlankBizRef query = new QueryBlankBizRef();
+        query.setAnyName("G-1");
+
+        assertThatThrownBy(() -> QueryFieldMerger.resolve(query))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("@BizRef value 不能为空");
+    }
+
+    @Test
+    void shouldResolveRelationBizIdSuffixToRelationBizId() {
+
+        QueryBizIdSuffixCondition query = new QueryBizIdSuffixCondition();
+        query.setGoodsBizId("G-1");
+
+        Predicate predicate = assemble(query);
+        List<String> groups = toCanonicalGroups(predicate);
+
+        assertThat(groups).containsExactly("testJpaEntity.goods.bizId");
+    }
+
+    @Test
+    void shouldResolveRelationBizIdInSuffixToRelationBizIdIn() {
+
+        QueryBizIdInSuffixCondition query = new QueryBizIdInSuffixCondition();
+        query.setGoodsBizIdIn(List.of("G-1", "G-2"));
+
+        Predicate predicate = assemble(query);
+
+        assertThat(predicate).isInstanceOf(Operation.class);
+        Operation<?> operation = (Operation<?>) predicate;
+        assertThat(operation.getOperator()).isEqualTo(Ops.IN);
+        assertThat(operation.getArg(0).toString()).isEqualTo("testJpaEntity.goods.bizId");
+    }
+
+    @Test
+    void lowercaseBizIdSuffixShouldKeepExistingFieldBehavior() {
+
+        QueryLowercaseBizIdSuffixCondition query = new QueryLowercaseBizIdSuffixCondition();
+        query.setGoodsbizid("G-1");
+
+        Predicate predicate = assemble(query);
+        List<String> groups = toCanonicalGroups(predicate);
+
+        assertThat(groups).containsExactly("testJpaEntity.goodsbizid");
+    }
+
+    @Test
+    void nonRelationBizIdSuffixShouldKeepExistingFieldBehavior() {
+
+        QueryNonRelationBizIdSuffixCondition query = new QueryNonRelationBizIdSuffixCondition();
+        query.setExternalBizId("E-1");
+
+        Predicate predicate = assemble(query);
+        List<String> groups = toCanonicalGroups(predicate);
+
+        assertThat(groups).containsExactly("testJpaEntity.externalBizId");
+    }
+
+    @Test
     void shouldUseInWhenCollectionFieldHasNoTypeSuffix() {
 
         QueryCollectionDefaultIn query = new QueryCollectionDefaultIn();
@@ -493,6 +587,115 @@ class QueryJoinCondition extends DslQuery<TestJpaEntity> {
     }
 }
 
+class QueryBizRefCondition extends DslQuery<TestJpaEntity> {
+
+    @BizRef("goods")
+    private String anyName;
+
+    public String getAnyName() {
+
+        return anyName;
+    }
+
+    public void setAnyName(String anyName) {
+
+        this.anyName = anyName;
+    }
+}
+
+class QueryConditionOverridesBizRef extends DslQuery<TestJpaEntity> {
+
+    @Condition(field = "goods.name")
+    @BizRef("goods")
+    private String anyName;
+
+    public String getAnyName() {
+
+        return anyName;
+    }
+
+    public void setAnyName(String anyName) {
+
+        this.anyName = anyName;
+    }
+}
+
+class QueryBlankBizRef extends DslQuery<TestJpaEntity> {
+
+    @BizRef("")
+    private String anyName;
+
+    public String getAnyName() {
+
+        return anyName;
+    }
+
+    public void setAnyName(String anyName) {
+
+        this.anyName = anyName;
+    }
+}
+
+class QueryBizIdSuffixCondition extends DslQuery<TestJpaEntity> {
+
+    private String goodsBizId;
+
+    public String getGoodsBizId() {
+
+        return goodsBizId;
+    }
+
+    public void setGoodsBizId(String goodsBizId) {
+
+        this.goodsBizId = goodsBizId;
+    }
+}
+
+class QueryBizIdInSuffixCondition extends DslQuery<TestJpaEntity> {
+
+    private Collection<String> goodsBizIdIn;
+
+    public Collection<String> getGoodsBizIdIn() {
+
+        return goodsBizIdIn;
+    }
+
+    public void setGoodsBizIdIn(Collection<String> goodsBizIdIn) {
+
+        this.goodsBizIdIn = goodsBizIdIn;
+    }
+}
+
+class QueryLowercaseBizIdSuffixCondition extends DslQuery<TestJpaEntity> {
+
+    private String goodsbizid;
+
+    public String getGoodsbizid() {
+
+        return goodsbizid;
+    }
+
+    public void setGoodsbizid(String goodsbizid) {
+
+        this.goodsbizid = goodsbizid;
+    }
+}
+
+class QueryNonRelationBizIdSuffixCondition extends DslQuery<TestJpaEntity> {
+
+    private String externalBizId;
+
+    public String getExternalBizId() {
+
+        return externalBizId;
+    }
+
+    public void setExternalBizId(String externalBizId) {
+
+        this.externalBizId = externalBizId;
+    }
+}
+
 class QueryLogicWithSub extends DslQuery<TestJpaEntity> {
 
     private String c1;
@@ -544,6 +747,14 @@ class TestJpaEntity extends JpaEntity {
     private String c3;
 
     private String c4;
+
+    @jakarta.persistence.ManyToOne
+    private TestGoodsEntity goods;
+}
+
+class TestGoodsEntity extends JpaEntity {
+
+    private String name;
 }
 
 class QTestJpaEntity extends EntityPathBase<TestJpaEntity> {
@@ -559,6 +770,8 @@ class QTestJpaEntity extends EntityPathBase<TestJpaEntity> {
     public final StringPath c3 = createString("c3");
 
     public final StringPath c4 = createString("c4");
+
+    public final QTestGoodsEntity goods;
 
     QTestJpaEntity(String variable) {
 
@@ -576,6 +789,31 @@ class QTestJpaEntity extends EntityPathBase<TestJpaEntity> {
     }
 
     QTestJpaEntity(Class<? extends TestJpaEntity> type, PathMetadata metadata, PathInits inits) {
+
+        super(type, metadata, inits);
+        this.goods = inits.isInitialized("goods") ? new QTestGoodsEntity(forProperty("goods")) : null;
+    }
+}
+
+class QTestGoodsEntity extends EntityPathBase<TestGoodsEntity> {
+
+    private static final long serialVersionUID = 1L;
+
+    public final StringPath bizId = createString("bizId");
+
+    public final StringPath name = createString("name");
+
+    QTestGoodsEntity(String variable) {
+
+        this(TestGoodsEntity.class, forVariable(variable), PathInits.DIRECT2);
+    }
+
+    QTestGoodsEntity(PathMetadata metadata) {
+
+        this(TestGoodsEntity.class, metadata, PathInits.DIRECT2);
+    }
+
+    QTestGoodsEntity(Class<? extends TestGoodsEntity> type, PathMetadata metadata, PathInits inits) {
 
         super(type, metadata, inits);
     }

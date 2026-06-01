@@ -1,5 +1,6 @@
 package com.dev.lib.entity.dsl.core;
 
+import com.dev.lib.entity.dsl.BizRef;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.ConditionIgnore;
 import com.dev.lib.entity.dsl.DslQuery;
@@ -107,12 +108,15 @@ public class FieldMetaCache {
     private static FieldMeta buildFieldMeta(Field field, Class<?> entityClass) {
 
         Condition                    condition = field.getAnnotation(Condition.class);
+        BizRef                       bizRef    = field.getAnnotation(BizRef.class);
         QueryFieldParser.ParsedField parsed    = QueryFieldParser.parse(field.getName());
 
         // 合并注解和后缀解析结果（注解优先）
         String targetField = resolveTargetField(
                 condition,
-                parsed
+                bizRef,
+                parsed,
+                entityClass
         );
         QueryType queryType = resolveQueryType(
                 field,
@@ -295,12 +299,42 @@ public class FieldMetaCache {
                 || Collection.class.isAssignableFrom(type);
     }
 
-    private static String resolveTargetField(Condition condition, QueryFieldParser.ParsedField parsed) {
+    private static String resolveTargetField(
+            Condition condition,
+            BizRef bizRef,
+            QueryFieldParser.ParsedField parsed,
+            Class<?> entityClass
+    ) {
 
         if (condition != null && StringUtils.hasText(condition.field())) {
             return condition.field();
         }
-        return parsed.targetField();
+        if (bizRef != null) {
+            if (!StringUtils.hasText(bizRef.value())) {
+                throw new IllegalArgumentException("@BizRef value 不能为空");
+            }
+            return bizRef.value() + ".bizId";
+        }
+        return resolveBizIdConventionTargetField(parsed.targetField(), entityClass);
+    }
+
+    private static String resolveBizIdConventionTargetField(String targetField, Class<?> entityClass) {
+
+        if (!StringUtils.hasText(targetField) || !targetField.endsWith("BizId")) {
+            return targetField;
+        }
+
+        String relationField = targetField.substring(0, targetField.length() - "BizId".length());
+        if (!StringUtils.hasText(relationField)) {
+            return targetField;
+        }
+        relationField = Character.toLowerCase(relationField.charAt(0)) + relationField.substring(1);
+
+        RelationInfo relation = resolveRelation(entityClass, relationField);
+        if (relation == null) {
+            return targetField;
+        }
+        return relationField + ".bizId";
     }
 
     private static QueryType resolveQueryType(Field field, Condition condition, QueryFieldParser.ParsedField parsed) {

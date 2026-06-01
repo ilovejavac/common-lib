@@ -19,7 +19,6 @@ import java.util.Map;
 @EntityListeners({
         BaseEntityListener.class,
         EncryptionListener.class,
-//        AuditListener.class
 })
 public abstract class JpaEntity extends CoreEntity implements Persistable<Long> {
 
@@ -28,6 +27,9 @@ public abstract class JpaEntity extends CoreEntity implements Persistable<Long> 
 
     @Column(nullable = false, length = 15, unique = true, updatable = false)
     private String bizId;
+
+    @Column(nullable = false)
+    private Long deleted;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -40,12 +42,9 @@ public abstract class JpaEntity extends CoreEntity implements Persistable<Long> 
 
     private Long modifierId;
 
-    @Column(nullable = false)
-    private Long deleted;
-
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "text")
-    private Map<String, Object> features;
+    private Map<String, Object> attributes;
 
     @Override
     public boolean isNew() {

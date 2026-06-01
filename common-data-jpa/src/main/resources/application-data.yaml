@@ -13,6 +13,7 @@ spring:
       max-lifetime: ${app.jpa.hikari.max-lifetime}
       keepalive-time: ${app.jpa.hikari.keepalive-time}
       leak-detection-threshold: 60000
+    connection-fetch: lazy
   jpa:
     open-in-view: false
     show-sql: false
@@ -49,7 +50,7 @@ decorator:
 app:
   jpa:
     hikari:
-      maximum-pool-size: 30
+      maximum-pool-size: 50
       minimum-idle: 10
       connection-timeout: 2000
       validation-timeout: 1000

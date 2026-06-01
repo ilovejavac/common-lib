@@ -22,6 +22,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
@@ -187,6 +188,79 @@ class MultiJpaDatasourceIntegrationTest {
                         "app.jpa.hikari.maximum-pool-size=24"
                 )
                 .run(context -> assertThat(context).hasNotFailed());
+    }
+
+    @Test
+    void shouldApplyLazyConnectionFetchToManagedJpaDatasourcesOnly() {
+
+        new WebApplicationContextRunner()
+                .withUserConfiguration(HikariManagedDatasourceApplication.class)
+                .withPropertyValues(
+                        "spring.jpa.hibernate.ddl-auto=none",
+                        "spring.jpa.open-in-view=false",
+                        "spring.application.name=multi-jpa-lazy-connection-fetch-test",
+                        "spring.datasource.connection-fetch=lazy"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+
+                    DataSource primaryDs = context.getBean("primaryDs", DataSource.class);
+                    DataSource archiveDs = context.getBean("archiveDs", DataSource.class);
+                    DataSource ignoredDs = context.getBean("ignoredDs", DataSource.class);
+
+                    assertThat(hasLazyConnectionProxy(primaryDs)).isTrue();
+                    assertThat(hasLazyConnectionProxy(archiveDs)).isTrue();
+                    assertThat(hasLazyConnectionProxy(ignoredDs)).isFalse();
+
+                    assertThat(unwrapHikariFromLazyProxy(primaryDs).getJdbcUrl()).contains("primary_ds");
+                    assertThat(unwrapHikariFromLazyProxy(archiveDs).getJdbcUrl()).contains("archive_ds");
+                    assertThat(unwrapHikari(ignoredDs).getJdbcUrl()).contains("ignored_ds");
+                });
+    }
+
+    @Test
+    void shouldKeepManagedJpaDatasourcesEagerWhenConnectionFetchIsNotLazy() {
+
+        new WebApplicationContextRunner()
+                .withUserConfiguration(HikariManagedDatasourceApplication.class)
+                .withPropertyValues(
+                        "spring.jpa.hibernate.ddl-auto=none",
+                        "spring.jpa.open-in-view=false",
+                        "spring.application.name=multi-jpa-eager-connection-fetch-test",
+                        "spring.datasource.connection-fetch=eager"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+
+                    assertThat(hasLazyConnectionProxy(context.getBean("primaryDs", DataSource.class))).isFalse();
+                    assertThat(hasLazyConnectionProxy(context.getBean("archiveDs", DataSource.class))).isFalse();
+                    assertThat(hasLazyConnectionProxy(context.getBean("ignoredDs", DataSource.class))).isFalse();
+                });
+    }
+
+    private static boolean hasLazyConnectionProxy(DataSource dataSource) {
+
+        if (dataSource instanceof LazyConnectionDataSourceProxy) {
+            return true;
+        }
+        try {
+            dataSource.unwrap(LazyConnectionDataSourceProxy.class);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static HikariDataSource unwrapHikariFromLazyProxy(DataSource dataSource) {
+
+        try {
+            LazyConnectionDataSourceProxy lazyProxy = dataSource instanceof LazyConnectionDataSourceProxy proxy
+                    ? proxy
+                    : dataSource.unwrap(LazyConnectionDataSourceProxy.class);
+            return lazyProxy.getTargetDataSource().unwrap(HikariDataSource.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to unwrap HikariDataSource from lazy DataSource bean", e);
+        }
     }
 
     private static HikariDataSource unwrapHikari(DataSource dataSource) {

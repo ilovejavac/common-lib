@@ -12,6 +12,7 @@ import com.dev.lib.jpa.entity.write.RepositoryWritePlugin;
 import com.dev.lib.jpa.entity.write.RepositoryWritePluginRegistrar;
 import com.dev.lib.jpa.multiple.JpaManagedDatasourceGroup;
 import com.dev.lib.jpa.multiple.JpaManagedHikariDefaultsBeanPostProcessor;
+import com.dev.lib.jpa.multiple.JpaManagedLazyConnectionDataSourceBeanPostProcessor;
 import com.dev.lib.jpa.multiple.SingleDatasourceRepositoryRegistrar;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
@@ -25,6 +26,7 @@ import org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoCo
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 @AutoConfiguration(before = DataJpaRepositoriesAutoConfiguration.class)
@@ -45,6 +47,15 @@ public class CommonJpaAutoConfig {
     ) {
 
         return new JpaManagedHikariDefaultsBeanPostProcessor(managedDatasourceGroups, hikariDefaultsProperties);
+    }
+
+    @Bean
+    public static BeanPostProcessor jpaManagedLazyConnectionDataSourceBeanPostProcessor(
+            ObjectProvider<JpaManagedDatasourceGroup> managedDatasourceGroups,
+            Environment environment
+    ) {
+
+        return new JpaManagedLazyConnectionDataSourceBeanPostProcessor(managedDatasourceGroups, environment);
     }
 
     @Bean
