@@ -22,7 +22,6 @@ common-mq/                 # 抽象层
   └── reliability/          # 可靠性配置
 
 common-mq-rabbit/          # RabbitMQ 实现
-common-task-kernel/        # 统一任务内核（异步/可靠/周期任务）
 ```
 
 ## 快速开始
@@ -36,11 +35,6 @@ common-task-kernel/        # 统一任务内核（异步/可靠/周期任务）
     <artifactId>common-mq-rabbit</artifactId>
 </dependency>
 
-<!-- 包含任务内核 -->
-<dependency>
-    <groupId>com.dev.lib</groupId>
-    <artifactId>common-task-kernel</artifactId>
-</dependency>
 ```
 
 ### 2. 配置
@@ -90,8 +84,7 @@ MQ.publish("order.queue", msg)
 MQ.publishAsync("order.queue", msg) {
     onSuccess { m -> log.info("发送成功: ${m.id}") }
     onFailure { m, e ->
-        log.error("发送失败，已落任务内核", e)
-        // 失败消息会由可靠任务自动重试发送
+        log.error("发送失败", e)
     }
 }
 ```
@@ -116,8 +109,7 @@ class MQConfig {
         MQ.config(ReliabilityConfig(
             enableConfirm = true,        // 启用发送确认
             enablePersistence = true,     // 持久化到磁盘
-            enableDeadLetter = true,      // 启用死信
-            enableStorage = true          // 启用本地消息表
+            enableDeadLetter = true       // 启用死信
         ))
     }
 }
@@ -231,7 +223,7 @@ RabbitMQHandlerHelper.handleWithRetry(msg, channel, tag) {
 ├─────────────────────────────────────────────┤
 │ 1. 生产端                                   │
 │    - Confirm 回调                           │
-│    - 本地消息表                              │
+│    - 失败回调/异常处理                        │
 ├─────────────────────────────────────────────┤
 │ 2. 服务端 (RabbitMQ)                        │
 │    - Queue 持久化                            │
@@ -258,16 +250,13 @@ RabbitMQHandlerHelper.handleWithRetry(msg, channel, tag) {
 成功        失败
    │        │
    │        ▼
-   │   ┌─────────────┐
-   │   │ 本地消息表   │ ◄─── 防止丢失
-   │   └──────┬──────┘
-   │          │
-   │          ▼
-   │   定时任务补偿
-   │          │
-   └──────────┼──────────┐
-              │          │
-              ▼          ▼
+   │   ┌──────────┐
+   │   │ 失败回调 │
+   │   └────┬─────┘
+   │        │
+   └────────┼──────────┐
+            │          │
+            ▼          ▼
         ┌──────────┐  ┌──────────┐
         │RabbitMQ  │  │ 失败告警 │
         │持久化    │  └──────────┘
@@ -295,8 +284,7 @@ MQ.config(ReliabilityConfig(
     enablePersistence = true,     // 消息持久化
     maxRetries = 3,               // 最大重试次数
     retryInterval = 1000,         // 重试间隔
-    enableDeadLetter = true,      // 启用死信
-    storage = localTaskMessageStorage  // 本地消息表
+    enableDeadLetter = true       // 启用死信
 ))
 ```
 
@@ -438,12 +426,12 @@ MQ.publish("order-topic", msg)
 
 ### Q1: 消息丢失了怎么办？
 
-**A:** 启用本地消息表：
+**A:** 通过异常或失败回调接入业务侧补偿：
 
 ```kotlin
-MQ.config(ReliabilityConfig(enableStorage = true))
-
-// 发送失败时自动落库，定时任务补偿
+MQ.publishAsync("order.queue", msg) {
+    onFailure { m, e -> retryStore.save(m, e) }
+}
 ```
 
 ### Q2: 消息重复消费？
@@ -498,8 +486,7 @@ fun handleDlq(@Payload msg: MessageExtend<Order>) {
 ```kotlin
 MQ.config(ReliabilityConfig(
     enableConfirm = true,
-    enablePersistence = true,
-    enableStorage = true
+    enablePersistence = true
 ))
 
 // 发送重要消息
@@ -526,7 +513,7 @@ fun handleMessage(msg: MessageExtend<Order>) {
 - MQ 发送成功率
 - 消费延迟
 - 死信队列消息数
-- 本地消息表积压量
+- 业务补偿队列积压量
 ```
 
 ### 4. 降级策略
@@ -535,7 +522,6 @@ fun handleMessage(msg: MessageExtend<Order>) {
 try {
     MQ.publish("order.queue", msg)
 } catch (e: Exception) {
-    // 降级到本地消息表
-    localTaskMessageStorage.saveAsPending(msg, "order.queue")
+    retryStore.save(msg, e)
 }
 ```

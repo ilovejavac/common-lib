@@ -6,7 +6,7 @@ dubbo:
     prefer-serialization: hessian2
   consumer:
     lazy: false
-    timeout: 30000
+    timeout: 5000
     check: false
     retries: 0
   application:

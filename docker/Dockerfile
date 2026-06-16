@@ -23,15 +23,20 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 
 #        -Xms3g
 #        -Xmx3g
-#        -XX:+UseG1GC
+#        -XX:+UseZGC
+#        -XX:ZGenerational=true
+#        -XX:ZCollectionInterval=30s
 #        -XX:MaxDirectMemorySize=512m
 #        -XX:MaxMetaspaceSize=512m
 #        -XX:MaxGCPauseMillis=200
 #        -XX:InitiatingHeapOccupancyPercent=55
-#        -XX:G1ReservePercent=10
+#        -XX:InitialRAMPercentage=70
+#        -XX:MaxRAMPercentage=85
+
 #        -XX:+HeapDumpOnOutOfMemoryError
 #        -XX:HeapDumpPath=/app/mnt/log/heapdump.hprof
 #        -XX:-OmitStackTraceInFastThrow
 #        -Xlog:gc*:file=/app/mnt/log/gc_%p_%t.log:time,level,tags:filecount=5,filesize=20M
+
 #        -Dfile.encoding=UTF-8
 #        -Duser.timezone=Asia/Shanghai

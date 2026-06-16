@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.5.3-RC1</version>
+        <version>1.6.0</version>
     </parent>
 
     <artifactId>common-agent</artifactId>
@@ -42,6 +42,12 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>com.google.adk</groupId>
+            <artifactId>google-adk-spring-ai</artifactId>
+            <version>1.4.0</version>
+        </dependency>
+
         <dependency>
             <groupId>io.github.ilovejavac</groupId>
             <artifactId>common-core</artifactId>
@@ -85,6 +91,10 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-google-genai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-model</artifactId>
         </dependency>
 
     </dependencies>

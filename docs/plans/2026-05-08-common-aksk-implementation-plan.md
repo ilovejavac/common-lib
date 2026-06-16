@@ -103,7 +103,7 @@ Verification evidence so far:
 - Task 16 security regression: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl common-security -am -Dtest=AdminPathSecurityTest,AkskAuthenticationInterceptorTest,AkskSecurityIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test` -> 17 tests passed.
 - Task 16 diff hygiene: `git diff --check` -> exit 0.
 - Task 16 local install: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl common-data-jpa,common-aksk -am install -DskipTests` -> BUILD SUCCESS.
-- Task 16 installed jar check: `javap` on `/Users/lucheng/.m2/repository/io/github/ilovejavac/common-aksk/1.5.3-RC1/common-aksk-1.5.3-RC1.jar` shows `@Autowired` on the public `AkskVerifier(AkskService, AkskSigner, AkskProperties)` constructor.
+- Task 16 installed jar check: `javap` on `/Users/lucheng/.m2/repository/io/github/ilovejavac/common-aksk/1.6.0/common-aksk-1.6.0.jar` shows `@Autowired` on the public `AkskVerifier(AkskService, AkskSigner, AkskProperties)` constructor.
 - Task 16 datalake startup attempt: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl datalake-server spring-boot:run -Dspring-boot.run.profiles=dev` timed out while resolving `com.ware4u:datalake-bom:1.0` as `datalake-bom-1.0.jar` from the internal HTTP repository.
 - Task 16 datalake reactor workaround attempt: `JAVA_HOME=$(/usr/libexec/java_home -v 25) mvn -pl datalake-server -am install -DskipTests` still reached `datalake-server` and attempted to resolve `com.ware4u:datalake-bom:1.0` as a jar, even though the local `datalake-bom` module is packaged as a POM; the hung Maven process was stopped.
 
@@ -123,7 +123,7 @@ Important execution note:
 
 **Requirements confirmed:** 2026-05-08 by user reply "直接改" after the startup failure analysis.
 
-**Problem:** Downstream `datalake` startup fails with `No default constructor found` for `AkskVerifier`. The installed `common-aksk-1.5.3-RC1.jar` contains both a public dependency constructor and a package-private test constructor, but neither constructor is marked as Spring's injection constructor.
+**Problem:** Downstream `datalake` startup fails with `No default constructor found` for `AkskVerifier`. The installed `common-aksk-1.6.0.jar` contains both a public dependency constructor and a package-private test constructor, but neither constructor is marked as Spring's injection constructor.
 
 **Design:**
 

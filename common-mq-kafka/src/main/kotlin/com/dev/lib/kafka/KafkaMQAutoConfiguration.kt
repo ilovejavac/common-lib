@@ -1,7 +1,6 @@
 package com.dev.lib.kafka
 
 import com.dev.lib.mq.MQ
-import com.dev.lib.task.api.TaskClient
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -59,18 +58,16 @@ class KafkaMQAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     fun mqTemplateInitializer(
-        template: KafkaTemplate<String, Any>,
-        taskClient: TaskClient
+        template: KafkaTemplate<String, Any>
     ): MQTemplateInitializer {
-        return MQTemplateInitializer(template, taskClient)
+        return MQTemplateInitializer(template)
     }
 }
 
 class MQTemplateInitializer(
-    template: KafkaTemplate<String, Any>,
-    taskClient: TaskClient
+    template: KafkaTemplate<String, Any>
 ) {
     init {
-        MQ.init(KafkaMQTemplate(template, taskClient))
+        MQ.init(KafkaMQTemplate(template))
     }
 }

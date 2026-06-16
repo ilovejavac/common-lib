@@ -8,13 +8,13 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0-RC1</version>
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
 
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.5.3-RC1</version>
+    <version>1.6.0</version>
     <packaging>pom</packaging>
 
     <name>common-lib</name>
@@ -49,11 +49,6 @@
         <module>common-core</module>
         <module>common-data-jpa</module>
         <module>common-data-datalake</module>
-        <module>common-task-kernel</module>
-        <module>common-task-schedule-internal</module>
-        <module>common-task-schedule-xxl</module>
-        <module>common-task-schedule-quartz</module>
-        <module>common-task-schedule-elasticjob</module>
         <module>common-dict</module>
         <module>common-schedule</module>
         <module>common-storage</module>
@@ -89,11 +84,11 @@
 
         <!-- Internal coordinates -->
         <lib.groupId>io.github.ilovejavac</lib.groupId>
-        <lib.version>1.5.3-RC1</lib.version>
+        <lib.version>1.6.0</lib.version>
 
         <!-- Spring ecosystem -->
-        <spring-boot.version>4.1.0-RC1</spring-boot.version>
-        <spring-cloud.version>2025.1.1</spring-cloud.version>
+        <spring-boot.version>4.1.0</spring-boot.version>
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
         <spring-ai.version>2.0.0-M6</spring-ai.version>
         <spring-ai-alibaba.version>1.1.2.3</spring-ai-alibaba.version>
@@ -507,31 +502,6 @@
             <dependency>
                 <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-data-search</artifactId>
-                <version>${lib.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.ilovejavac</groupId>
-                <artifactId>common-task-kernel</artifactId>
-                <version>${lib.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.ilovejavac</groupId>
-                <artifactId>common-task-schedule-internal</artifactId>
-                <version>${lib.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.ilovejavac</groupId>
-                <artifactId>common-task-schedule-xxl</artifactId>
-                <version>${lib.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.ilovejavac</groupId>
-                <artifactId>common-task-schedule-quartz</artifactId>
-                <version>${lib.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.ilovejavac</groupId>
-                <artifactId>common-task-schedule-elasticjob</artifactId>
                 <version>${lib.version}</version>
             </dependency>
             <dependency>

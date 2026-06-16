@@ -1,8 +1,5 @@
 package com.dev.lib.rabbit
 
-import com.dev.lib.CoroutineScopeHolder
-import com.dev.lib.rabbit.poller.RabbitRetryPayload
-import com.dev.lib.task.api.TaskClient
 import com.dev.lib.mq.AckCallback
 import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
@@ -13,8 +10,7 @@ import org.springframework.amqp.rabbit.connection.CorrelationData
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 
 class RabbitMQTemplate(
-    private val template: RabbitTemplate,
-    private val taskClient: TaskClient
+    private val template: RabbitTemplate
 ) : MQTemplate {
 
     private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
@@ -24,7 +20,7 @@ class RabbitMQTemplate(
     }
 
     override fun <T> send(destination: String, message: MessageExtend<T>) {
-        val correlationData = createCorrelationData(message, destination)
+        val correlationData = createCorrelationData(message)
         template.convertAndSend(destination, message.key, message, createPostProcessor(message), correlationData)
     }
 
@@ -38,7 +34,6 @@ class RabbitMQTemplate(
             if (throwable == null) {
                 ack.onSuccess(message)
             } else {
-                savePendingIfNeeded(message, destination)
                 ack.onFailure(message, throwable)
             }
         }
@@ -49,27 +44,7 @@ class RabbitMQTemplate(
         template.convertAndSend(destination, message.key, message, createPostProcessor(message))
     }
 
-    private fun <T> createCorrelationData(message: MessageExtend<T>, destination: String): CorrelationData {
-        val correlationData = CorrelationData(message.id)
-        correlationData.future.whenComplete { _, throwable ->
-            if (throwable != null) {
-                savePendingIfNeeded(message, destination)
-            }
-        }
-        return correlationData
-    }
-
-    private fun <T> savePendingIfNeeded(message: MessageExtend<T>, destination: String) {
-        CoroutineScopeHolder.launch {
-            taskClient.submit(RabbitRetryPayload(
-                destination = destination,
-                body = message.body,
-                routingKey = message.key,
-                headers = message.headers,
-                persistent = message.persistent
-            ))
-        }
-    }
+    private fun <T> createCorrelationData(message: MessageExtend<T>): CorrelationData = CorrelationData(message.id)
 
     private fun <T> createPostProcessor(message: MessageExtend<T>): MessagePostProcessor {
         return MessagePostProcessor { msg ->

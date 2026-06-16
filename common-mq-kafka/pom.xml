@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.ilovejavac</groupId>
         <artifactId>common-lib</artifactId>
-        <version>1.5.3-RC1</version>
+        <version>1.6.0</version>
     </parent>
 
     <artifactId>common-mq-kafka</artifactId>
@@ -14,11 +14,6 @@
     <description>A common library module for Spring Boot microservices</description>
 
     <dependencies>
-        <dependency>
-            <groupId>io.github.ilovejavac</groupId>
-            <artifactId>common-task-kernel</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>

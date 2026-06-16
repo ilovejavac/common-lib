@@ -1,21 +1,18 @@
 package com.dev.lib.rocketmq
 
-import com.dev.lib.CoroutineScopeHolder
-import com.dev.lib.task.api.TaskClient
 import com.dev.lib.mq.AckCallback
 import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
 import com.dev.lib.mq.reliability.ReliabilityConfig
 import org.apache.rocketmq.client.producer.SendCallback
 import org.apache.rocketmq.client.producer.SendResult
-import org.apache.rocketmq.spring.core.RocketMQTemplate
+import org.apache.rocketmq.spring.core.RocketMQTemplate as SpringRocketMQTemplate
 import org.apache.rocketmq.spring.support.RocketMQHeaders
 import org.springframework.messaging.Message
 import org.springframework.messaging.support.MessageBuilder
 
 class RocketMQTemplate(
-    private val template: RocketMQTemplate,
-    private val taskClient: TaskClient
+    private val template: SpringRocketMQTemplate
 ) : MQTemplate {
 
     private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
@@ -28,7 +25,6 @@ class RocketMQTemplate(
         try {
             template.syncSend(destination, buildMessage(message))
         } catch (e: Exception) {
-            savePendingIfNeeded(message, destination)
             throw e
         }
     }
@@ -45,12 +41,10 @@ class RocketMQTemplate(
                 }
 
                 override fun onException(e: Throwable?) {
-                    savePendingIfNeeded(message, destination)
                     ack.onFailure(message, e ?: Exception("Unknown error"))
                 }
             })
         } catch (e: Exception) {
-            savePendingIfNeeded(message, destination)
             ack.onFailure(message, e)
         }
     }
@@ -98,16 +92,5 @@ class RocketMQTemplate(
         builder.setHeader("RETRY_DELAY_MS", message.retryDelay)
 
         return builder.build()
-    }
-
-    private fun <T> savePendingIfNeeded(message: MessageExtend<T>, destination: String) {
-        CoroutineScopeHolder.launch {
-            taskClient.submit(RocketRetryPayload(
-                destination = destination,
-                key = message.key,
-                body = message.body,
-                headers = message.headers
-            ))
-        }
     }
 }

@@ -1,7 +1,5 @@
 package com.dev.lib.kafka
 
-import com.dev.lib.CoroutineScopeHolder
-import com.dev.lib.task.api.TaskClient
 import com.dev.lib.mq.AckCallback
 import com.dev.lib.mq.MQTemplate
 import com.dev.lib.mq.MessageExtend
@@ -12,8 +10,7 @@ import org.springframework.messaging.support.MessageBuilder
 import java.util.concurrent.CompletableFuture
 
 class KafkaMQTemplate(
-    private val template: KafkaTemplate<String, Any>,
-    private val taskClient: TaskClient
+    private val template: KafkaTemplate<String, Any>
 ) : MQTemplate {
 
     private var reliabilityConfig: ReliabilityConfig = ReliabilityConfig.DEFAULT
@@ -26,7 +23,6 @@ class KafkaMQTemplate(
         try {
             template.send(destination, message.key, buildMessage(message)).get()
         } catch (e: Exception) {
-            savePendingIfNeeded(message, destination)
             throw e
         }
     }
@@ -41,7 +37,6 @@ class KafkaMQTemplate(
             if (throwable == null) {
                 ack.onSuccess(message)
             } else {
-                savePendingIfNeeded(message, destination)
                 ack.onFailure(message, throwable)
             }
         }
@@ -65,16 +60,5 @@ class KafkaMQTemplate(
         builder.setHeader("RETRY_DELAY_MS", message.retryDelay)
 
         return builder.build()
-    }
-
-    private fun <T> savePendingIfNeeded(message: MessageExtend<T>, destination: String) {
-        CoroutineScopeHolder.launch {
-            taskClient.submit(KafkaRetryPayload(
-                destination = destination,
-                key = message.key,
-                body = message.body,
-                headers = message.headers
-            ))
-        }
     }
 }
