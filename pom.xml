@@ -70,7 +70,6 @@
         <module>common-mq-kafka</module>
         <module>common-mq-rocketmq</module>
         <module>common-agent</module>
-        <module>common-security-aes</module>
         <module>common-user</module>
         <module>common-aksk</module>
         <module>common-cloud-gateway</module>
