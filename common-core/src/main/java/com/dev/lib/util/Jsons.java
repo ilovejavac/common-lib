@@ -1,54 +1,31 @@
 package com.dev.lib.util;
 
-import com.dev.lib.config.JacksonSupport;
-import tools.jackson.core.JacksonException;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.DefaultTyping;
-import tools.jackson.databind.JavaType;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.ObjectReader;
-import tools.jackson.databind.ObjectWriter;
-import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import tools.jackson.databind.json.JsonMapper;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONException;
+import com.alibaba.fastjson2.JSONObject;
+import com.alibaba.fastjson2.TypeReference;
+import com.dev.lib.config.FastJsonSupport;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Type;
 import java.util.Map;
 
 public final class Jsons {
 
-    private static final JsonMapper MAPPER = buildMapper();
-
-    private static final JsonMapper POLYMORPHIC_MAPPER = buildPolymorphicMapper();
+    static {
+        FastJsonSupport.configure();
+    }
 
     private Jsons() {
-    }
-
-    private static JsonMapper buildMapper() {
-
-        JsonMapper.Builder builder = JsonMapper.builder();
-        JacksonSupport.configure(builder);
-        return builder.build();
-    }
-
-    private static JsonMapper buildPolymorphicMapper() {
-
-        JsonMapper.Builder builder = MAPPER.rebuild();
-        builder.activateDefaultTypingAsProperty(
-                BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build(),
-                DefaultTyping.NON_FINAL,
-                "@class"
-        );
-        return builder.build();
     }
 
     public static String toJson(Object value) {
 
         try {
-            return MAPPER.writeValueAsString(value);
-        } catch (JacksonException e) {
+            return JSON.toJSONString(value, FastJsonSupport.WRITER_FILTERS, FastJsonSupport.WRITER_FEATURES);
+        } catch (JSONException e) {
             throw new IllegalArgumentException("Failed to serialize object to JSON", e);
         }
     }
@@ -56,27 +33,27 @@ public final class Jsons {
     public static byte[] toBytes(Object value) {
 
         try {
-            return MAPPER.writeValueAsBytes(value);
-        } catch (JacksonException e) {
+            return JSON.toJSONBytes(value, FastJsonSupport.WRITER_FILTERS, FastJsonSupport.WRITER_FEATURES);
+        } catch (JSONException e) {
             throw new IllegalArgumentException("Failed to serialize object to JSON bytes", e);
         }
     }
 
     public static void write(OutputStream outputStream, Object value) throws IOException {
 
-        MAPPER.writeValue(outputStream, value);
+        JSON.writeTo(outputStream, value, FastJsonSupport.WRITER_FILTERS, FastJsonSupport.WRITER_FEATURES);
     }
 
     public static void writeWithType(OutputStream outputStream, Object value) throws IOException {
 
-        POLYMORPHIC_MAPPER.writeValue(outputStream, value);
+        JSON.writeTo(outputStream, value, FastJsonSupport.WRITER_FILTERS, FastJsonSupport.POLYMORPHIC_WRITER_FEATURES);
     }
 
     public static <T> T parse(String json, Class<T> type) {
 
         try {
-            return MAPPER.readValue(json, type);
-        } catch (JacksonException e) {
+            return JSON.parseObject(json, type, FastJsonSupport.READER_FEATURES);
+        } catch (JSONException e) {
             throw new IllegalArgumentException("Failed to deserialize JSON to " + type.getName(), e);
         }
     }
@@ -84,72 +61,76 @@ public final class Jsons {
     public static <T> T parse(String json, TypeReference<T> typeReference) {
 
         try {
-            return MAPPER.readValue(json, typeReference);
-        } catch (JacksonException e) {
+            return JSON.parseObject(json, typeReference, FastJsonSupport.READER_FEATURES);
+        } catch (JSONException e) {
             throw new IllegalArgumentException("Failed to deserialize JSON by TypeReference", e);
         }
     }
 
-    public static <T> T parse(String json, JavaType javaType) {
+    public static <T> T parse(String json, Type type) {
 
         try {
-            return MAPPER.readValue(json, javaType);
-        } catch (JacksonException e) {
-            throw new IllegalArgumentException("Failed to deserialize JSON by JavaType", e);
+            return JSON.parseObject(json, type, FastJsonSupport.READER_FEATURES);
+        } catch (JSONException e) {
+            throw new IllegalArgumentException("Failed to deserialize JSON by Type", e);
         }
     }
 
     public static <T> T parse(InputStream inputStream, Class<T> type) throws IOException {
 
-        return MAPPER.readValue(inputStream, type);
+        return JSON.parseObject(inputStream, type, FastJsonSupport.READER_FEATURES);
     }
 
     public static <T> T parseWithType(InputStream inputStream, Class<T> type) throws IOException {
 
-        return POLYMORPHIC_MAPPER.readValue(inputStream, type);
+        return JSON.parseObject(inputStream, type, FastJsonSupport.POLYMORPHIC_READER_FEATURES);
     }
 
     public static Object parse(String json) {
 
         try {
-            return MAPPER.readValue(json, Object.class);
-        } catch (JacksonException e) {
+            return JSON.parse(json, FastJsonSupport.READER_FEATURES);
+        } catch (JSONException e) {
             throw new IllegalArgumentException("Failed to deserialize JSON to Object", e);
         }
     }
 
-    public static JsonNode readTree(String json) {
+    public static JSONObject readTree(String json) {
 
         try {
-            return MAPPER.readTree(json);
-        } catch (JacksonException e) {
+            return JSON.parseObject(json, FastJsonSupport.READER_FEATURES);
+        } catch (JSONException e) {
             throw new IllegalArgumentException("Failed to read JSON tree", e);
         }
     }
 
     public static <T> T convert(Object value, Class<T> type) {
 
-        return MAPPER.convertValue(value, type);
+        if (value == null) {
+            return null;
+        }
+        return JSON.parseObject(toJson(value), type, FastJsonSupport.READER_FEATURES);
     }
 
     public static <T> T convert(Object value, TypeReference<T> typeReference) {
 
-        return MAPPER.convertValue(value, typeReference);
+        if (value == null) {
+            return null;
+        }
+        return JSON.parseObject(toJson(value), typeReference, FastJsonSupport.READER_FEATURES);
+    }
+
+    public static <T> T convert(Object value, Type type) {
+
+        if (value == null) {
+            return null;
+        }
+        return JSON.parseObject(toJson(value), type, FastJsonSupport.READER_FEATURES);
     }
 
     public static Map<String, Object> toMap(Object value) {
 
         return convert(value, new TypeReference<>() {
         });
-    }
-
-    public static ObjectReader readerFor(Class<?> type) {
-
-        return MAPPER.readerFor(type);
-    }
-
-    public static ObjectWriter writerFor(Class<?> type) {
-
-        return MAPPER.writerFor(type);
     }
 }

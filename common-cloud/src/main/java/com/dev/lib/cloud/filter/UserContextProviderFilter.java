@@ -13,18 +13,13 @@ public class UserContextProviderFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
 
-        try {
-            String userJson = RpcContext.getServerAttachment().getAttachment("user");
-            UserDetails user = userJson == null ? null : Jsons.parse(userJson, UserDetails.class);
+        String userJson = RpcContext.getServerAttachment().getAttachment("user");
+        UserDetails user = userJson == null ? null : Jsons.parse(userJson, UserDetails.class);
+        Result[] result = new Result[1];
 
-            if (user != null) {
-                // 恢复用户上下文，B 服务就能直接用 SecurityContextHolder.get()
-                SecurityContextHolder.set(user);
-            }
-            return invoker.invoke(invocation);
-        } finally {
-            SecurityContextHolder.clear();
-        }
+        // 恢复用户上下文，B 服务就能直接用 SecurityContextHolder.get()
+        SecurityContextHolder.with(user, () -> result[0] = invoker.invoke(invocation));
+        return result[0];
     }
 
 }

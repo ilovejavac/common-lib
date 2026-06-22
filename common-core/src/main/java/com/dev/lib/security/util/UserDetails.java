@@ -10,9 +10,7 @@ import lombok.experimental.Accessors;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Data
@@ -22,184 +20,134 @@ import java.util.Set;
 @Accessors(chain = true)
 public class UserDetails implements Serializable {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+	@Serial
+	private static final long serialVersionUID = 1L;
 
-    private static final String INTERNAL = "INTERNAL";
+	private static final String INTERNAL = "INTERNAL";
 
-    private static final String ANONYMOUS = "ANONYMOUS";
+	private static final String ANONYMOUS = "ANONYMOUS";
 
-    private static final String SYSTEM = "SYSTEM";
+	private static final String SYSTEM = "SYSTEM";
 
-    private static final Long ANONYMOUS_USER_ID = -1L;
+	private static final Long ANONYMOUS_USER_ID = 1000L;
 
-    private static final Long INTERNAL_USER_ID = -2L;
+	private static final Long INTERNAL_USER_ID = 2000L;
 
-    private static final Long SYSTEM_USER_ID = -3L;
+	private static final Long SYSTEM_USER_ID = 3000L;
 
-    public static final UserDetails Anonymous;
+	public static final UserDetails Anonymous;
 
-    public static final UserDetails Internal;
+	public static final UserDetails Internal;
 
-    public static final UserDetails System;
+	public static final UserDetails System;
 
-    static {
-        Anonymous = UserDetails.builder()
-                .id(ANONYMOUS_USER_ID)
-                .roles(List.of(ANONYMOUS))
-                .status(UserStatus.LOCKED)
-                .realName("Anonymous")
-                .username("anonymous")
-                .userType(UserType.ORDINARY_USER)
-                .tenant(ANONYMOUS_USER_ID)
-                .deptId(ANONYMOUS_USER_ID)
-                .deptName("Anonymous")
-                .validated(false)
-                .deptIds(Collections.emptySet())
-                .build();
+	static {
+		Anonymous = UserDetails.builder()
+				.id(ANONYMOUS_USER_ID)
+				.roles(List.of(ANONYMOUS))
+				.status(UserStatus.LOCKED)
+				.username("anonymous")
+				.tenant(ANONYMOUS_USER_ID)
+				.deptId(ANONYMOUS_USER_ID)
+				.validated(false)
+				.build();
 
-        Internal = UserDetails.builder()
-                .id(INTERNAL_USER_ID)
-                .roles(List.of(INTERNAL))
-                .status(UserStatus.ACTIVE)
-                .realName("Internal")
-                .username("internal")
-                .userType(UserType.ORDINARY_USER)
-                .tenant(INTERNAL_USER_ID)
-                .deptId(INTERNAL_USER_ID)
-                .deptName("Internal")
-                .validated(true)
-                .deptIds(Collections.emptySet())
-                .build();
+		Internal = UserDetails.builder()
+				.id(INTERNAL_USER_ID)
+				.roles(List.of(INTERNAL))
+				.status(UserStatus.ACTIVE)
+				.username("internal")
+				.tenant(INTERNAL_USER_ID)
+				.deptId(INTERNAL_USER_ID)
+				.validated(true)
+				.build();
 
-        System = UserDetails.builder()
-                .id(SYSTEM_USER_ID)
-                .roles(List.of(SYSTEM))
-                .status(UserStatus.ACTIVE)
-                .realName("System")
-                .username("system")
-                .userType(UserType.SYSTEM_ADMINISTRATOR)
-                .tenant(SYSTEM_USER_ID)
-                .deptId(SYSTEM_USER_ID)
-                .deptName("System")
-                .validated(true)
-                .deptIds(Collections.emptySet())
-                .build();
-    }
+		System = UserDetails.builder()
+				.id(SYSTEM_USER_ID)
+				.roles(List.of(SYSTEM))
+				.status(UserStatus.ACTIVE)
+				.username("system")
+				.tenant(SYSTEM_USER_ID)
+				.deptId(SYSTEM_USER_ID)
+				.validated(true)
+				.build();
+	}
 
-    private Boolean validated;
+	private Boolean validated;
 
-    // ===== 基础信息 =====
-    private Long id;
+	// ===== 基础信息 =====
+	private Long id;
 
-    private String username;
+	private String username;
 
-    private Long tenant;  // 租户 ID
+	private Long tenant;  // 租户 ID
 
-    private String email;
+	// ===== 权限信息 =====
+	private List<String> permissions;
 
-    private String phone;
+	private List<String> roles;
 
-    // ===== 权限信息 =====
-    private List<String> permissions;
+	// ===== 部门/组织信息 (数据权限) =====
+	private Long deptId;              // 部门 ID
 
-    private List<String> roles;
+	// ===== 用户状态  =====
+	private UserStatus status;           // 用户状态
 
-    // ===== 部门/组织信息 (数据权限) =====
-    private Long deptId;              // 部门 ID
+	// ===== 客户端信息 (审计/安全) =====
+	private String clientIp;          // 客户端 IP
 
-    private String deptName;          // 部门名称(可选,方便日志)
+	private String clientType;        // 客户端类型: WEB, APP, MINI_PROGRAM
 
-    private Set<Long> deptIds;        // 数据权限范围内的所有部门 ID
+	private String deviceId;          // 设备 ID(可选)
 
-    // ===== 用户状态  =====
-    private String realName;          // 真实姓名(用于日志/审计)
+	// ===== 工具方法 =====
 
-    private UserType userType;          // 用户类型: EMPLOYEE, ADMIN, SYSTEM 等
+	/**
+	 * 是否超级管理员
+	 */
+	public boolean isSuperAdmin() {
 
-    private UserStatus status;           // 用户状态
+		return hasRole("admin");
+	}
 
-    // ===== Token  =====
-    private String tokenId;           // Token 唯一标识(用于踢人/单点登录)
+	/**
+	 * 是否有指定权限
+	 */
+	public boolean hasPermission(String permission) {
 
-    private Long loginTime;           // 登录时间戳
+		return permissions != null && permissions.contains(permission);
+	}
 
-    private Long expireTime;          // 过期时间戳
+	/**
+	 * 是否有指定角色
+	 */
+	public boolean hasRole(String role) {
 
-    // ===== 客户端信息 (审计/安全) =====
-    private String clientIp;          // 客户端 IP
+		return roles != null && roles.contains(role);
+	}
 
-    private String clientType;        // 客户端类型: WEB, APP, MINI_PROGRAM
+	/**
+	 * 是否匿名用户
+	 */
+	public boolean isAnonymous() {
 
-    private String deviceId;          // 设备 ID(可选)
+		return ANONYMOUS_USER_ID.equals(this.id);
+	}
 
-    // ===== 扩展字段 =====
-    private Map<String, Object> extra;  // 扩展属性(避免频繁改 UserContext)
+	/**
+	 * 是否内部用户
+	 */
+	public boolean isInternal() {
 
-    // ===== 工具方法 =====
+		return INTERNAL_USER_ID.equals(this.id);
+	}
 
-    /**
-     * 是否超级管理员
-     */
-    public boolean isSuperAdmin() {
+	/**
+	 * 是否真实用户
+	 */
+	public boolean isRealUser() {
 
-        return UserType.SYSTEM_ADMINISTRATOR.equals(userType);
-    }
-
-    /**
-     * 是否有指定权限
-     */
-    public boolean hasPermission(String permission) {
-
-        return permissions != null && permissions.contains(permission);
-    }
-
-    /**
-     * 是否有指定角色
-     */
-    public boolean hasRole(String role) {
-
-        return roles != null && roles.contains(role);
-    }
-
-    /**
-     * 是否属于指定部门
-     */
-    public boolean belongsToDept(Long deptId) {
-
-        return deptIds != null && deptIds.contains(deptId);
-    }
-
-    /**
-     * Token 是否过期
-     */
-    public boolean isExpired() {
-
-        return expireTime != null && java.lang.System.currentTimeMillis() > expireTime;
-    }
-
-    /**
-     * 是否匿名用户
-     */
-    public boolean isAnonymous() {
-
-        return ANONYMOUS_USER_ID.equals(this.id);
-    }
-
-    /**
-     * 是否内部用户
-     */
-    public boolean isInternal() {
-
-        return INTERNAL_USER_ID.equals(this.id);
-    }
-
-    /**
-     * 是否真实用户
-     */
-    public boolean isRealUser() {
-
-        return this.id != null && this.id > 0;
-    }
+		return this.id != null && this.id > 0;
+	}
 
 }

@@ -4,6 +4,7 @@ import com.dev.lib.jpa.config.AppDialectProperties;
 import com.dev.lib.jpa.config.BaseRepositoryFactoryBeanPostProcessor;
 import com.dev.lib.jpa.config.CommonJpaPackageRegistrar;
 import com.dev.lib.jpa.config.FinalSlowQueryLoggingListener;
+import com.dev.lib.jpa.config.HibernateJsonConfig;
 import com.dev.lib.jpa.config.JpaHikariDefaultsProperties;
 import com.dev.lib.jpa.config.SingleDatasourceOnlyHibernatePropertiesCustomizer;
 import com.dev.lib.jpa.config.SlowQueryProperties;
@@ -30,7 +31,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 @AutoConfiguration(before = DataJpaRepositoriesAutoConfiguration.class)
-@Import({CommonJpaPackageRegistrar.class, SingleDatasourceRepositoryRegistrar.class})
+@Import({CommonJpaPackageRegistrar.class, SingleDatasourceRepositoryRegistrar.class, HibernateJsonConfig.class})
 @EnableConfigurationProperties({AppDialectProperties.class, SlowQueryProperties.class, JpaHikariDefaultsProperties.class})
 public class CommonJpaAutoConfig {
 

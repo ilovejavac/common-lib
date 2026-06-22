@@ -3,12 +3,12 @@ package com.dev.lib.aksk.web;
 import com.dev.lib.aksk.annotation.Aksk;
 import com.dev.lib.aksk.config.AkskProperties;
 import com.dev.lib.aksk.domain.model.AkskAuthentication;
-import com.dev.lib.aksk.domain.model.AkskContextHolder;
 import com.dev.lib.aksk.domain.model.AkskVerificationRequest;
 import com.dev.lib.aksk.domain.service.AkskHeaderResolver;
 import com.dev.lib.aksk.domain.service.AkskSigner;
 import com.dev.lib.aksk.domain.service.AkskVerifier;
 import com.dev.lib.exceptions.BizException;
+import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.web.model.StandardErrorCodes;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -32,7 +32,7 @@ class AkskAuthenticationInterceptorTest {
     @AfterEach
     void tearDown() {
 
-        AkskContextHolder.clear();
+        SecurityContextHolder.clear();
     }
 
     @Test
@@ -51,7 +51,7 @@ class AkskAuthenticationInterceptorTest {
         assertThat(result).isTrue();
         assertThat(verifier.calls).isZero();
         assertThat(successHandler.calls).isZero();
-        assertThat(AkskContextHolder.isAuthenticated()).isFalse();
+        assertThat(SecurityContextHolder.isLogin()).isFalse();
     }
 
     @Test
@@ -59,12 +59,13 @@ class AkskAuthenticationInterceptorTest {
 
         RecordingVerifier verifier = new RecordingVerifier(authentication());
         AkskAuthenticationInterceptor interceptor = interceptor(verifier);
+        HandlerMethod handler = handler(new PlainController(), "methodAksk");
 
-        interceptor.preHandle(
+        SecurityContextHolder.withEmptyContext(() -> interceptor.preHandle(
                 request("POST", "/partner/method", "{}"),
                 new MockHttpServletResponse(),
-                handler(new PlainController(), "methodAksk")
-        );
+                handler
+        ));
 
         assertThat(verifier.calls).isEqualTo(1);
         assertThat(verifier.lastRequest.getRequiredScopes()).containsExactly("method:scope");
@@ -76,12 +77,13 @@ class AkskAuthenticationInterceptorTest {
 
         RecordingVerifier verifier = new RecordingVerifier(authentication());
         AkskAuthenticationInterceptor interceptor = interceptor(verifier);
+        HandlerMethod handler = handler(new ClassLevelController(), "classAksk");
 
-        interceptor.preHandle(
+        SecurityContextHolder.withEmptyContext(() -> interceptor.preHandle(
                 request("GET", "/partner/class", ""),
                 new MockHttpServletResponse(),
-                handler(new ClassLevelController(), "classAksk")
-        );
+                handler
+        ));
 
         assertThat(verifier.calls).isEqualTo(1);
         assertThat(verifier.lastRequest.getRequiredScopes()).containsExactly("class:scope");
@@ -93,12 +95,13 @@ class AkskAuthenticationInterceptorTest {
 
         RecordingVerifier verifier = new RecordingVerifier(authentication());
         AkskAuthenticationInterceptor interceptor = interceptor(verifier);
+        HandlerMethod handler = handler(new ClassLevelController(), "methodOverrideAksk");
 
-        interceptor.preHandle(
+        SecurityContextHolder.withEmptyContext(() -> interceptor.preHandle(
                 request("POST", "/partner/override", "raw-body"),
                 new MockHttpServletResponse(),
-                handler(new ClassLevelController(), "methodOverrideAksk")
-        );
+                handler
+        ));
 
         assertThat(verifier.calls).isEqualTo(1);
         assertThat(verifier.lastRequest.getRequiredScopes()).containsExactly("method:override");
@@ -116,14 +119,21 @@ class AkskAuthenticationInterceptorTest {
         RecordingSuccessHandler successHandler = new RecordingSuccessHandler();
         AkskAuthenticationInterceptor interceptor = interceptor(verifier, successHandler);
         MockHttpServletRequest request = request("POST", "/partner/method", "{}");
+        HandlerMethod handler = handler(new PlainController(), "methodAksk");
 
-        interceptor.preHandle(
-                request,
-                new MockHttpServletResponse(),
-                handler(new PlainController(), "methodAksk")
-        );
-
-        assertThat(AkskContextHolder.current().getAccessKey()).isEqualTo("ak_partner");
+        SecurityContextHolder.withEmptyContext(() -> {
+            interceptor.preHandle(
+                    request,
+                    new MockHttpServletResponse(),
+                    handler
+            );
+            assertThat(SecurityContextHolder.current().getUsername()).isEqualTo("partner-code");
+//            assertThat(SecurityContextHolder.current().getRealName()).isEqualTo("Partner System");
+            assertThat(SecurityContextHolder.getRoles()).containsExactly("AKSK");
+            assertThat(SecurityContextHolder.getPermissions()).containsExactly("method:scope");
+            assertThat(SecurityContextHolder.current().getClientIp()).isEqualTo("127.0.0.1");
+//            assertThat(SecurityContextHolder.current().getExtra()).containsEntry("accessKey", "ak_partner");
+        });
         assertThat(successHandler.calls).isEqualTo(1);
         assertThat(successHandler.authentication).isSameAs(authentication);
         assertThat(successHandler.request).isSameAs(request);
@@ -146,7 +156,7 @@ class AkskAuthenticationInterceptorTest {
                 .extracting("coder")
                 .isEqualTo(StandardErrorCodes.PERMISSION_DENIED);
 
-        assertThat(AkskContextHolder.isAuthenticated()).isFalse();
+        assertThat(SecurityContextHolder.isLogin()).isFalse();
         assertThat(successHandler.calls).isZero();
     }
 
@@ -172,15 +182,20 @@ class AkskAuthenticationInterceptorTest {
     }
 
     @Test
-    void afterCompletionShouldClearAkskContext() throws Exception {
+    void afterCompletionShouldLeaveSecurityContextToRequestScope() throws Exception {
 
         AkskAuthenticationInterceptor interceptor = interceptor(new RecordingVerifier(authentication()));
         MockHttpServletRequest request = request("POST", "/partner/method", "{}");
+        HandlerMethod handler = handler(new PlainController(), "methodAksk");
 
-        interceptor.preHandle(request, new MockHttpServletResponse(), handler(new PlainController(), "methodAksk"));
-        interceptor.afterCompletion(request, new MockHttpServletResponse(), handler(new PlainController(), "methodAksk"), null);
+        SecurityContextHolder.withEmptyContext(() -> {
+            interceptor.preHandle(request, new MockHttpServletResponse(), handler);
+            afterCompletion(interceptor, request, handler);
 
-        assertThat(AkskContextHolder.isAuthenticated()).isFalse();
+            assertThat(SecurityContextHolder.current().getUsername()).isEqualTo("partner-code");
+        });
+
+        assertThat(SecurityContextHolder.isLogin()).isFalse();
     }
 
     private AkskAuthenticationInterceptor interceptor(RecordingVerifier verifier) {
@@ -214,6 +229,19 @@ class AkskAuthenticationInterceptorTest {
 
         Method method = bean.getClass().getMethod(methodName);
         return new HandlerMethod(bean, method);
+    }
+
+    private void afterCompletion(
+            AkskAuthenticationInterceptor interceptor,
+            MockHttpServletRequest request,
+            HandlerMethod handler
+    ) {
+
+        try {
+            interceptor.afterCompletion(request, new MockHttpServletResponse(), handler, null);
+        } catch (Exception ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     private AkskAuthentication authentication() {

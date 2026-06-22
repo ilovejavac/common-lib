@@ -13,8 +13,8 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
 import org.springframework.kafka.listener.ContainerProperties
-import org.springframework.kafka.support.serializer.JsonDeserializer
-import org.springframework.kafka.support.serializer.JsonSerializer
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.StringSerializer
 
 @AutoConfiguration
 class KafkaMQAutoConfiguration {
@@ -23,8 +23,8 @@ class KafkaMQAutoConfiguration {
     fun producerFactory(): ProducerFactory<String, Any> {
         val config = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to "\${spring.kafka.bootstrap-servers}",
-            ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
-            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
+            ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
+            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to FastJsonKafkaSerializer::class.java,
             ProducerConfig.ACKS_CONFIG to "all"
         )
         return DefaultKafkaProducerFactory(config)
@@ -34,8 +34,8 @@ class KafkaMQAutoConfiguration {
     fun consumerFactory(): ConsumerFactory<String, Any> {
         val config = mapOf(
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to "\${spring.kafka.bootstrap-servers}",
-            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to JsonDeserializer::class.java,
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to JsonDeserializer::class.java,
+            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to FastJsonKafkaDeserializer::class.java,
             ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to "earliest",
             ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG to "false"
         )

@@ -52,9 +52,6 @@ public class InternalInterceptor implements HandlerInterceptor {
 //        if (Boolean.FALSE.equals(authenticateService.validToken(token))) {
 //            throw new BizException(403, "服务认证失败");
 //        }
-        if (!SecurityContextHolder.isLogin()) {
-            SecurityContextHolder.set(UserDetails.Internal.setTokenId(token));
-        }
 
         return true;
     }

@@ -2,13 +2,13 @@
 
 `common-aksk` provides AccessKey/SecretKey credential management and signed-request verification for third-party API access.
 
-Use it when a caller cannot use the normal user token flow but still needs a stable, revocable identity with scoped permissions. The module owns credential lifecycle, signing primitives, `@Aksk`, scope checks, Spring MVC AK/SK interception, request body caching, and `AkskContextHolder`.
+Use it when a caller cannot use the normal user token flow but still needs a stable, revocable identity with scoped permissions. The module owns credential lifecycle, signing primitives, `@Aksk`, scope checks, Spring MVC AK/SK interception, request body caching, and writes successful AK/SK identities into `SecurityContextHolder`.
 
-`common-aksk` uses the `common-core` MVC interceptor hook, so a service that depends on `common-aksk` directly is enough to verify `@Aksk` endpoints. Add `common-security` only when the service also needs token authentication, admin path protection, role/permission checks, or `SecurityContextHolder` integration.
+`common-aksk` uses the `common-core` MVC interceptor hook and expects requests to already run inside a request-scoped `SecurityContextHolder` filter. `common-security` supplies that filter; if a service depends on `common-aksk` directly, register an equivalent scope wrapper before MVC dispatch.
 
 ## Dependencies
 
-For AK/SK-only services, depend on `common-aksk` directly:
+For AK/SK-only services that already provide a `SecurityContextHolder` request scope, depend on `common-aksk` directly:
 
 ```xml
 <dependency>
@@ -17,7 +17,7 @@ For AK/SK-only services, depend on `common-aksk` directly:
 </dependency>
 ```
 
-For services that also need token/admin/permission security, depend on `common-security`. It depends on `common-aksk`, registers only its internal/token auth interceptors through the same `common-core` hook, and contributes an AK/SK success handler that writes validated AK/SK authentication into `SecurityContextHolder`.
+For services that also need token/admin/permission security, depend on `common-security`. It depends on `common-aksk`, registers only its internal/token auth interceptors through the same `common-core` hook, and provides the request-scoped `SecurityContextHolder` filter that AK/SK writes into after verification.
 
 ```xml
 <dependency>
@@ -187,13 +187,12 @@ public final class AkskClientSigner {
 
 The example above accepts a credential that has `order:read` or `order:export`. Empty annotation scopes mean identity verification only.
 
-After successful verification:
+After successful verification, `SecurityContextHolder` contains a validated non-admin `UserDetails`:
 
-- `AkskContextHolder` contains the AK/SK authentication details.
-- If `common-security` is present, `SecurityContextHolder` contains a validated non-admin `UserDetails`.
-- If `common-security` is present, the user role is `AKSK`.
-- If `common-security` is present, credential scopes are mirrored as permissions.
-- If `common-security` is present, `validated` is `true`.
+- The user role is `AKSK`.
+- Credential scopes are mirrored as permissions.
+- `validated` is `true`.
+- AK/SK fields such as access key, credential id, subject code, and properties are available from `UserDetails.extra`.
 
 ## Security Notes
 

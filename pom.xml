@@ -14,7 +14,7 @@
 
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.7</version>
     <packaging>pom</packaging>
 
     <name>common-lib</name>
@@ -54,7 +54,6 @@
         <module>common-storage</module>
         <module>common-cache</module>
         <module>common-excel</module>
-        <module>common-security-sa</module>
         <module>common-web-notify</module>
 
         <module>common-data-mongo</module>
@@ -74,6 +73,7 @@
         <module>common-security-aes</module>
         <module>common-user</module>
         <module>common-aksk</module>
+        <module>common-cloud-gateway</module>
     </modules>
 
     <properties>
@@ -84,7 +84,7 @@
 
         <!-- Internal coordinates -->
         <lib.groupId>io.github.ilovejavac</lib.groupId>
-        <lib.version>1.6.0</lib.version>
+        <lib.version>1.6.7</lib.version>
 
         <!-- Spring ecosystem -->
         <spring-boot.version>4.1.0</spring-boot.version>
@@ -108,7 +108,6 @@
         <!-- Middleware / integration -->
         <datasource-decorator.version>2.0.0</datasource-decorator.version>
         <dubbo.version>3.3.6</dubbo.version>
-        <sa-token.version>1.45.0</sa-token.version>
         <jwt.version>0.12.6</jwt.version>
         <redisson.version>3.52.0</redisson.version>
         <rocketmq.version>2.3.5</rocketmq.version>
@@ -305,11 +304,6 @@
 
             <!-- Security -->
             <dependency>
-                <groupId>cn.dev33</groupId>
-                <artifactId>sa-token-spring-boot4-starter</artifactId>
-                <version>${sa-token.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-api</artifactId>
                 <version>${jwt.version}</version>
@@ -410,6 +404,11 @@
             <dependency>
                 <groupId>com.alibaba.fastjson2</groupId>
                 <artifactId>fastjson2</artifactId>
+                <version>${fastjson2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2-extension-spring6</artifactId>
                 <version>${fastjson2.version}</version>
             </dependency>
             <dependency>
@@ -536,11 +535,6 @@
             </dependency>
             <dependency>
                 <groupId>io.github.ilovejavac</groupId>
-                <artifactId>common-security-sa</artifactId>
-                <version>${lib.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.ilovejavac</groupId>
                 <artifactId>common-web-notify</artifactId>
                 <version>${lib.version}</version>
             </dependency>
@@ -599,6 +593,11 @@
                 <artifactId>common-aksk</artifactId>
                 <version>${lib.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.ilovejavac</groupId>
+                <artifactId>common-cloud-gateway</artifactId>
+                <version>${lib.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -625,10 +624,6 @@
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-reactor</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-kotlin</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -667,10 +662,6 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-webmvc</artifactId>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>tools.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
         </dependency>
     </dependencies>
 

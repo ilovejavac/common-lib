@@ -5,7 +5,6 @@ import org.springframework.amqp.core.AcknowledgeMode
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory
 import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter
 import org.springframework.amqp.support.converter.MessageConverter
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
@@ -15,7 +14,7 @@ import org.springframework.context.annotation.Bean
 class RabbitMQAutoConfiguration {
 
     @Bean
-    fun messageConverter(): MessageConverter = Jackson2JsonMessageConverter()
+    fun messageConverter(): MessageConverter = FastJsonMessageConverter()
 
     @Bean
     fun rabbitListenerContainerFactory(

@@ -38,29 +38,14 @@ public class AuthInterceptor implements HandlerInterceptor {
         // 放行不需要认证的接口
         if (validator.shouldSkip(request)) {
             log.info("skip security valid, {}", request.getRequestURI());
-            validator.setContextInfo(request);
 
             return true;
         }
-
-        // 解析 token 设置用户信息
-        validator.setContextInfo(request);
 
         // 校验请求权限
         validator.valid(handlerMethod);
 
         return true;
-    }
-
-    @Override
-    public void afterCompletion(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull Object handler,
-            Exception ex
-    ) {
-        // 清理 ThreadLocal
-        SecurityContextHolder.clear();
     }
 
 }

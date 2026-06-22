@@ -1,6 +1,6 @@
 package com.dev.lib.dict.serialize;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.alibaba.fastjson2.annotation.JSONField;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DictItem {
 
-    @JsonProperty("code")
+    @JSONField(name = "code")
     private String itemCode;
 
-    @JsonProperty("label")
+    @JSONField(name = "label")
     private String itemLabel;
 
     private String css;

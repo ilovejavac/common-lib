@@ -3,27 +3,36 @@ package com.dev.lib.aksk.web;
 import com.dev.lib.aksk.annotation.Aksk;
 import com.dev.lib.aksk.config.AkskProperties;
 import com.dev.lib.aksk.domain.model.AkskAuthentication;
-import com.dev.lib.aksk.domain.model.AkskContextHolder;
 import com.dev.lib.aksk.domain.model.AkskVerificationRequest;
 import com.dev.lib.aksk.domain.service.AkskHeaderResolver;
 import com.dev.lib.aksk.domain.service.AkskVerifier;
 import com.dev.lib.exceptions.BizException;
 import com.dev.lib.security.util.ClientInfoExtractor;
+import com.dev.lib.security.util.SecurityContextHolder;
+import com.dev.lib.security.util.UserDetails;
 import com.dev.lib.web.model.StandardErrorCodes;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.util.StringUtils;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 @RequiredArgsConstructor
 public class AkskAuthenticationInterceptor implements HandlerInterceptor {
+
+    private static final String AKSK_ROLE = "AKSK";
 
     private final AkskVerifier verifier;
 
@@ -50,20 +59,9 @@ public class AkskAuthenticationInterceptor implements HandlerInterceptor {
         }
 
         AkskAuthentication authentication = verifier.verify(verificationRequest(request, annotation));
-        AkskContextHolder.set(authentication);
+        SecurityContextHolder.set(toUserDetails(authentication));
         successHandlers.forEach(successHandler -> successHandler.onSuccess(authentication, request));
         return true;
-    }
-
-    @Override
-    public void afterCompletion(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull Object handler,
-            Exception ex
-    ) {
-
-        AkskContextHolder.clear();
     }
 
     private Aksk resolveAnnotation(HandlerMethod handlerMethod) {
@@ -101,5 +99,47 @@ public class AkskAuthenticationInterceptor implements HandlerInterceptor {
         } catch (IOException ex) {
             throw new BizException(StandardErrorCodes.REQUEST_BODY_INVALID, "AK/SK 请求体读取失败");
         }
+    }
+
+    private UserDetails toUserDetails(AkskAuthentication authentication) {
+
+        return UserDetails.builder()
+                .id(syntheticUserId(authentication))
+                .username(username(authentication))
+                .roles(List.of(AKSK_ROLE))
+                .permissions(new ArrayList<>(Optional.ofNullable(authentication.getScopes()).orElse(Set.of())))
+                .validated(true)
+                .clientIp(authentication.getClientIp())
+                .build();
+    }
+
+    private Long syntheticUserId(AkskAuthentication authentication) {
+
+        int hash = authentication.getCredentialId() == null
+                   ? Optional.ofNullable(authentication.getAccessKey()).orElse("aksk").hashCode()
+                   : authentication.getCredentialId().hashCode();
+        long unsignedHash = Integer.toUnsignedLong(hash);
+        return -Math.max(1L, unsignedHash);
+    }
+
+    private String username(AkskAuthentication authentication) {
+
+        if (StringUtils.hasText(authentication.getSubjectCode())) {
+            return authentication.getSubjectCode();
+        }
+        if (StringUtils.hasText(authentication.getAccessKey())) {
+            return authentication.getAccessKey();
+        }
+        return "aksk";
+    }
+
+    private Map<String, Object> extra(AkskAuthentication authentication) {
+
+        Map<String, Object> extra = new LinkedHashMap<>();
+        extra.put("akskCredentialId", authentication.getCredentialId());
+        extra.put("accessKey", authentication.getAccessKey());
+        extra.put("subjectCode", authentication.getSubjectCode());
+        extra.put("properties", authentication.getProperties());
+        return extra;
     }
 }

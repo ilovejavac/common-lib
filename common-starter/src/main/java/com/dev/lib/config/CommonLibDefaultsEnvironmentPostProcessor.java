@@ -2,6 +2,7 @@ package com.dev.lib.config;
 
 import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
 import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -111,6 +112,6 @@ public class CommonLibDefaultsEnvironmentPostProcessor implements EnvironmentPos
     @Override
     public int getOrder() {
 
-        return Ordered.LOWEST_PRECEDENCE;
+        return ConfigDataEnvironmentPostProcessor.ORDER - 1;
     }
 }

@@ -2,6 +2,7 @@ package com.dev.lib.config;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.MutablePropertySources;
@@ -13,6 +14,13 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CommonLibDefaultsEnvironmentPostProcessorTest {
+
+    @Test
+    void shouldRunBeforeConfigDataImport() {
+
+        assertThat(new CommonLibDefaultsEnvironmentPostProcessor().getOrder())
+                .isLessThan(ConfigDataEnvironmentPostProcessor.ORDER);
+    }
 
     @Test
     void shouldLoadCommonLibDefaultsAndKeepBusinessOverride() {

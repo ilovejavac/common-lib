@@ -19,12 +19,12 @@ public class HibernateJsonConfig {
 
         return properties -> properties.put(
                 "hibernate.type.json_format_mapper",
-                new JacksonFormatMapper()
+                new FastJsonFormatMapper()
         );
     }
 
     @Slf4j
-    static class JacksonFormatMapper implements FormatMapper {
+    static class FastJsonFormatMapper implements FormatMapper {
 
         @Override
         public <T> T fromString(

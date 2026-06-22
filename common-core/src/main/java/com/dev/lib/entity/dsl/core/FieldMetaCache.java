@@ -1,11 +1,11 @@
 package com.dev.lib.entity.dsl.core;
 
+import com.alibaba.fastjson2.annotation.JSONField;
 import com.dev.lib.entity.dsl.BizRef;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.ConditionIgnore;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.dsl.QueryType;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -351,7 +351,8 @@ public class FieldMetaCache {
 
     private static boolean shouldSkip(Field field) {
 
-        return field.isAnnotationPresent(JsonIgnore.class)
+        JSONField jsonField = field.getAnnotation(JSONField.class);
+        return (jsonField != null && !jsonField.serialize() && !jsonField.deserialize())
                 || field.isAnnotationPresent(ConditionIgnore.class)
                 || field.getName().equals("entityPath")
                 || field.getName().equals("externalFields")

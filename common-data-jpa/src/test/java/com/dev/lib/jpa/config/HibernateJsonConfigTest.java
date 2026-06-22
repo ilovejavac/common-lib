@@ -14,9 +14,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HibernateJsonConfigTest {
 
     @Test
-    void shouldRoundTripJsonUsingSharedJacksonRules() {
+    void shouldRoundTripJsonUsingSharedFastJsonRules() {
 
-        HibernateJsonConfig.JacksonFormatMapper formatMapper = new HibernateJsonConfig.JacksonFormatMapper();
+        HibernateJsonConfig.FastJsonFormatMapper formatMapper = new HibernateJsonConfig.FastJsonFormatMapper();
         JavaType<Payload> javaType = new PayloadJavaType();
 
         Payload payload = new Payload();

@@ -14,7 +14,7 @@ services:
     volumes:
       - ./data/minio:/bitnami/minio/data
     networks:
-      - geoai-infra
+      - infra
     deploy:
       resources:
         limits:
@@ -31,7 +31,7 @@ services:
     volumes:
       - ./data/pgsql:/var/lib/postgresql
     networks:
-      - geoai-infra
+      - infra
     deploy:
       resources:
         limits:
@@ -50,7 +50,7 @@ services:
     volumes:
       - ./data/opensearch:/usr/share/opensearch/data
     networks:
-      - geoai-infra
+      - infra
     deploy:
       resources:
         limits:
@@ -70,7 +70,7 @@ services:
     volumes:
       - ./data/rabbitmq:/bitnami/rabbitmq/mnesia
     networks:
-      - geoai-infra
+      - infra
     deploy:
       resources:
         limits:
@@ -88,49 +88,36 @@ services:
       - ./data/redis:/bitnami/redis/data
       - ./config/redis.conf:/bitnami/redis/etc/redis.conf
     networks:
-      - geoai-infra
+      - infra
     deploy:
       resources:
         limits:
           memory: 8G
 
-#  embedding:
-#    image: ghcr.io/huggingface/text-embeddings-inference:latest
-#    container_name: embedding
-#    restart: unless-stopped
-#    command: --model-id BAAI/bge-large-zh-v1.5
-#    ports:
-#      - "9080:80"
-#    volumes:
-#      - ./data/embedding:/data
-#    networks:
-#      - geoai-infra
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 2G
-#
-#  rerank:
-#    image: ghcr.io/huggingface/text-embeddings-inference:latest
-#    container_name: rerank
-#    restart: unless-stopped
-#    command: --model-id BAAI/bge-reranker-large
-#    ports:
-#      - "9081:80"
-#    volumes:
-#      - ./data/rerank:/data
-#    networks:
-#      - geoai-infra
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 2G
-# ocr
+  nacos:
+    image: nacos/nacos-server:v3.2.2
+    container_name: nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:-VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg=}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:-serverIdentity}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:-security}
+    ports:
+      - "18080:8080"
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+    volumes:
+      - ./data/nacos:/home/nacos/data
+      - ./logs/nacos:/home/nacos/logs
+    networks:
+      - infra
 
 networks:
-  geoai-infra:
-    name: geoai-infra
+  infra:
+    name: infra
     driver: bridge
     ipam:
       config:
-        - subnet: 192.168.33.0/24
+        - subnet: 192.168.81.0/24

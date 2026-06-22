@@ -1,204 +1,190 @@
 package com.dev.lib.security.util;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 public class SecurityContextHolder {
 
-    private static final ThreadLocal<UserDetails> holder = new ThreadLocal<>();
+	private static final ScopedValue<SecurityContext> holder = ScopedValue.newInstance();
 
-    private SecurityContextHolder() {
+	private SecurityContextHolder() {
 
-    }
+	}
 
-    // ===== 基础方法 =====
+	// ===== 基础方法 =====
 
-    public static void set(UserDetails context) {
+	public static void set(UserDetails context) {
 
-        holder.set(context);
-    }
+		currentContext().userDetails = context;
+	}
 
-    public static void clear() {
+	public static void clear() {
 
-        holder.remove();
-    }
+		if (holder.isBound()) {
+			holder.get().userDetails = null;
+		}
+	}
 
-    public static UserDetails get() {
+	public static UserDetails get() {
 
-        return holder.get();
-    }
+		return holder.isBound() ? holder.get().userDetails : null;
+	}
 
-    // ===== 便捷方法 =====
-    public static boolean isLogin() {
+	// ===== 便捷方法 =====
+	public static boolean isLogin() {
 
-        return holder.get() != null && !UserDetails.Anonymous.equals(holder.get());
-    }
+		UserDetails userDetails = get();
+		return userDetails != null
+				&& !UserDetails.Anonymous.equals(userDetails)
+				&& Boolean.TRUE.equals(userDetails.getValidated());
+	}
 
-    public static boolean validated() {
+	public static boolean validated() {
 
-        return isLogin() && holder.get().getValidated();
-    }
+		return isLogin();
+	}
 
-    public static void with(UserDetails userDetails, Runnable task) {
+	public static void with(UserDetails userDetails, Runnable task) {
 
-        UserDetails older = holder.get();
-        holder.set(userDetails);
-        try {
-            task.run();
-        } finally {
-            holder.set(older);
-        }
-    }
+		ScopedValue.where(holder, new SecurityContext(userDetails)).run(task);
+	}
 
-    public static void withSystem(Runnable task) {
+	public static void withEmptyContext(Runnable task) {
 
-        with(UserDetails.System, task);
-    }
+		with(null, task);
+	}
 
-    public static void withInternal(Runnable task) {
+	public static void withSystem(Runnable task) {
 
-        with(UserDetails.Internal, task);
-    }
+		with(UserDetails.System, task);
+	}
 
-    public static void withAnonymous(Runnable task) {
+	public static void withInternal(Runnable task) {
 
-        with(UserDetails.Anonymous, task);
-    }
+		with(UserDetails.Internal, task);
+	}
 
-    /**
-     * 获取当前用户(未登录返回 Anonymous)
-     */
-    public static UserDetails current() {
+	public static void withAnonymous(Runnable task) {
 
-        return Optional.ofNullable(holder.get())
-                .orElse(UserDetails.Anonymous);
-    }
+		with(UserDetails.Anonymous, task);
+	}
 
-    /**
-     * 是否已登录真实用户
-     */
-    public static boolean isAuthenticated() {
+	/**
+	 * 获取当前用户(未登录返回 Anonymous)
+	 */
+	public static UserDetails current() {
 
-        return current().isRealUser();
-    }
+		return Optional.ofNullable(get())
+				.orElse(UserDetails.Anonymous);
+	}
 
-    /**
-     * 是否匿名用户
-     */
-    public static boolean isAnonymous() {
+	/**
+	 * 是否匿名用户
+	 */
+	public static boolean isAnonymous() {
 
-        return current().isAnonymous();
-    }
+		return current().isAnonymous();
+	}
 
-    /**
-     * 是否内部用户
-     */
-    public static boolean isInternal() {
+	/**
+	 * 是否内部用户
+	 */
+	public static boolean isInternal() {
 
-        return current().isInternal();
-    }
+		return current().isInternal();
+	}
 
-    // ===== 用户信息获取 =====
+	// ===== 用户信息获取 =====
 
-    /**
-     * 获取用户ID(匿名返回 -1L)
-     */
-    public static Long getUserId() {
+	/**
+	 * 获取用户ID(匿名返回 -1L)
+	 */
+	public static Long getUserId() {
 
-        return current().getId();
-    }
+		return current().getId();
+	}
 
-    /**
-     * 获取真实用户ID(匿名返回 null)
-     */
-    public static Long getUserIdOrNull() {
+	/**
+	 * 获取用户名(匿名返回 "anonymous")
+	 */
+	public static String getUsername() {
 
-        UserDetails user = current();
-        return user.isRealUser() ? user.getId() : null;
-    }
+		return current().getUsername();
+	}
 
-    /**
-     * 获取用户ID或抛出异常
-     */
-    public static Long getUserIdOrThrow() {
+	/**
+	 * 获取租户ID
+	 */
+	public static Long getTenantId() {
 
-        UserDetails user = current();
-        if (!user.isRealUser()) {
-            throw new IllegalStateException("需要登录");
-        }
-        return user.getId();
-    }
+		return current().getTenant();
+	}
 
-    /**
-     * 获取用户名(匿名返回 "anonymous")
-     */
-    public static String getUsername() {
+	/**
+	 * 获取部门ID
+	 */
+	public static Long getDeptId() {
 
-        return current().getUsername();
-    }
+		return current().getDeptId();
+	}
 
-    /**
-     * 获取真实用户名(匿名返回 null)
-     */
-    public static String getUsernameOrNull() {
+	// ===== 权限方法 =====
 
-        UserDetails user = current();
-        return user.isRealUser() ? user.getUsername() : null;
-    }
+	public static List<String> getPermissions() {
 
-    /**
-     * 获取租户ID
-     */
-    public static Long getTenantId() {
+		return Optional.ofNullable(current().getPermissions())
+				.orElse(Collections.emptyList());
+	}
 
-        return current().getTenant();
-    }
+	public static List<String> getRoles() {
 
-    /**
-     * 获取部门ID
-     */
-    public static Long getDeptId() {
+		return Optional.ofNullable(current().getRoles())
+				.orElse(Collections.emptyList());
+	}
 
-        return current().getDeptId();
-    }
+	/**
+	 * 是否有指定权限
+	 */
+	public static boolean hasPermission(String... permissions) {
 
-    // ===== 权限方法 =====
+		return Arrays.stream(permissions).allMatch(current()::hasPermission);
+	}
 
-    public static List<String> getPermissions() {
+	/**
+	 * 是否有指定角色
+	 */
+	public static boolean hasRole(String... roles) {
 
-        return Optional.ofNullable(current().getPermissions())
-                .orElse(Collections.emptyList());
-    }
+		return Arrays.stream(roles).allMatch(current()::hasRole);
+	}
 
-    public static List<String> getRoles() {
+	/**
+	 * 是否超级管理员
+	 */
+	public static boolean isSuperAdmin() {
 
-        return Optional.ofNullable(current().getRoles())
-                .orElse(Collections.emptyList());
-    }
+		return current().isSuperAdmin();
+	}
 
-    /**
-     * 是否有指定权限
-     */
-    public static boolean hasPermission(String permission) {
+	private static SecurityContext currentContext() {
 
-        return current().hasPermission(permission);
-    }
+		if (!holder.isBound()) {
+			throw new IllegalStateException("SecurityContextHolder requires an active ScopedValue context");
+		}
+		return holder.get();
+	}
 
-    /**
-     * 是否有指定角色
-     */
-    public static boolean hasRole(String role) {
+	private static class SecurityContext {
 
-        return current().hasRole(role);
-    }
+		private UserDetails userDetails;
 
-    /**
-     * 是否超级管理员
-     */
-    public static boolean isSuperAdmin() {
+		private SecurityContext(UserDetails userDetails) {
 
-        return current().isSuperAdmin();
-    }
+			this.userDetails = userDetails;
+		}
+
+	}
 
 }

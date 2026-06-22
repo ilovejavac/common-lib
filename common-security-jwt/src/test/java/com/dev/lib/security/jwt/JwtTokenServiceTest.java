@@ -6,18 +6,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtTokenServiceTest {
 
-    @Test
-    void shouldRejectMissingJwtSecret() {
+	@Test
+	void shouldRejectMissingJwtSecret() {
 
-        JwtSecurityProperties properties = new JwtSecurityProperties();
-        JwtTokenService service = new JwtTokenService(
-                properties,
-                null,
-                null
-        );
+		JwtSecurityProperties properties = new JwtSecurityProperties();
+		JwtTokenService service = new JwtTokenService(
+				properties,
+				null
+		);
 
-        assertThatThrownBy(service::afterPropertiesSet)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("app.security.jwt.secret must be configured when using JWT security");
-    }
+		assertThatThrownBy(service::afterPropertiesSet)
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessage("app.security.jwt.secret must be configured when using JWT security");
+	}
+
 }

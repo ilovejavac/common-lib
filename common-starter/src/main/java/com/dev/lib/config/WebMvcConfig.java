@@ -1,51 +1,48 @@
 package com.dev.lib.config;
 
+import com.alibaba.fastjson2.support.config.FastJsonConfig;
+import com.alibaba.fastjson2.support.spring6.http.converter.FastJsonHttpMessageConverter;
 import org.springframework.boot.http.converter.autoconfigure.ClientHttpMessageConvertersCustomizer;
 import org.springframework.boot.http.converter.autoconfigure.ServerHttpMessageConvertersCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
-import tools.jackson.core.json.JsonFactory;
-import tools.jackson.databind.JacksonModule;
-import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.core.json.JsonFactoryBuilder;
+import org.springframework.http.MediaType;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Configuration
 public class WebMvcConfig {
 
     @Bean
-    public JacksonModule populateFieldJacksonModule() {
+    public FastJsonHttpMessageConverter commonFastJsonHttpMessageConverter() {
 
-        return new PopulateFieldBeanSerializerModifier().asModule();
-    }
-
-    @Bean
-    public JacksonJsonHttpMessageConverter commonJacksonJsonHttpMessageConverter(List<JacksonModule> modules) {
-
-        JsonFactoryBuilder factoryBuilder = JsonFactory.builder();
-        JacksonSupport.configure(factoryBuilder);
-
-        JsonMapper.Builder builder = JsonMapper.builder(factoryBuilder.build());
-        JacksonSupport.configure(builder);
-        builder.addModules(modules);
-        return new JacksonJsonHttpMessageConverter(builder.build());
+        FastJsonSupport.configure();
+        FastJsonConfig config = new FastJsonConfig();
+        config.setCharset(StandardCharsets.UTF_8);
+        config.setDateFormat(FastJsonSupport.DATE_FORMAT);
+        config.setReaderFeatures(FastJsonSupport.READER_FEATURES);
+        config.setWriterFeatures(FastJsonSupport.WRITER_FEATURES);
+        config.setWriterFilters(FastJsonSupport.WRITER_FILTERS);
+        FastJsonHttpMessageConverter converter = new FastJsonHttpMessageConverter();
+        converter.setFastJsonConfig(config);
+        converter.setSupportedMediaTypes(List.of(MediaType.APPLICATION_JSON));
+        return converter;
     }
 
     @Bean
     public ServerHttpMessageConvertersCustomizer commonServerHttpMessageConvertersCustomizer(
-            JacksonJsonHttpMessageConverter commonJacksonJsonHttpMessageConverter
+            FastJsonHttpMessageConverter commonFastJsonHttpMessageConverter
     ) {
 
-        return builder -> builder.withJsonConverter(commonJacksonJsonHttpMessageConverter);
+        return builder -> builder.withJsonConverter(commonFastJsonHttpMessageConverter);
     }
 
     @Bean
     public ClientHttpMessageConvertersCustomizer commonClientHttpMessageConvertersCustomizer(
-            JacksonJsonHttpMessageConverter commonJacksonJsonHttpMessageConverter
+            FastJsonHttpMessageConverter commonFastJsonHttpMessageConverter
     ) {
 
-        return builder -> builder.withJsonConverter(commonJacksonJsonHttpMessageConverter);
+        return builder -> builder.withJsonConverter(commonFastJsonHttpMessageConverter);
     }
 }

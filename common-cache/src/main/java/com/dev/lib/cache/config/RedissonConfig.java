@@ -1,6 +1,6 @@
 package com.dev.lib.cache.config;
 
-import com.dev.lib.cache.JacksonJsonRedissonCodec;
+import com.dev.lib.cache.FastJsonRedissonCodec;
 import lombok.RequiredArgsConstructor;
 import org.redisson.spring.starter.RedissonAutoConfigurationCustomizer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -16,7 +16,7 @@ public class RedissonConfig {
     public RedissonAutoConfigurationCustomizer redissonAutoConfigurationCustomizer() {
 
         return config -> {
-            config.setCodec(new JacksonJsonRedissonCodec());
+            config.setCodec(new FastJsonRedissonCodec());
         };
     }
 

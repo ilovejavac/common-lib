@@ -11,21 +11,20 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 @RequiredArgsConstructor
 public class SecurityMvcInterceptorRegistration implements CommonMvcInterceptorRegistration {
 
-    private final AuthInterceptor authInterceptor;
+	private final AuthInterceptor authInterceptor;
 
-    private final InternalInterceptor internalInterceptor;
+	private final InternalInterceptor internalInterceptor;
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
+	@Override
+	public void addInterceptors(InterceptorRegistry registry) {
 
-        registry.addInterceptor(internalInterceptor)
-                .order(10)
-                .addPathPatterns("/api/**", "/admin/**")
-                .excludePathPatterns("/api/auth/**", "/api/public/**");
+		registry.addInterceptor(internalInterceptor)
+				.order(10)
+				.addPathPatterns("/**");
 
-        registry.addInterceptor(authInterceptor)
-                .order(20)
-                .addPathPatterns("/api/**", "/admin/**")
-                .excludePathPatterns("/api/auth/**", "/api/public/**");
-    }
+		registry.addInterceptor(authInterceptor)
+				.order(20)
+				.addPathPatterns("/**");
+	}
+
 }
