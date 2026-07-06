@@ -2,3 +2,4 @@ app:
   security:
     jwt:
       expiration: 86400000
+      refresh-expiration: 1296000000

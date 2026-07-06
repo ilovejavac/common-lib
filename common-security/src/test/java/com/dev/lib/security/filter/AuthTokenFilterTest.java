@@ -6,6 +6,7 @@ import com.dev.lib.security.service.TokenService;
 import com.dev.lib.security.web.UserContextHeaders;
 import com.dev.lib.security.util.SecurityContextHolder;
 import com.dev.lib.security.util.UserDetails;
+import com.dev.lib.util.ImmutablePair;
 import com.dev.lib.web.model.StandardErrorCodes;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -141,9 +142,9 @@ class AuthTokenFilterTest {
         private String parsedToken;
 
         @Override
-        public String generateToken(UserDetails userDetails) {
+        public ImmutablePair<String, String> generateToken(UserDetails userDetails) {
 
-            return "token";
+            return ImmutablePair.of("token", "refresh-token");
         }
 
         @Override
@@ -162,9 +163,9 @@ class AuthTokenFilterTest {
     private static class InvalidTokenService implements TokenService {
 
         @Override
-        public String generateToken(UserDetails userDetails) {
+        public ImmutablePair<String, String> generateToken(UserDetails userDetails) {
 
-            return "token";
+            return ImmutablePair.of("token", "refresh-token");
         }
 
         @Override

@@ -16,7 +16,8 @@ class JwtSecurityPropertiesTest {
         contextRunner
                 .withPropertyValues(
                         "app.security.jwt.secret=jwt-secret-value-with-enough-length",
-                        "app.security.jwt.expiration=12345"
+                        "app.security.jwt.expiration=12345",
+                        "app.security.jwt.refresh-expiration=67890"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -24,6 +25,7 @@ class JwtSecurityPropertiesTest {
                     JwtSecurityProperties properties = context.getBean(JwtSecurityProperties.class);
                     assertThat(properties.getSecret()).isEqualTo("jwt-secret-value-with-enough-length");
                     assertThat(properties.getExpiration()).isEqualTo(12345L);
+                    assertThat(properties.getRefreshExpiration()).isEqualTo(67890L);
                 });
     }
 }

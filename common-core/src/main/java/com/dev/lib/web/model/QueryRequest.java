@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -17,6 +18,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * 通用分页查询请求
@@ -209,5 +211,15 @@ public class QueryRequest<T> {
 
         return MAX_TOTAL_RECORDS;
     }
+
+	public <R> QueryRequest<R> map(Function<T, R> convert) {
+
+		QueryRequest<R> request = new QueryRequest<>();
+
+		BeanUtils.copyProperties(this, request);
+		request.setQuery(convert.apply(query));
+
+		return request;
+	}
 
 }

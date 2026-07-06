@@ -193,17 +193,6 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
         ensureBucketExists(bucketName);
 
         try {
-            // 1. 将新内容上传为临时对象
-            String tempPath = objectKey + ".tmp." + com.dev.lib.entity.id.IDWorker.newId();
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(tempPath)
-                            .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
-                            .build()
-            );
-
-            // 2. 检查原文件是否存在
             boolean originalExists;
             long originalSize = 0;
             try {
@@ -216,28 +205,7 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                 originalExists = false;
             }
 
-            // 3. 使用 ComposeObject 合并
-            if (originalExists) {
-                minioClient.composeObject(
-                        ComposeObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(objectKey)
-                                .sources(asList(
-                                        ComposeSource.builder().bucket(bucketName).object(objectKey).build(),
-                                        ComposeSource.builder().bucket(bucketName).object(tempPath).build()
-                                ))
-                                .build()
-                );
-                minioClient.removeObject(
-                        RemoveObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(tempPath)
-                                .build()
-                );
-
-                // 更新数据库记录并返回 bizId
-                return saveFileRecord(bucketName, objectKey, originalSize + bytes.length);
-            } else {
+            if (!originalExists) {
                 minioClient.putObject(
                         PutObjectArgs.builder()
                                 .bucket(bucketName)
@@ -245,19 +213,67 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                                 .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
                                 .build()
                 );
-                minioClient.removeObject(
-                        RemoveObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(tempPath)
-                                .build()
-                );
 
-                // 创建数据库记录并返回 bizId
                 return saveFileRecord(bucketName, objectKey, (long) bytes.length);
             }
+
+            if (originalSize <= ObjectWriteArgs.MIN_MULTIPART_SIZE) {
+                return appendSmallObject(bucketName, objectKey, bytes);
+            }
+
+            String tempPath = objectKey + ".tmp." + com.dev.lib.entity.id.IDWorker.newId();
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(tempPath)
+                            .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
+                            .build()
+            );
+            minioClient.composeObject(
+                    ComposeObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectKey)
+                            .sources(asList(
+                                    ComposeSource.builder().bucket(bucketName).object(objectKey).build(),
+                                    ComposeSource.builder().bucket(bucketName).object(tempPath).build()
+                            ))
+                            .build()
+            );
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(tempPath)
+                            .build()
+            );
+
+            return saveFileRecord(bucketName, objectKey, originalSize + bytes.length);
         } catch (Exception e) {
             throw new IOException("MinIO append failed", e);
         }
+    }
+
+    private String appendSmallObject(String bucketName, String objectKey, byte[] bytes) throws Exception {
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (InputStream original = minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectKey)
+                        .build()
+        )) {
+            original.transferTo(output);
+        }
+        output.write(bytes);
+
+        byte[] merged = output.toByteArray();
+        minioClient.putObject(
+                PutObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectKey)
+                        .stream(new ByteArrayInputStream(merged), merged.length, -1)
+                        .build()
+        );
+        return saveFileRecord(bucketName, objectKey, (long) merged.length);
     }
 
     @Override

@@ -10,4 +10,6 @@ public class JwtSecurityProperties {
     private String secret;
 
     private Long expiration;
+
+    private Long refreshExpiration;
 }
