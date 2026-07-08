@@ -22,6 +22,10 @@ import java.util.*;
 @Setter
 public abstract class DslQuery<E extends CoreEntity> {
 
+    private static final int DEFAULT_DIRECT_PAGE_SIZE = 1;
+
+    private static final int MAX_DIRECT_PAGE_SIZE = 512;
+
     private Long id;
 
     private Long idNe;
@@ -155,7 +159,7 @@ public abstract class DslQuery<E extends CoreEntity> {
         if (pageRequest == null) {
             return PageRequest.of(
                     Math.max(1, Optional.ofNullable(offset).orElse(1)) - 1,
-                    Math.min(128, Optional.ofNullable(limit).orElse(1)),
+                    Math.min(MAX_DIRECT_PAGE_SIZE, Optional.ofNullable(limit).orElse(DEFAULT_DIRECT_PAGE_SIZE)),
                     toSort(allowFields)
             );
         }

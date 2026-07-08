@@ -8,8 +8,13 @@ import jakarta.persistence.Id;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,6 +41,23 @@ class CommonJpaRepositoryAutoScanTest {
             assertThat(context).hasSingleBean(BusinessOrderRepo.class);
             assertThat(context).hasSingleBean(TransactionHelper.class);
         });
+    }
+
+    @Test
+    void applicationDataDefaultsShouldSetJpaBatchAndFetchSizes() throws Exception {
+
+        List<PropertySource<?>> sources = new YamlPropertySourceLoader()
+                .load("application-data", new ClassPathResource("application-data.yaml"));
+
+        assertThat(sources)
+                .anySatisfy(source -> {
+                    assertThat(source.getProperty("spring.jpa.properties.hibernate.default_batch_fetch_size"))
+                            .isEqualTo(512);
+                    assertThat(source.getProperty("spring.jpa.properties.hibernate.jdbc.fetch_size"))
+                            .isEqualTo(512);
+                    assertThat(source.getProperty("spring.jpa.properties.hibernate.jdbc.batch_size"))
+                            .isEqualTo(128);
+                });
     }
 
     @SpringBootConfiguration

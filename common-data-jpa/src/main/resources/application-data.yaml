@@ -21,13 +21,13 @@ spring:
       hibernate:
         check_constraints: false
         check_nullability: false
-        default_batch_fetch_size: 128
+        default_batch_fetch_size: 512
         format_sql: false
         highlight_sql: false
         use_sql_comments: false
         jdbc:
-          batch_size: 50
-          fetch_size: 128
+          batch_size: 128
+          fetch_size: 512
           time_zone: Asia/Shanghai
           batch_versioned_data: true
         order_inserts: true

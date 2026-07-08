@@ -7,9 +7,12 @@ import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.web.model.QueryRequest;
 import jakarta.persistence.Entity;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -19,6 +22,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(OutputCaptureExtension.class)
 class PartialSelectPageSortIntegrationTest {
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
@@ -68,13 +72,13 @@ class PartialSelectPageSortIntegrationTest {
             assertThat(context).hasNotFailed();
 
             PageSortUserRepo repo = context.getBean(PageSortUserRepo.class);
-            repo.saveAll(buildUsers("default-page-", 130));
+            repo.saveAll(buildUsers("default-page-", 530));
 
             Page<PageSortUserDto> page = repo.select(PageSortUser::getName)
                     .page(PageSortUserDto.class, null);
 
-            assertThat(page.getContent()).hasSize(128);
-            assertThat(page.getTotalElements()).isEqualTo(130);
+            assertThat(page.getContent()).hasSize(512);
+            assertThat(page.getTotalElements()).isEqualTo(530);
         });
     }
 
@@ -101,6 +105,78 @@ class PartialSelectPageSortIntegrationTest {
             assertThat(page.getPageable().getPageNumber()).isZero();
             assertThat(page.getPageable().getPageSize()).isEqualTo(20);
             assertThat(page.hasNext()).isTrue();
+        });
+    }
+
+    @Test
+    void selectDtoLoadsShouldClampDirectDslLimitTo512() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            PageSortUserRepo repo = context.getBean(PageSortUserRepo.class);
+            repo.saveAll(buildUsers("direct-load-", 530));
+
+            PageSortUserQuery query = new PageSortUserQuery();
+            query.setLimit(700);
+
+            List<PageSortUserDto> users = repo.select(PageSortUser::getName)
+                    .loads(PageSortUserDto.class, query);
+
+            assertThat(users).hasSize(512);
+        });
+    }
+
+    @Test
+    void selectDtoLoadsWithoutDslQueryShouldApplyDefaultDirectLoadLimit512() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            PageSortUserRepo repo = context.getBean(PageSortUserRepo.class);
+            repo.saveAll(buildUsers("direct-load-default-", 530));
+
+            List<PageSortUserDto> users = repo.select(PageSortUser::getName)
+                    .loads(PageSortUserDto.class, null);
+
+            assertThat(users).hasSize(512);
+        });
+    }
+
+    @Test
+    void selectDtoLoadsShouldWarnWhenResultReachesDirectLoadLimit(CapturedOutput output) {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            PageSortUserRepo repo = context.getBean(PageSortUserRepo.class);
+            repo.saveAll(buildUsers("direct-load-warn-", 512));
+
+            List<PageSortUserDto> users = repo.select(PageSortUser::getName)
+                    .loads(PageSortUserDto.class, null);
+
+            assertThat(users).hasSize(512);
+            assertThat(output).contains("loads result reached max direct load size")
+                    .contains("size=512")
+                    .contains("max=512");
+        });
+    }
+
+    @Test
+    void fullEntityLoadsShouldWarnWhenResultReachesDirectLoadLimit(CapturedOutput output) {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            PageSortUserRepo repo = context.getBean(PageSortUserRepo.class);
+            repo.saveAll(buildUsers("full-load-warn-", 512));
+
+            List<PageSortUser> users = repo.loads((PageSortUserQuery) null);
+
+            assertThat(users).hasSize(512);
+            assertThat(output).contains("loads result reached max direct load size")
+                    .contains("size=512")
+                    .contains("max=512");
         });
     }
 

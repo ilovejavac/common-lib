@@ -12,6 +12,7 @@ import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Timeouts;
 import org.hibernate.jpa.HibernateHints;
 import org.hibernate.jpa.SpecHints;
@@ -29,7 +30,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
+@Slf4j
 public final class QueryReadSupport {
+
+    private static final int DEFAULT_PAGE_SIZE = 512;
+
+    private static final int MAX_DIRECT_LOAD_SIZE = 512;
 
     private QueryReadSupport() {
     }
@@ -281,14 +287,15 @@ public final class QueryReadSupport {
 
         JPAQuery<Tuple> query = createTupleQuery(repository, ctx, select.buildExpressions(repository.getPathBuilder()), dslQuery, expressions);
 
-        if (dslQuery != null && limit == null) {
-            applyLimit(query, dslQuery);
-        }
-        if (limit != null) {
+        if (limit == null) {
+            applyLoadsLimit(query, dslQuery);
+        } else {
             query.limit(limit);
         }
 
-        return mapTuples(repository, query.fetch(), select, resultClass);
+        List<Tuple> tuples = query.fetch();
+        warnIfLoadsResultReachedMax(repository.getEntityClass(), tuples.size());
+        return mapTuples(repository, tuples, select, resultClass);
     }
 
     private static <T extends JpaEntity, D> WindowPageResult<D> doQueryWithWindowCount(
@@ -433,7 +440,24 @@ public final class QueryReadSupport {
     ) {
 
         Predicate predicate = buildPredicate(repository, ctx, dslQuery, expressions);
-        return createEntityQuery(repository, predicate, ctx, dslQuery).fetch();
+        JPAQuery<T> query = createEntityQuery(repository, predicate, ctx, dslQuery);
+        applyLoadsLimit(query, dslQuery);
+        List<T> results = query.fetch();
+        warnIfLoadsResultReachedMax(repository.getEntityClass(), results.size());
+        return results;
+    }
+
+    private static void warnIfLoadsResultReachedMax(Class<?> entityClass, int resultSize) {
+
+        if (resultSize != MAX_DIRECT_LOAD_SIZE) {
+            return;
+        }
+        log.warn(
+                "loads result reached max direct load size: entity={}, size={}, max={}. Use page, stream, or cursor conditions to continue loading remaining rows.",
+                entityClass.getName(),
+                resultSize,
+                MAX_DIRECT_LOAD_SIZE
+        );
     }
 
     private static <T extends JpaEntity> Page<T> pageFullEntityWithWindowCount(
@@ -539,9 +563,18 @@ public final class QueryReadSupport {
     private static void applyLimit(JPAQuery<?> query, DslQuery<?> dslQuery) {
 
         if (dslQuery.getLimit() != null) {
-            query.limit(dslQuery.getLimit());
+            query.limit(Math.min(dslQuery.getLimit(), MAX_DIRECT_LOAD_SIZE));
         }
         if (dslQuery.getOffset() != null) {
+            query.offset(dslQuery.getOffset());
+        }
+    }
+
+    private static void applyLoadsLimit(JPAQuery<?> query, DslQuery<?> dslQuery) {
+
+        Integer requestedLimit = dslQuery == null ? null : dslQuery.getLimit();
+        query.limit(requestedLimit == null ? MAX_DIRECT_LOAD_SIZE : Math.min(requestedLimit, MAX_DIRECT_LOAD_SIZE));
+        if (dslQuery != null && dslQuery.getOffset() != null) {
             query.offset(dslQuery.getOffset());
         }
     }
@@ -575,7 +608,7 @@ public final class QueryReadSupport {
     private static Pageable resolvePageable(DslQuery<?> dslQuery) {
 
         if (dslQuery == null) {
-            return PageRequest.of(0, 128, Sort.by(Sort.Order.desc("id")));
+            return PageRequest.of(0, DEFAULT_PAGE_SIZE, Sort.by(Sort.Order.desc("id")));
         }
         Set<String> allowFields = RepositoryPredicateSupport.getAllowFields(dslQuery);
         return dslQuery.toPageable(allowFields);

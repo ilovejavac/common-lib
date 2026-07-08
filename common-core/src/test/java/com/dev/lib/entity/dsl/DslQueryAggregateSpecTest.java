@@ -7,6 +7,8 @@ import com.dev.lib.entity.dsl.agg.AggregateSpec;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DslQueryAggregateSpecTest {
@@ -68,6 +70,15 @@ class DslQueryAggregateSpecTest {
         assertThat(spec.getItems().get(4).type()).isEqualTo(AggType.FIELD);
         assertThat(spec.getItems().get(4).sourceField()).isEqualTo("name");
         assertThat(spec.getItems().get(4).targetField()).isEqualTo("name");
+    }
+
+    @Test
+    void toPageableShouldClampDirectLimitTo512() {
+
+        UserQuery query = new UserQuery();
+        query.setLimit(700);
+
+        assertThat(query.toPageable(Set.of()).getPageSize()).isEqualTo(512);
     }
 
     static class UserQuery extends DslQuery<UserEntity> {
