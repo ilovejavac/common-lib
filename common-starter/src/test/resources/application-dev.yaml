@@ -1,0 +1,4 @@
+common:
+  lib:
+    auto-import-test:
+      override: business-dev

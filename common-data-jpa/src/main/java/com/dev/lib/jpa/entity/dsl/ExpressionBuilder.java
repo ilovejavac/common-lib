@@ -5,7 +5,10 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.PathBuilder;
 import org.springframework.util.CollectionUtils;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 public class ExpressionBuilder {
 
@@ -39,10 +42,7 @@ public class ExpressionBuilder {
             return null;
         }
 
-        PathBuilder<?> currentPath = pathBuilder;
-        for (int i = 0; i < fieldParts.length - 1; i++) {
-            currentPath = currentPath.get(fieldParts[i]);
-        }
+        PathBuilder<?> currentPath = resolveParentPath(pathBuilder, fieldParts);
 
         String finalField = fieldParts[fieldParts.length - 1];
 
@@ -60,8 +60,30 @@ public class ExpressionBuilder {
             case NOT_IN -> notIn(currentPath, finalField, value);
             case IS_NULL -> currentPath.get(finalField).isNull();
             case IS_NOT_NULL -> currentPath.get(finalField).isNotNull();
+            case BETWEEN -> between(currentPath, finalField, value);
             default -> null;
         };
+    }
+
+    static BooleanExpression between(
+            PathBuilder<?> pathBuilder,
+            String[] fieldParts,
+            Object lowerBound,
+            Object upperBound
+    ) {
+
+        PathBuilder<?> currentPath = resolveParentPath(pathBuilder, fieldParts);
+        String finalField = fieldParts[fieldParts.length - 1];
+        return between(currentPath, finalField, lowerBound, upperBound);
+    }
+
+    private static PathBuilder<?> resolveParentPath(PathBuilder<?> pathBuilder, String[] fieldParts) {
+
+        PathBuilder<?> currentPath = pathBuilder;
+        for (int i = 0; i < fieldParts.length - 1; i++) {
+            currentPath = currentPath.get(fieldParts[i]);
+        }
+        return currentPath;
     }
 
     private static BooleanExpression eq(PathBuilder<?> path, String field, Object value) {
@@ -149,6 +171,59 @@ public class ExpressionBuilder {
             return null;
         }
         return path.get(field).notIn((Collection<?>) value);
+    }
+
+    private static BooleanExpression between(PathBuilder<?> path, String field, Object value) {
+
+        List<?> bounds = extractBetweenBounds(value);
+        return between(
+                path,
+                field,
+                bounds.get(0),
+                bounds.get(1)
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static BooleanExpression between(PathBuilder<?> path, String field, Object lowerBound, Object upperBound) {
+
+        if (!(lowerBound instanceof Comparable) || !(upperBound instanceof Comparable)) {
+            throw new IllegalArgumentException("BETWEEN 操作要求上下边界值必须实现 Comparable 接口");
+        }
+        if (!lowerBound.getClass().isInstance(upperBound)) {
+            throw new IllegalArgumentException("BETWEEN 操作要求上下边界值类型一致");
+        }
+        return path.getComparable(
+                        field,
+                        (Class<Comparable>) lowerBound.getClass()
+                )
+                .between(
+                        (Comparable<?>) lowerBound,
+                        (Comparable<?>) upperBound
+                );
+    }
+
+    private static List<?> extractBetweenBounds(Object value) {
+
+        if (value instanceof List<?> list) {
+            if (list.size() != 2) {
+                throw new IllegalArgumentException("BETWEEN 操作要求值必须包含 2 个边界值");
+            }
+            return list;
+        }
+
+        if (value != null && value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            if (length != 2) {
+                throw new IllegalArgumentException("BETWEEN 操作要求值必须包含 2 个边界值");
+            }
+            List<Object> bounds = new ArrayList<>(2);
+            bounds.add(Array.get(value, 0));
+            bounds.add(Array.get(value, 1));
+            return bounds;
+        }
+
+        throw new IllegalArgumentException("BETWEEN 操作要求值必须是有序 List 或数组类型");
     }
 
 }

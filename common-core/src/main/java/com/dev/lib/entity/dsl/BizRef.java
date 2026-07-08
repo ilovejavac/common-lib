@@ -13,8 +13,14 @@ import java.lang.annotation.Target;
 public @interface BizRef {
 
     /**
-     * Association field name, for example {@code goods} maps to {@code goods.bizId}.
+     * Marker value used when the association name should be inferred from the query field.
      */
-    String value();
+    String FIELD_NAME = "__FIELD_NAME__";
+
+    /**
+     * Association field name, for example {@code goods} maps to {@code goods.bizId}.
+     * Use {@code @BizRef} without a value to infer the association from the query field name.
+     */
+    String value() default FIELD_NAME;
 
 }

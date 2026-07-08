@@ -112,6 +112,6 @@ public class CommonLibDefaultsEnvironmentPostProcessor implements EnvironmentPos
     @Override
     public int getOrder() {
 
-        return ConfigDataEnvironmentPostProcessor.ORDER - 1;
+        return ConfigDataEnvironmentPostProcessor.ORDER + 1;
     }
 }

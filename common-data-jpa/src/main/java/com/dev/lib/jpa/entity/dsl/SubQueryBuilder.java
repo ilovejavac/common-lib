@@ -2,15 +2,18 @@ package com.dev.lib.jpa.entity.dsl;
 
 import com.dev.lib.entity.dsl.QueryType;
 import com.dev.lib.entity.dsl.core.FieldMetaCache.FieldMeta;
+import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.entity.dsl.core.RelationInfo;
+import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.dsl.*;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.JPQLSubQuery;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 /**
  * 子查询构建器
@@ -312,28 +315,29 @@ public class SubQueryBuilder {
         if (filterMetas == null || filterMetas.isEmpty()) {
             return null;
         }
-        BooleanExpression result = null;
+        List<QueryFieldMerger.FieldMetaValue> fields = new ArrayList<>(filterMetas.size());
 
         for (FieldMeta meta : filterMetas) {
             Object value = meta.getValue(filterValue);
             if (value == null) {
                 continue;
             }
+            fields.add(new QueryFieldMerger.FieldMetaValue(
+                    value,
+                    meta
+            ));
+        }
 
-            BooleanExpression expr = switch (meta.metaType()) {
-                case CONDITION -> ExpressionBuilder.build(
-                        subPath,
-                        meta.targetFieldParts(),
-                        Optional.ofNullable(meta.queryType()).orElse(QueryType.EQ),
-                        value
-                );
-                case GROUP -> null;
-                case SUB_QUERY -> build(subPath, meta, value);
-            };
+        Map<String, Predicate> predicates = PredicateAssembler.collectPredicates(
+                subPath,
+                fields,
+                true
+        );
 
-            if (expr != null) {
-                result = result == null ? expr : result.and(expr);
-            }
+        BooleanExpression result = null;
+        for (Predicate predicate : predicates.values()) {
+            BooleanExpression expr = (BooleanExpression) predicate;
+            result = result == null ? expr : result.and(expr);
         }
 
         return result;

@@ -2,7 +2,10 @@ package com.dev.lib.config;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.MutablePropertySources;
@@ -16,10 +19,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CommonLibDefaultsEnvironmentPostProcessorTest {
 
     @Test
-    void shouldRunBeforeConfigDataImport() {
+    void shouldRunAfterConfigDataImport() {
 
         assertThat(new CommonLibDefaultsEnvironmentPostProcessor().getOrder())
-                .isLessThan(ConfigDataEnvironmentPostProcessor.ORDER);
+                .isGreaterThan(ConfigDataEnvironmentPostProcessor.ORDER);
+    }
+
+    @Test
+    void shouldLetProfileSpecificBusinessConfigOverrideCommonDefaults() {
+
+        SpringApplication application = new SpringApplication(ProbeApplication.class);
+        application.setAdditionalProfiles("dev");
+        application.setWebApplicationType(WebApplicationType.NONE);
+
+        try (ConfigurableApplicationContext context = application.run()) {
+            assertThat(context.getEnvironment().getProperty("common.lib.auto-import-test.override"))
+                    .isEqualTo("business-dev");
+        }
     }
 
     @Test
@@ -86,5 +102,9 @@ class CommonLibDefaultsEnvironmentPostProcessorTest {
             }
         }
         return -1;
+    }
+
+    @SpringBootConfiguration
+    static class ProbeApplication {
     }
 }

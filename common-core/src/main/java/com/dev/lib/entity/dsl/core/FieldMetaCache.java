@@ -310,12 +310,36 @@ public class FieldMetaCache {
             return condition.field();
         }
         if (bizRef != null) {
-            if (!StringUtils.hasText(bizRef.value())) {
-                throw new IllegalArgumentException("@BizRef value 不能为空");
-            }
-            return bizRef.value() + ".bizId";
+            return resolveBizRefTargetField(
+                    bizRef,
+                    parsed,
+                    entityClass
+            );
         }
         return resolveBizIdConventionTargetField(parsed.targetField(), entityClass);
+    }
+
+    private static String resolveBizRefTargetField(
+            BizRef bizRef,
+            QueryFieldParser.ParsedField parsed,
+            Class<?> entityClass
+    ) {
+
+        String association = BizRef.FIELD_NAME.equals(bizRef.value())
+                             ? parsed.targetField()
+                             : bizRef.value();
+        if (!StringUtils.hasText(association)) {
+            throw new IllegalArgumentException("@BizRef value 不能为空");
+        }
+
+        String conventionTarget = resolveBizIdConventionTargetField(
+                association,
+                entityClass
+        );
+        if (!association.equals(conventionTarget)) {
+            return conventionTarget;
+        }
+        return association + ".bizId";
     }
 
     private static String resolveBizIdConventionTargetField(String targetField, Class<?> entityClass) {

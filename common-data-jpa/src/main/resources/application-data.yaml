@@ -59,4 +59,4 @@ app:
       keepalive-time: 300000
     slow-query:
       enabled: true
-      threshold: 95ms
+      threshold: 50ms

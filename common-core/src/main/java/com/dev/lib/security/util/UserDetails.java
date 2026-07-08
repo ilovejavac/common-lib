@@ -1,7 +1,6 @@
 package com.dev.lib.security.util;
 
 import com.dev.lib.security.model.UserStatus;
-import com.dev.lib.security.model.UserType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,8 +9,9 @@ import lombok.experimental.Accessors;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 @Data
 @Builder
@@ -99,6 +99,8 @@ public class UserDetails implements Serializable {
 	private String clientType;        // 客户端类型: WEB, APP, MINI_PROGRAM
 
 	private String deviceId;          // 设备 ID(可选)
+
+	private Map<String, Object> payload = new HashMap<>();
 
 	// ===== 工具方法 =====
 

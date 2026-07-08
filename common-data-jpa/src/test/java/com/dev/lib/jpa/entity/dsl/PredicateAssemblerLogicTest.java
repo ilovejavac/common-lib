@@ -300,6 +300,32 @@ class PredicateAssemblerLogicTest {
     }
 
     @Test
+    void shouldResolveBizRefWithoutValueFromQueryFieldName() {
+
+        QueryImplicitBizRefCondition query = new QueryImplicitBizRefCondition();
+        query.setGoods("G-1");
+
+        Predicate predicate = assemble(query);
+        List<String> groups = toCanonicalGroups(predicate);
+
+        assertThat(groups).containsExactly("testJpaEntity.goods.bizId");
+    }
+
+    @Test
+    void shouldResolveBizRefWithoutValueAndKeepQueryTypeSuffix() {
+
+        QueryImplicitBizRefInCondition query = new QueryImplicitBizRefInCondition();
+        query.setGoodsIn(List.of("G-1", "G-2"));
+
+        Predicate predicate = assemble(query);
+
+        assertThat(predicate).isInstanceOf(Operation.class);
+        Operation<?> operation = (Operation<?>) predicate;
+        assertThat(operation.getOperator()).isEqualTo(Ops.IN);
+        assertThat(operation.getArg(0).toString()).isEqualTo("testJpaEntity.goods.bizId");
+    }
+
+    @Test
     void conditionFieldShouldOverrideBizRef() {
 
         QueryConditionOverridesBizRef query = new QueryConditionOverridesBizRef();
@@ -386,11 +412,86 @@ class PredicateAssemblerLogicTest {
         assertThat(operation.getArg(0).toString()).isEqualTo("testJpaEntity.c1");
     }
 
+    @Test
+    void shouldMergeGeAndLeIntoBetweenForDefaultAndQuery() {
+
+        QueryRangeCondition query = new QueryRangeCondition();
+        query.setC1Ge("A");
+        query.setC1Le("Z");
+
+        Predicate predicate = assemble(query);
+
+        assertBetweenPredicate(
+                predicate,
+                "testJpaEntity.c1"
+        );
+    }
+
+    @Test
+    void shouldKeepGeAndLeSeparateWhenLogicArrangementIsPresent() {
+
+        QueryRangeCondition query = new QueryRangeCondition();
+        query.setC1Ge("A");
+        query.setC1Le("Z");
+        query.where()
+                .use(QueryRangeCondition::getC1Ge)
+                .and(QueryRangeCondition::getC1Le);
+
+        Predicate predicate = assemble(query);
+
+        assertThat(predicate).isInstanceOf(Operation.class);
+        Operation<?> operation = (Operation<?>) predicate;
+        assertThat(operation.getOperator()).isEqualTo(Ops.AND);
+        assertThat(((Operation<?>) operation.getArg(0)).getOperator()).isEqualTo(Ops.GOE);
+        assertThat(((Operation<?>) operation.getArg(1)).getOperator()).isEqualTo(Ops.LOE);
+    }
+
+    @Test
+    void shouldSupportBetweenSuffixWithTwoBounds() {
+
+        QueryBetweenCondition query = new QueryBetweenCondition();
+        query.setC1Between(List.of("A", "Z"));
+
+        Predicate predicate = assemble(query);
+
+        assertBetweenPredicate(
+                predicate,
+                "testJpaEntity.c1"
+        );
+    }
+
+    @Test
+    void shouldMergeGeAndLeIntoBetweenInsideSubQueryFilter() {
+
+        QuerySelfSubRange query = new QuerySelfSubRange();
+        query.subExistsSub = new SubRangeFilter();
+        query.subExistsSub.c1Ge = "A";
+        query.subExistsSub.c1Le = "Z";
+
+        Predicate predicate = assemble(query);
+        SubQueryExpression<?> subQueryExpression = findFirstSubQueryExpression((Expression<?>) predicate);
+
+        assertThat(subQueryExpression).isNotNull();
+        Predicate where = subQueryExpression.getMetadata().getWhere();
+        assertBetweenPredicate(
+                where,
+                "testJpaEntity_sub.c1"
+        );
+    }
+
     private static Predicate assemble(DslQuery<TestJpaEntity> query) {
 
         Collection<QueryFieldMerger.FieldMetaValue> merged = QueryFieldMerger.resolve(query);
         BooleanBuilder builder = PredicateAssembler.assemble(query, merged);
         return builder.getValue();
+    }
+
+    private static void assertBetweenPredicate(Predicate predicate, String expectedPath) {
+
+        assertThat(predicate).isInstanceOf(Operation.class);
+        Operation<?> operation = (Operation<?>) predicate;
+        assertThat(operation.getOperator()).isEqualTo(Ops.BETWEEN);
+        assertThat(operation.getArg(0).toString()).isEqualTo(expectedPath);
     }
 
     private static List<String> toCanonicalGroups(Predicate predicate) {
@@ -496,9 +597,21 @@ class QuerySelfSubNestedGroup extends DslQuery<TestJpaEntity> {
     public SubFilterNested subExistsSub;
 }
 
+class QuerySelfSubRange extends DslQuery<TestJpaEntity> {
+
+    public SubRangeFilter subExistsSub;
+}
+
 class SubFilterNested {
 
     public InnerGroup inner;
+}
+
+class SubRangeFilter {
+
+    public String c1Ge;
+
+    public String c1Le;
 }
 
 class InnerGroup {
@@ -600,6 +713,38 @@ class QueryBizRefCondition extends DslQuery<TestJpaEntity> {
     public void setAnyName(String anyName) {
 
         this.anyName = anyName;
+    }
+}
+
+class QueryImplicitBizRefCondition extends DslQuery<TestJpaEntity> {
+
+    @BizRef
+    private String goods;
+
+    public String getGoods() {
+
+        return goods;
+    }
+
+    public void setGoods(String goods) {
+
+        this.goods = goods;
+    }
+}
+
+class QueryImplicitBizRefInCondition extends DslQuery<TestJpaEntity> {
+
+    @BizRef
+    private Collection<String> goodsIn;
+
+    public Collection<String> getGoodsIn() {
+
+        return goodsIn;
+    }
+
+    public void setGoodsIn(Collection<String> goodsIn) {
+
+        this.goodsIn = goodsIn;
     }
 }
 
@@ -735,6 +880,48 @@ class QueryCollectionDefaultIn extends DslQuery<TestJpaEntity> {
     public void setC1(Collection<String> c1) {
 
         this.c1 = c1;
+    }
+}
+
+class QueryRangeCondition extends DslQuery<TestJpaEntity> {
+
+    private String c1Ge;
+
+    private String c1Le;
+
+    public String getC1Ge() {
+
+        return c1Ge;
+    }
+
+    public void setC1Ge(String c1Ge) {
+
+        this.c1Ge = c1Ge;
+    }
+
+    public String getC1Le() {
+
+        return c1Le;
+    }
+
+    public void setC1Le(String c1Le) {
+
+        this.c1Le = c1Le;
+    }
+}
+
+class QueryBetweenCondition extends DslQuery<TestJpaEntity> {
+
+    private List<String> c1Between;
+
+    public List<String> getC1Between() {
+
+        return c1Between;
+    }
+
+    public void setC1Between(List<String> c1Between) {
+
+        this.c1Between = c1Between;
     }
 }
 
