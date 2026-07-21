@@ -1,6 +1,7 @@
 package com.dev.lib.storage.trigger.controller;
 
 import com.dev.lib.storage.domain.adapter.StorageFileRepo;
+import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.domain.model.StorageFile;
 import com.dev.lib.storage.domain.service.chain.ChainStorageService;
 import com.dev.lib.web.model.ServerResponse;
@@ -183,13 +184,13 @@ class FileControllerTest {
         private String presignedUrl = "https://example.com/default";
 
         @Override
-        public String upload(String bucketName, String objectKey, org.springframework.web.multipart.MultipartFile file) {
+        public SysFile upload(String bucketName, String objectKey, org.springframework.web.multipart.MultipartFile file) {
 
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public String upload(String bucketName, String objectKey, InputStream inputStream) {
+        public SysFile upload(String bucketName, String objectKey, InputStream inputStream) {
 
             throw new UnsupportedOperationException();
         }

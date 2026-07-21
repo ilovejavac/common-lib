@@ -14,7 +14,7 @@
 
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.6.9</version>
+    <version>1.7.0</version>
     <packaging>pom</packaging>
 
     <name>common-lib</name>
@@ -83,7 +83,7 @@
 
         <!-- Internal coordinates -->
         <lib.groupId>io.github.ilovejavac</lib.groupId>
-        <lib.version>1.6.9</lib.version>
+        <lib.version>1.7.0</lib.version>
 
         <!-- Spring ecosystem -->
         <spring-boot.version>4.1.0</spring-boot.version>

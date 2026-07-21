@@ -2,6 +2,7 @@ package com.dev.lib.storage.domain.service.chain;
 
 import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.storage.config.condition.ConditionalOnResolvedStorageType;
+import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.data.SysFileObjectRepository;
 import com.dev.lib.storage.Storage;
 import com.dev.lib.storage.domain.model.StorageType;
@@ -69,7 +70,7 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String upload(String bucketName, String objectKey, MultipartFile file) throws IOException {
+    public SysFile upload(String bucketName, String objectKey, MultipartFile file) throws IOException {
         ensureBucketExists(bucketName);
         try {
             minioClient.putObject(
@@ -80,8 +81,8 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
                             .build()
             );
 
-            // 同步数据库记录并返回 bizId
-            return saveFileRecord(bucketName, objectKey, file.getSize());
+            // 同步数据库记录并返回文件记录
+            return saveFileRecord(bucketName, objectKey, bucketName + "/" + objectKey, file.getSize());
         } catch (Exception e) {
             throw new IOException("MinIO upload failed", e);
         }
@@ -89,7 +90,7 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
+    public SysFile upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
         ensureBucketExists(bucketName);
         try {
             minioClient.putObject(
@@ -101,8 +102,8 @@ public class MinioChainStorage extends AbstractChainStorage implements ChainStor
             );
 
             // 注意：由于未知文件大小，无法同步数据库记录的 size 字段
-            // 将保存记录但 size 为 null，并返回 bizId
-            return saveFileRecord(bucketName, objectKey, null);
+            // 将保存记录但 size 为 null，并返回文件记录
+            return saveFileRecord(bucketName, objectKey, bucketName + "/" + objectKey, null);
         } catch (Exception e) {
             throw new IOException("MinIO upload failed", e);
         }

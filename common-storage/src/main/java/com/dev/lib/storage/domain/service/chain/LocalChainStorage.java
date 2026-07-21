@@ -1,6 +1,7 @@
 package com.dev.lib.storage.domain.service.chain;
 
 import com.dev.lib.storage.config.AppStorageProperties;
+import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.data.SysFileObjectRepository;
 import com.dev.lib.storage.Storage;
 import com.dev.lib.storage.domain.service.StorageServiceNameProvider;
@@ -58,25 +59,25 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String upload(String bucketName, String objectKey, MultipartFile file) throws IOException {
+    public SysFile upload(String bucketName, String objectKey, MultipartFile file) throws IOException {
         Path targetPath = resolvePath(bucketName, objectKey);
         // 确保父目录存在
         Files.createDirectories(targetPath.getParent());
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-        // 同步数据库记录并返回 bizId
+        // 同步数据库记录并返回文件记录
         return saveFileRecord(bucketName, objectKey, targetPath.toString(), file.getSize());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
+    public SysFile upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
         Path targetPath = resolvePath(bucketName, objectKey);
         // 确保父目录存在
         Files.createDirectories(targetPath.getParent());
         long size = Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-        // 同步数据库记录并返回 bizId
+        // 同步数据库记录并返回文件记录
         return saveFileRecord(bucketName, objectKey, targetPath.toString(), size);
     }
 
@@ -120,7 +121,7 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
         // 同步数据库记录并返回 bizId
-        return saveFileRecord(bucketName, targetKey, targetPath.toString(), size);
+        return saveFileRecord(bucketName, targetKey, targetPath.toString(), size).getBizId();
     }
 
     @Override
@@ -157,7 +158,8 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
         // 同步数据库记录并返回 bizId
-        return saveFileRecord(bucketName, objectKey, filePath.toString(), (long) content.getBytes(StandardCharsets.UTF_8).length);
+        return saveFileRecord(bucketName, objectKey, filePath.toString(),
+                (long) content.getBytes(StandardCharsets.UTF_8).length).getBizId();
     }
 
     @Override
@@ -168,7 +170,7 @@ public class LocalChainStorage extends AbstractChainStorage implements ChainStor
         Files.write(filePath, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
         // 同步数据库记录并返回 bizId
-        return saveFileRecord(bucketName, objectKey, filePath.toString(), (long) bytes.length);
+        return saveFileRecord(bucketName, objectKey, filePath.toString(), (long) bytes.length).getBizId();
     }
 
     @Override

@@ -9,6 +9,7 @@ import io.minio.*;
 import okhttp3.Headers;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
@@ -20,6 +21,35 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class MinioChainStorageTest {
+
+    @Test
+    void uploadShouldReturnSavedFile() throws Exception {
+
+        MinioClient minioClient = mock(MinioClient.class);
+        SysFileObjectRepository fileRepository = mock(SysFileObjectRepository.class);
+        MinioChainStorage storage = new MinioChainStorage(
+                storageProperties(),
+                fileRepository,
+                new StorageServiceNameProvider("test-service")
+        );
+        ReflectionTestUtils.setField(storage, "minioClient", minioClient);
+        SysFile persistedFile = new SysFile();
+        persistedFile.setBizId("file-1");
+
+        when(minioClient.bucketExists(any(BucketExistsArgs.class))).thenReturn(true);
+        when(fileRepository.findByBucketNameAndObjectKeyForUpdate("test-service", "boms", "hello.txt"))
+                .thenReturn(Optional.empty());
+        when(fileRepository.save(any(SysFile.class))).thenReturn(persistedFile);
+
+        SysFile result = storage.upload("boms", "hello.txt", new MockMultipartFile(
+                "file",
+                "hello.txt",
+                "text/plain",
+                "hello".getBytes(StandardCharsets.UTF_8)
+        ));
+
+        assertThat(result).isSameAs(persistedFile);
+    }
 
     @Test
     void appendShouldRewriteSmallExistingObjectInsteadOfComposing() throws Exception {

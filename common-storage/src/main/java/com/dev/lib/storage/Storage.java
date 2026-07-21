@@ -1,5 +1,6 @@
 package com.dev.lib.storage;
 
+import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.domain.service.chain.ChainStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -191,10 +192,10 @@ public class Storage implements InitializingBean {
          * 写入 MultipartFile（覆盖/新建）
          *
          * @param file MultipartFile 文件
-         * @return SysFile 的 bizId
+         * @return 保存后的文件记录
          * @throws java.io.IOException 写入失败
          */
-        public String write(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
+        public SysFile write(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
             log.debug("Writing file to bucket: {}, key: {}", bucketName, objectKey);
             return instance.chainStorageService.upload(bucketName, objectKey, file);
         }
@@ -203,10 +204,10 @@ public class Storage implements InitializingBean {
          * 写入输入流（覆盖/新建）
          *
          * @param inputStream 输入流
-         * @return SysFile 的 bizId
+         * @return 保存后的文件记录
          * @throws java.io.IOException 写入失败
          */
-        public String write(InputStream inputStream) throws java.io.IOException {
+        public SysFile write(InputStream inputStream) throws java.io.IOException {
             log.debug("Writing stream to bucket: {}, key: {}", bucketName, objectKey);
             return instance.chainStorageService.upload(bucketName, objectKey, inputStream);
         }

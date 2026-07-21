@@ -1,6 +1,7 @@
 package com.dev.lib.storage.domain.service.chain;
 
 import com.dev.lib.storage.Storage;
+import com.dev.lib.storage.data.SysFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -19,10 +20,10 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param file       MultipartFile 文件
-     * @return SysFile 的 bizId
+     * @return 保存后的文件记录
      * @throws IOException 上传失败
      */
-    String upload(String bucketName, String objectKey, MultipartFile file) throws IOException;
+    SysFile upload(String bucketName, String objectKey, MultipartFile file) throws IOException;
 
     /**
      * 上传文件
@@ -30,10 +31,10 @@ public interface ChainStorageService {
      * @param bucketName 桶名称
      * @param objectKey  对象键
      * @param inputStream 输入流
-     * @return SysFile 的 bizId
+     * @return 保存后的文件记录
      * @throws IOException 上传失败
      */
-    String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException;
+    SysFile upload(String bucketName, String objectKey, InputStream inputStream) throws IOException;
 
     /**
      * 下载文件

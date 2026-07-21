@@ -7,6 +7,7 @@ import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.dev.lib.storage.config.AppStorageProperties;
 import com.dev.lib.storage.config.condition.ConditionalOnResolvedStorageType;
+import com.dev.lib.storage.data.SysFile;
 import com.dev.lib.storage.data.SysFileObjectRepository;
 import com.dev.lib.storage.Storage;
 import com.dev.lib.storage.domain.model.StorageType;
@@ -58,20 +59,20 @@ public class OssChainStorage extends AbstractChainStorage implements ChainStorag
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String upload(String bucketName, String objectKey, MultipartFile file) throws IOException {
+    public SysFile upload(String bucketName, String objectKey, MultipartFile file) throws IOException {
         return upload(bucketName, objectKey, file.getInputStream());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
+    public SysFile upload(String bucketName, String objectKey, InputStream inputStream) throws IOException {
         ensureBucketExists(bucketName);
         // 流式上传，不预先读取内容到内存
         ossClient.putObject(bucketName, objectKey, inputStream);
 
         // 注意：由于未读取文件内容，无法获取文件大小
-        // 将保存记录但 size 为 null，并返回 bizId
-        return saveFileRecord(bucketName, objectKey, null);
+        // 将保存记录但 size 为 null，并返回文件记录
+        return saveFileRecord(bucketName, objectKey, bucketName + "/" + objectKey, null);
     }
 
     @Override

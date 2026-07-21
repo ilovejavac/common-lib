@@ -32,6 +32,44 @@ public class SecurityContextHolder {
 		return holder.isBound() ? holder.get().userDetails : null;
 	}
 
+	public static <T> Optional<T> getValue(String key, Class<T> type) {
+
+		UserDetails userDetails = get();
+
+		if (userDetails == null || userDetails.getPayload() == null) {
+			return Optional.empty();
+		}
+
+		Object value = userDetails.getPayload().get(key);
+		if (value == null) {
+			return Optional.empty();
+		}
+
+		if (type.isInstance(value)) {
+			return Optional.of(type.cast(value));
+		}
+
+		if (type.isEnum() && value instanceof String enumName) {
+			for (T constant : type.getEnumConstants()) {
+				if (((Enum<?>) constant).name().equals(enumName)) {
+					return Optional.of(constant);
+				}
+			}
+
+			throw new IllegalArgumentException(
+					"Invalid enum value '%s' for %s"
+							.formatted(enumName, type.getSimpleName())
+			);
+		}
+
+		return Optional.empty();
+	}
+
+	public static String getStr(String key) {
+
+		return getValue(key, String.class).orElse(null);
+	}
+
 	// ===== 便捷方法 =====
 	public static boolean isLogin() {
 

@@ -23,7 +23,7 @@ public abstract class AbstractChainStorage {
 
     protected final StorageServiceNameProvider serviceNameProvider;
 
-    protected String saveFileRecord(String bucketName, String objectKey, String storagePath, Long size) {
+    protected SysFile saveFileRecord(String bucketName, String objectKey, String storagePath, Long size) {
 
         String serviceName = serviceNameProvider.currentServiceName();
         Optional<SysFile> existing = fileRepository.findByBucketNameAndObjectKeyForUpdate(
@@ -46,12 +46,12 @@ public abstract class AbstractChainStorage {
             file.setSize(size);
         }
 
-        return fileRepository.save(file).getBizId();
+        return fileRepository.save(file);
     }
 
     protected String saveFileRecord(String bucketName, String objectKey, Long size) {
 
-        return saveFileRecord(bucketName, objectKey, bucketName + "/" + objectKey, size);
+        return saveFileRecord(bucketName, objectKey, bucketName + "/" + objectKey, size).getBizId();
     }
 
     protected String updateFileRecord(String bucketName, String objectKey, String storagePath, long newSize) {
@@ -68,7 +68,7 @@ public abstract class AbstractChainStorage {
             file.setSize(newSize);
             return fileRepository.save(file).getBizId();
         }
-        return saveFileRecord(bucketName, objectKey, storagePath, newSize);
+        return saveFileRecord(bucketName, objectKey, storagePath, newSize).getBizId();
     }
 
     protected void deleteFileRecord(String bucketName, String objectKey) {
