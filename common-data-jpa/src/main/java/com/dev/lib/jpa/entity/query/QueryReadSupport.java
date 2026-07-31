@@ -55,15 +55,19 @@ public final class QueryReadSupport {
         Predicate predicate = buildPredicate(repository, dslQuery, expressions);
         JPAQuery<T> query = createEntityQuery(repository, predicate, dslQuery);
         Integer limit = applyLoadsBounds(query, dslQuery, expressions);
+        if (limit == null) {
+            return query.fetch();
+        }
 
-        List<T> results = query.fetch();
-        if (limit != null && results.size() == limit) {
+        List<T> results = query.limit(limit + 1L).fetch();
+        if (results.size() > limit) {
             log.warn(
                     "loads result reached its limit: entity={}, size={}, limit={}. Use page or narrower conditions to continue loading remaining rows.",
                     repository.getEntityClass().getName(),
                     results.size(),
                     limit
             );
+            return results.subList(0, limit);
         }
         return results;
     }

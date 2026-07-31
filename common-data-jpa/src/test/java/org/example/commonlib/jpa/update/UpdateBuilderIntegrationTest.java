@@ -26,6 +26,7 @@ class UpdateBuilderIntegrationTest {
                     "spring.datasource.password=",
                     "spring.jpa.hibernate.ddl-auto=create-drop",
                     "spring.jpa.open-in-view=false",
+                    "spring.jpa.show-sql=true",
                     "spring.application.name=update-builder-test"
             );
 

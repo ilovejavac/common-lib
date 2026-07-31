@@ -112,7 +112,7 @@ class PartialSelectPageSortIntegrationTest {
     }
 
     @Test
-    void loadsShouldHonorExplicitLimit() {
+    void loadsShouldHonorExplicitLimit(CapturedOutput output) {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
@@ -125,6 +125,25 @@ class PartialSelectPageSortIntegrationTest {
             query.setLimit(700);
 
             assertThat(repo.loads(query)).hasSize(700);
+            assertThat(output).contains("loads result reached its limit");
+        });
+    }
+
+    @Test
+    void loadsShouldNotWarnWhenResultExactlyMatchesExplicitLimit(CapturedOutput output) {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            PageSortUserRepo repo = context.getBean(PageSortUserRepo.class);
+            repo.saveAll(buildUsers("exact-", 700));
+
+            PageSortUserQuery query = new PageSortUserQuery();
+            query.setNameStartWith("exact-");
+            query.setLimit(700);
+
+            assertThat(repo.loads(query)).hasSize(700);
+            assertThat(output).doesNotContain("loads result reached its limit");
         });
     }
 
@@ -141,8 +160,22 @@ class PartialSelectPageSortIntegrationTest {
             assertThat(repo.loads(new PageSortUserQuery().setLimit(20000))).hasSize(10240);
             assertThat(repo.loads(new PageSortUserQuery().setLimit(100))).hasSize(100);
             assertThat(output).contains("loads result reached its limit")
-                    .contains("size=10240")
+                    .contains("size=10241")
                     .contains("limit=10240");
+        });
+    }
+
+    @Test
+    void loadsWithoutConditionsShouldNotWarnWhenTotalEqualsFindAllLimit(CapturedOutput output) {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            PageSortUserRepo repo = context.getBean(PageSortUserRepo.class);
+            repo.saveAll(buildUsers("exact-findall-", 10240));
+
+            assertThat(repo.loads()).hasSize(10240);
+            assertThat(output).doesNotContain("loads result reached its limit");
         });
     }
 
