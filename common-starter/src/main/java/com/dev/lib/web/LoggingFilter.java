@@ -33,7 +33,7 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 @RequiredArgsConstructor
 public class LoggingFilter extends OncePerRequestFilter {
 
-    private static final int CACHE_LIMIT = 64 * 1024; // 64KB
+    private static final int CACHE_LIMIT = 512 * 1024; // 512KB
 
     private static final String[] LOG_PATTERNS = {"/api/**"};
 
@@ -53,7 +53,6 @@ public class LoggingFilter extends OncePerRequestFilter {
                 traceId = IntEncoder.encode52(IDWorker.nextID());
             }
             MDC.put("trace_id", traceId);
-            log.info("Request received");
             filterChain.doFilter(wrappedRequest, response);
         } finally {
             logRequest(wrappedRequest);
@@ -140,7 +139,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             args.add(keyValue("business", business));
         }
 
-        log.info("Request completed", args.toArray());
+        log.debug("Request completed", args.toArray());
     }
 
     private boolean shouldLogRequestBody(ContentCachingRequestWrapper request) {

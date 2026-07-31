@@ -1,26 +1,18 @@
 package com.dev.lib.jpa.entity;
 
-import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.entity.dsl.DslQuery;
-import com.dev.lib.entity.dsl.agg.AggregateSpec;
-import com.dev.lib.jpa.entity.aggregate.AggregateExecutor;
-import com.dev.lib.jpa.entity.batch.BatchHelper;
-import com.dev.lib.jpa.entity.batch.BatchOperationSupport;
 import com.dev.lib.jpa.entity.delete.CascadeSoftDeleteSupport;
-import com.dev.lib.jpa.entity.dsl.SelectBuilder;
 import com.dev.lib.jpa.entity.query.QueryReadSupport;
-import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
 import com.dev.lib.jpa.entity.write.RepositoryWritePluginChain;
 import com.querydsl.core.types.EntityPath;
-import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.NumberPath;
 import com.querydsl.core.types.dsl.PathBuilder;
-import com.querydsl.core.types.dsl.StringPath;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.LockModeType;
 import lombok.Getter;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
@@ -29,15 +21,14 @@ import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.data.querydsl.SimpleEntityPathResolver;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 
 @Getter
-public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository<T, Long> implements BaseRepository<T> {
+public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository<T, Long>
+        implements BaseRepository<T> {
 
     private static final int DEFAULT_JDBC_BATCH_SIZE = 128;
 
@@ -59,160 +50,63 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
 
     private final NumberPath<Long> idPath;
 
-    private final StringPath bizIdPath;
-
     private final int jdbcBatchSize;
 
-    private final int inClauseBatchSize;
+    public BaseRepositoryImpl(JpaEntityInformation<T, Long> entityInformation, EntityManager entityManager) {
 
-    public BaseRepositoryImpl(JpaEntityInformation<T, Long> entityInformation, EntityManager em) {
-
-        super(entityInformation, em);
-        this.entityManager = em;
-        this.entityManagerFactory = em.getEntityManagerFactory();
+        super(entityInformation, entityManager);
+        this.entityManager = entityManager;
+        this.entityManagerFactory = entityManager.getEntityManagerFactory();
         this.entityClass = entityInformation.getJavaType();
 
         this.path = SimpleEntityPathResolver.INSTANCE.createPath(entityClass);
         this.pathBuilder = new PathBuilder<>(path.getType(), path.getMetadata());
         this.deletedPath = pathBuilder.getNumber("deleted", Long.class);
         this.idPath = pathBuilder.getNumber("id", Long.class);
-        this.bizIdPath = pathBuilder.getString("bizId");
-
-        this.jdbcBatchSize = resolveConfiguredBatchSize(em, JDBC_BATCH_SIZE_PROPERTY, DEFAULT_JDBC_BATCH_SIZE);
-        this.inClauseBatchSize = 1024;
-
-        this.queryFactory = new JPAQueryFactory(em);
-
-    }
-
-    @Override
-    public T ref(Long id) {
-
-        return entityManager.getReference(entityClass, id);
+        this.jdbcBatchSize = resolveConfiguredBatchSize(entityManager);
+        this.queryFactory = new JPAQueryFactory(entityManager);
     }
 
     @Override
     public Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return load(new QueryContext(), null, dslQuery, expressions);
+        ensureNonAggregateQuery(dslQuery, "load");
+        return QueryReadSupport.load(this, null, dslQuery, expressions);
     }
 
     @Override
     public List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return loads(new QueryContext(), null, dslQuery, expressions);
+        ensureNonAggregateQuery(dslQuery, "loads");
+        return QueryReadSupport.loads(this, dslQuery, expressions);
     }
 
     @Override
     public Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        return page(new QueryContext(), null, dslQuery, expressions);
+        ensureNonAggregateQuery(dslQuery, "page");
+        return QueryReadSupport.page(this, dslQuery, expressions);
     }
 
     @Override
-    public Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        return stream(new QueryContext(), null, dslQuery, expressions);
-    }
-
-    @Override
-    public boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        return exists(new QueryContext(), dslQuery, expressions);
-    }
-
-    @Override
-    public long count() {
-
-        return count((DslQuery<T>) null);
-    }
-
-    @Override
-    public long count(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        return count(new QueryContext(), dslQuery, expressions);
-    }
-
-    @Override
-    public <R> List<R> aggregate(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        if (dslQuery == null) {
-            throw new IllegalArgumentException("聚合查询不能为空");
-        }
-        AggregateSpec<T, R> spec = dslQuery.aggregateSpec();
-        if (spec == null || spec.isEmpty()) {
-            throw new IllegalArgumentException("聚合查询缺少 agg() 映射配置");
-        }
-
-        Predicate predicate = RepositoryPredicateSupport.buildPredicate(
-                pathBuilder,
-                path,
-                deletedPath,
-                new QueryContext(),
-                dslQuery,
-                expressions
-        );
-        return AggregateExecutor.executeAggregateQuery(entityManager, path, pathBuilder, predicate, spec);
-    }
-
-    <D> Optional<D> load(QueryContext ctx, SelectBuilder<T> select, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    public Optional<T> loadForUpdate(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
         ensureNonAggregateQuery(dslQuery, "load");
-        return QueryReadSupport.load(this, ctx, select, dslQuery, expressions);
+        return QueryReadSupport.load(this, LockModeType.PESSIMISTIC_WRITE, dslQuery, expressions);
     }
 
-    <D> Optional<D> load(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    @Override
+    public UpdateBuilder<T> update() {
 
-        ensureNonAggregateQuery(dslQuery, "load");
-        return QueryReadSupport.load(this, ctx, select, resultClass, dslQuery, expressions);
+        return new UpdateBuilder<>(this);
     }
 
-    <D> List<D> loads(QueryContext ctx, SelectBuilder<T> select, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public long delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        ensureNonAggregateQuery(dslQuery, "loads");
-        return QueryReadSupport.loads(this, ctx, select, dslQuery, expressions);
-    }
-
-    <D> List<D> loads(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "loads");
-        return QueryReadSupport.loads(this, ctx, select, resultClass, dslQuery, expressions);
-    }
-
-    <D> Page<D> page(QueryContext ctx, SelectBuilder<T> select, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "page");
-        return QueryReadSupport.page(this, ctx, select, dslQuery, expressions);
-    }
-
-    <D> Page<D> page(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "page");
-        return QueryReadSupport.page(this, ctx, select, resultClass, dslQuery, expressions);
-    }
-
-    <D> Stream<D> stream(QueryContext ctx, SelectBuilder<T> select, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "stream");
-        return QueryReadSupport.stream(this, ctx, select, dslQuery, expressions);
-    }
-
-    <D> Stream<D> stream(QueryContext ctx, SelectBuilder<T> select, Class<D> resultClass, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "stream");
-        return QueryReadSupport.stream(this, ctx, select, resultClass, dslQuery, expressions);
-    }
-
-    long count(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "count");
-        return QueryReadSupport.count(this, ctx, dslQuery, expressions);
-    }
-
-    boolean exists(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "exists");
-        return QueryReadSupport.exists(this, ctx, dslQuery, expressions);
+        ensureNonAggregateQuery(dslQuery, "delete");
+        return CascadeSoftDeleteSupport.delete(this, dslQuery, expressions);
     }
 
     @Override
@@ -234,99 +128,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         return RepositoryWritePluginChain.getInstance()
                 .resolve(context)
                 .map(plugin -> plugin.saveAll(context, entities))
-                .orElseGet(() -> BatchOperationSupport.saveAll(this, entities));
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public long delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        return deleteInternal(new QueryContext(), dslQuery, expressions);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean deleteRoot(AggregateRoot root) {
-
-        if (root == null) {
-            throw new IllegalArgumentException("root 条件不能为空");
-        }
-        Long id = root.getId();
-        if (id != null) {
-            return deleteInternal(new QueryContext(), null, getIdPath().eq(id)) > 0;
-        }
-        String bizId = root.getBizId();
-        if (bizId == null || bizId.isBlank()) {
-            throw new IllegalArgumentException("root 条件不能为空");
-        }
-        return deleteInternal(new QueryContext(), null, getPathBuilder().getString(BIZ_ID_FIELD_NAME).eq(bizId)) > 0;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public long deleteRoots(Collection<? extends AggregateRoot> roots) {
-
-        if (roots == null || roots.isEmpty()) {
-            return 0L;
-        }
-
-        AtomicLong affected = new AtomicLong();
-        BatchHelper.<T, AggregateRoot, AggregateRoot>forEachBatch(
-                this,
-                roots,
-                root -> {
-                    if (root == null) {
-                        throw new IllegalArgumentException("root 条件不能为空");
-                    }
-                    if (root.getId() != null) {
-                        return root;
-                    }
-                    String bizId = root.getBizId();
-                    if (bizId != null && !bizId.isBlank()) {
-                        return root;
-                    }
-                    throw new IllegalArgumentException("root 条件不能为空");
-                },
-                batch -> affected.addAndGet(deleteRootBatch(batch))
-        );
-        return affected.get();
-    }
-
-    private long deleteRootBatch(Collection<? extends AggregateRoot> roots) {
-
-        if (roots == null || roots.isEmpty()) {
-            return 0L;
-        }
-
-        Collection<Long>   rootIds    = new LinkedHashSet<>();
-        Collection<String> rootBizIds = new LinkedHashSet<>();
-        for (AggregateRoot root : roots) {
-            Long id = root.getId();
-            if (id != null) {
-                rootIds.add(id);
-                continue;
-            }
-            rootBizIds.add(root.getBizId());
-        }
-
-        long affected = 0L;
-        if (!rootIds.isEmpty()) {
-            affected += deleteInternal(new QueryContext(), null, getIdPath().in(rootIds));
-        }
-        if (!rootBizIds.isEmpty()) {
-            affected += deleteInternal(
-                    new QueryContext(),
-                    null,
-                    getPathBuilder().getString(BIZ_ID_FIELD_NAME).in(rootBizIds)
-            );
-        }
-        return affected;
-    }
-
-    long deleteInternal(QueryContext ctx, DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "delete");
-        return CascadeSoftDeleteSupport.delete(this, ctx, dslQuery, expressions);
+                .orElseGet(() -> saveAllInBatches(entities));
     }
 
     @Override
@@ -336,106 +138,63 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
         CascadeSoftDeleteSupport.deleteEntity(this, entity);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void deleteById(@NonNull Long id) {
+    private <S extends T> List<S> saveAllInBatches(Iterable<S> entities) {
 
-        CascadeSoftDeleteSupport.deleteById(this, id);
-    }
+        Objects.requireNonNull(entities, "entities must not be null");
+        List<S> saved = new ArrayList<>();
+        List<S> managedBatch = new ArrayList<>(jdbcBatchSize);
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void deleteAll(@NonNull Iterable<? extends T> entities) {
+        for (S entity : entities) {
+            Objects.requireNonNull(entity, "entities must not contain null");
+            S managed;
+            if (entity.isNew()) {
+                entityManager.persist(entity);
+                managed = entity;
+            } else {
+                managed = entityManager.merge(entity);
+            }
+            saved.add(managed);
+            managedBatch.add(managed);
 
-        CascadeSoftDeleteSupport.deleteAll(this, entities);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void deleteAllById(@NonNull Iterable<? extends Long> ids) {
-
-        CascadeSoftDeleteSupport.deleteAllById(this, ids);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void deleteAll() {
-
-        CascadeSoftDeleteSupport.deleteAll(this);
-    }
-
-    void hardDelete(T entity) {
-
-        BatchOperationSupport.hardDelete(this, entity);
-    }
-
-    void hardDeleteById(Long id) {
-
-        BatchOperationSupport.hardDeleteById(this, id);
-    }
-
-    void hardDeleteAll(Iterable<? extends T> entities) {
-
-        BatchOperationSupport.hardDeleteAll(this, entities);
-    }
-
-    void hardDeleteAllById(Iterable<Long> ids) {
-
-        BatchOperationSupport.hardDeleteAllById(this, ids);
-    }
-
-    long hardDelete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
-
-        ensureNonAggregateQuery(dslQuery, "hardDelete");
-        return BatchOperationSupport.hardDelete(this, dslQuery, expressions);
-    }
-
-    private static int resolveConfiguredBatchSize(EntityManager em, String propertyKey, int defaultValue) {
-
-        Object configured = em.getEntityManagerFactory().getProperties().get(propertyKey);
-        return normalizeBatchSize(configured, defaultValue);
-    }
-
-    private static int normalizeBatchSize(Object configured, int defaultValue) {
-
-        if (configured == null) {
-            return defaultValue;
-        }
-
-        int value;
-        if (configured instanceof Number number) {
-            value = number.intValue();
-        } else {
-            try {
-                value = Integer.parseInt(configured.toString());
-            } catch (Exception ignored) {
-                value = defaultValue;
+            if (managedBatch.size() == jdbcBatchSize) {
+                flushAndDetach(managedBatch);
             }
         }
-        return Math.max(1, value);
+
+        if (!managedBatch.isEmpty()) {
+            flushAndDetach(managedBatch);
+        }
+        return saved;
     }
 
-    private long deleteIdBatch(Collection<Long> ids) {
+    private void flushAndDetach(List<? extends T> entities) {
 
-        if (ids.isEmpty()) {
-            return 0L;
-        }
-        return deleteInternal(new QueryContext(), null, getIdPath().in(ids));
+        entityManager.flush();
+        entities.forEach(entityManager::detach);
+        entities.clear();
     }
 
-    private long deleteBizIdBatch(Collection<String> bizIds) {
+    private static int resolveConfiguredBatchSize(EntityManager entityManager) {
 
-        if (bizIds.isEmpty()) {
-            return 0L;
+        Object configured = entityManager.getEntityManagerFactory().getProperties().get(JDBC_BATCH_SIZE_PROPERTY);
+        if (configured == null) {
+            return DEFAULT_JDBC_BATCH_SIZE;
         }
-        return deleteInternal(new QueryContext(), null, getPathBuilder().getString(BIZ_ID_FIELD_NAME).in(bizIds));
+
+        try {
+            int value = configured instanceof Number number
+                    ? number.intValue()
+                    : Integer.parseInt(configured.toString());
+            return Math.max(1, value);
+        } catch (RuntimeException ignored) {
+            return DEFAULT_JDBC_BATCH_SIZE;
+        }
     }
 
     private void ensureNonAggregateQuery(DslQuery<T> dslQuery, String operation) {
 
         if (dslQuery != null && dslQuery.hasAgg()) {
-            throw new IllegalStateException("检测到 agg() 聚合配置，" + operation + " 不支持聚合查询，请使用 aggregate()");
+            throw new IllegalStateException("检测到 agg() 聚合配置，" + operation + " 不支持聚合查询");
         }
     }
-
 }

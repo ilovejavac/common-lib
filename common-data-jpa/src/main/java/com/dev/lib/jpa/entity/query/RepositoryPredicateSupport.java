@@ -5,7 +5,6 @@ import com.dev.lib.entity.dsl.core.DslQueryFieldResolver;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.jpa.entity.JpaEntity;
-import com.dev.lib.jpa.entity.QueryContext;
 import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
 import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.querydsl.core.BooleanBuilder;
@@ -28,17 +27,11 @@ public final class RepositoryPredicateSupport {
             PathBuilder<T> pathBuilder,
             EntityPath<T> path,
             NumberPath<Long> deletedPath,
-            QueryContext ctx,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
 
-        BooleanBuilder builder = new BooleanBuilder();
-
-        switch (ctx.getDeletedFilter()) {
-            case EXCLUDE_DELETED -> builder.and(deletedPath.eq(0L));
-            case ONLY_DELETED -> builder.and(deletedPath.gt(0L));
-        }
+        BooleanBuilder builder = new BooleanBuilder(deletedPath.eq(0L));
 
         Predicate scopedPredicate = buildPluginAndBusinessPredicate(pathBuilder, path, dslQuery, expressions);
         if (scopedPredicate != null) {
@@ -70,14 +63,19 @@ public final class RepositoryPredicateSupport {
 
     public static <T extends JpaEntity> Predicate toPredicate(DslQuery<T> query, BooleanExpression... expressions) {
 
+        BooleanExpression[] safeExpressions = expressions == null
+                ? new BooleanExpression[0]
+                : expressions;
         if (query != null) {
             Collection<QueryFieldMerger.FieldMetaValue> merged = DslQueryFieldResolver.resolveMerged(
                     query,
                     DslQueryFieldResolver.OverridePolicy.SELF_OVERRIDE_EXTERNAL
             );
-            return PredicateAssembler.assemble(query, merged, expressions);
+            return PredicateAssembler.assemble(query, merged, safeExpressions);
         }
-        return expressions.length == 0 ? null : PredicateAssembler.assemble(null, null, expressions);
+        return safeExpressions.length == 0
+                ? null
+                : PredicateAssembler.assemble(null, null, safeExpressions);
     }
 
     public static boolean isEmptyPredicate(Predicate predicate) {
@@ -85,8 +83,8 @@ public final class RepositoryPredicateSupport {
         if (predicate == null) {
             return true;
         }
-        if (predicate instanceof BooleanBuilder bb) {
-            return !bb.hasValue();
+        if (predicate instanceof BooleanBuilder builder) {
+            return !builder.hasValue();
         }
         return false;
     }

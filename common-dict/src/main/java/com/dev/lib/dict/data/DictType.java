@@ -6,14 +6,14 @@ import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.jpa.entity.JpaEntity;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "sys_dict_type", indexes = {
         @Index(name = "idx_type_code", columnList = "type_code", unique = true)

@@ -89,15 +89,13 @@ class NestedDataSource {
 
             Entity entity = new Entity();
             entity.setName(name);
-            mapper.saveAndFlush(entity);
+            mapper.save(entity);
 
             assertThat(mapper.load(new Load().setName(name)))
                     .hasValueSatisfying(loaded -> assertThat(loaded.getName()).isEqualTo(name));
 
-            mapper.delete(new Load().setName(name));
-
-            assertThat(mapper.count()).isZero();
-            assertThat(mapper.onlyDeleted().count()).isEqualTo(1);
+            mapper.delete(entity);
+            assertThat(mapper.load(new Load().setName(name))).isEmpty();
         }
     }
 

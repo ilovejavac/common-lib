@@ -1,7 +1,7 @@
 spring:
   threads:
     virtual:
-      enabled: true
+      enabled: false
   lifecycle:
     timeout-per-shutdown-phase: 30s
   mvc:
@@ -39,15 +39,18 @@ server:
   shutdown: graceful
   tomcat:
     threads:
-      max: 800
-      min-spare: 100
-    max-connections: 10000
-    accept-count: 1000
-    max-http-form-post-size: 2MB
+      max: 400
+      min-spare: 50
+    max-connections: 12000
+    accept-count: 800
+    max-http-form-post-size: 4MB
     max-swallow-size: 4MB
     basedir: /tmp/tomcat
     accesslog:
       enabled: false
+    connection-timeout: 3000
+    keep-alive-timeout: 15000
+    max-keep-alive-requests: 500
   http2:
     enabled: true
   compression:
@@ -56,9 +59,9 @@ server:
       - application/json
       - text/html
       - text/xml
+      - text/plain
       - application/xml
-      - image/svg+xml
-    min-response-size: 1024
+    min-response-size: 2048
 
 logging:
   config: classpath:logback-spring.xml

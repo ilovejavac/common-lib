@@ -7,7 +7,8 @@ import com.dev.lib.storage.serialize.FileItem;
 import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "sys_storage_file",
@@ -16,7 +17,8 @@ import lombok.Data;
                 @Index(name = "idx_service_name", columnList = "serviceName"),
                 @Index(name = "idx_service_bucket_object", columnList = "serviceName,bucketName,objectKey")
         })
-@Data
+@Getter
+@Setter
 @AutoMappers({
         @AutoMapper(target = FileItem.class, reverseConvertGenerate = false),
         @AutoMapper(target = StorageFile.class)

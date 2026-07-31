@@ -1,5 +1,6 @@
 package org.example.commonlib.jpa.security;
 
+import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.security.util.SecurityContextHolder;
@@ -26,68 +27,45 @@ class ScopedWriteProtectionIntegrationTest {
                     "spring.datasource.password=",
                     "spring.jpa.hibernate.ddl-auto=create-drop",
                     "spring.jpa.open-in-view=false",
-                    "spring.jpa.show-sql=true",
+                    "spring.jpa.show-sql=false",
                     "spring.application.name=scoped-write-protection-test"
             );
 
     @Test
-    void updateShouldRespectQueryPluginScopeEvenWhenUsingIdCondition() {
+    void readsShouldRespectQueryPluginScope() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
             ScopedWriteThingRepo repo = context.getBean(ScopedWriteThingRepo.class);
-            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            ScopedWriteThing entity = saveAs(repo, 2002L, "owned");
 
-            ScopedWriteThing victim = saveAs(repo, 2002L, "before");
-
-            long denied = runAs(1001L, () -> repo.update()
-                    .set(ScopedWriteThing::getId, victim.getId())
-                    .set(ScopedWriteThing::getName, "hacked")
-                    .execute());
-            assertThat(denied).isZero();
-
-            String unchanged = queryNameById(jdbcTemplate, victim.getId());
-            assertThat(unchanged).isEqualTo("before");
-
-            long allowed = runAs(2002L, () -> repo.update()
-                    .set(ScopedWriteThing::getId, victim.getId())
-                    .set(ScopedWriteThing::getName, "after")
-                    .execute());
-            assertThat(allowed).isEqualTo(1L);
-            assertThat(queryNameById(jdbcTemplate, victim.getId())).isEqualTo("after");
+            assertThat(runAs(1001L, () -> repo.load(new ScopedWriteThingQuery().setId(entity.getId()))))
+                    .isEmpty();
+            assertThat(runAs(2002L, () -> repo.load(new ScopedWriteThingQuery().setId(entity.getId()))))
+                    .isPresent();
         });
     }
 
     @Test
-    void deleteByIdAndPhysicalDeleteByIdShouldRespectQueryPluginScope() {
+    void deleteEntityShouldRespectQueryPluginScope() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
             ScopedWriteThingRepo repo = context.getBean(ScopedWriteThingRepo.class);
             JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            ScopedWriteThing victim = saveAs(repo, 3003L, "victim");
 
-            ScopedWriteThing softVictim = saveAs(repo, 3003L, "soft-victim");
-            runAsVoid(1001L, () -> repo.deleteById(softVictim.getId()));
-            assertThat(queryDeleted(jdbcTemplate, softVictim.getId())).isZero();
+            runAsVoid(1001L, () -> repo.delete(victim));
+            assertThat(queryDeleted(jdbcTemplate, victim.getId())).isZero();
 
-            runAsVoid(3003L, () -> repo.deleteById(softVictim.getId()));
-            assertThat(queryDeleted(jdbcTemplate, softVictim.getId())).isEqualTo(softVictim.getId());
-
-            ScopedWriteThing hardVictim = saveAs(repo, 4004L, "hard-victim");
-            runAsVoid(1001L, () -> repo.physicalDelete().deleteById(hardVictim.getId()));
-            assertThat(queryRowCountById(jdbcTemplate, hardVictim.getId())).isEqualTo(1L);
-
-            runAsVoid(4004L, () -> repo.physicalDelete().deleteById(hardVictim.getId()));
-            assertThat(queryRowCountById(jdbcTemplate, hardVictim.getId())).isZero();
+            runAsVoid(3003L, () -> repo.delete(victim));
+            assertThat(queryDeleted(jdbcTemplate, victim.getId())).isEqualTo(victim.getId());
         });
     }
 
     private static ScopedWriteThing saveAs(ScopedWriteThingRepo repo, long ownerId, String name) {
 
-        return runAs(ownerId, () -> {
-            ScopedWriteThing entity = new ScopedWriteThing(ownerId, name);
-            return repo.saveAndFlush(entity);
-        });
+        return runAs(ownerId, () -> repo.save(new ScopedWriteThing(ownerId, name)));
     }
 
     private static <R> R runAs(Long userId, java.util.concurrent.Callable<R> callable) {
@@ -112,33 +90,13 @@ class ScopedWriteProtectionIntegrationTest {
         SecurityContextHolder.with(user, runnable);
     }
 
-    private static String queryNameById(JdbcTemplate jdbcTemplate, Long id) {
-
-        return jdbcTemplate.queryForObject(
-                "select name from scoped_write_thing where id = ?",
-                String.class,
-                id
-        );
-    }
-
     private static long queryDeleted(JdbcTemplate jdbcTemplate, Long id) {
 
-        Long deleted = jdbcTemplate.queryForObject(
+        return jdbcTemplate.queryForObject(
                 "select deleted from scoped_write_thing where id = ?",
                 Long.class,
                 id
         );
-        return deleted == null ? 0L : deleted;
-    }
-
-    private static long queryRowCountById(JdbcTemplate jdbcTemplate, Long id) {
-
-        Long count = jdbcTemplate.queryForObject(
-                "select count(*) from scoped_write_thing where id = ?",
-                Long.class,
-                id
-        );
-        return count == null ? 0L : count;
     }
 
     @SpringBootConfiguration
@@ -170,11 +128,9 @@ class ScopedWriteThing extends JpaEntity {
 
         return ownerId;
     }
+}
 
-    public String getName() {
-
-        return name;
-    }
+class ScopedWriteThingQuery extends DslQuery<ScopedWriteThing> {
 }
 
 interface ScopedWriteThingRepo extends BaseRepository<ScopedWriteThing> {

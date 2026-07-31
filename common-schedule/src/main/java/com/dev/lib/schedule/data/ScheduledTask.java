@@ -3,11 +3,13 @@ package com.dev.lib.schedule.data;
 import com.dev.lib.jpa.entity.JpaEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "sys_scheduled_task")
-@Data
+@Getter
+@Setter
 public class ScheduledTask extends JpaEntity {
 
     private String  taskName;        // 任务名称

@@ -1,9 +1,7 @@
 package com.dev.lib.jpa.entity;
 
-import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.entity.encrypt.Encrypt;
-import com.dev.lib.jpa.TransactionHelper;
 import com.dev.lib.jpa.entity.dsl.SFunction;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.dev.lib.security.util.SecurityContextHolder;
@@ -12,21 +10,22 @@ import com.querydsl.core.types.Path;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAUpdateClause;
-import jakarta.persistence.Column;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class UpdateBuilder<T extends JpaEntity> {
-
-    private static final String ID_FIELD_NAME = "id";
-
-    private static final String BIZ_ID_FIELD_NAME = "bizId";
+/**
+ * 基于 QueryDSL 的批量更新，所有赋值在数据库侧一次 UPDATE 完成，避免先查后改的并发竞争。
+ * 调用方需要处于事务中（例如方法标注 @Transactional）。
+ */
+public final class UpdateBuilder<T extends JpaEntity> {
 
     private static final Map<Class<?>, Map<String, FieldMeta>> FIELD_META_CACHE = new ConcurrentHashMap<>();
 
@@ -38,49 +37,9 @@ public class UpdateBuilder<T extends JpaEntity> {
 
     private BooleanExpression[] expressions = new BooleanExpression[0];
 
-    private Predicate predicate;
-
-    private Predicate businessPredicate;
-
-    private BooleanExpression identityExpression;
-
-    private boolean idIdentityPresent;
-
-    public UpdateBuilder(BaseRepositoryImpl<T> impl) {
+    UpdateBuilder(BaseRepositoryImpl<T> impl) {
 
         this.impl = impl;
-    }
-
-    public UpdateBuilder<T> byId(Long id) {
-
-        if (id == null) {
-            throw new IllegalArgumentException("id 条件不能为空");
-        }
-        identityExpression = impl.getIdPath().eq(id);
-        idIdentityPresent = true;
-        return this;
-    }
-
-    public UpdateBuilder<T> byId(String bizId) {
-
-        if (bizId == null || bizId.isBlank()) {
-            throw new IllegalArgumentException("bizId 条件不能为空");
-        }
-        if (!idIdentityPresent) {
-            identityExpression = impl.getPathBuilder().getString(BIZ_ID_FIELD_NAME).eq(bizId);
-        }
-        return this;
-    }
-
-    public UpdateBuilder<T> byId(AggregateRoot root) {
-
-        if (root == null) {
-            throw new IllegalArgumentException("root 条件不能为空");
-        }
-        if (root.getId() != null) {
-            return byId(root.getId());
-        }
-        return byId(root.getBizId());
     }
 
     public UpdateBuilder<T> set(SFunction<T, ?> field, Object value) {
@@ -88,22 +47,8 @@ public class UpdateBuilder<T extends JpaEntity> {
         if (value == null) {
             return this;
         }
-
-        FieldMeta meta = resolveFieldMeta(field);
-        if (applyIdentityCondition(meta, value)) {
-            return this;
-        }
-        assignments.put(meta.fieldName(), new Assignment(meta, prepareAssignmentValue(meta, value), false));
-        return this;
-    }
-
-    public UpdateBuilder<T> setNull(SFunction<T, ?> field) {
-
-        FieldMeta meta = resolveFieldMeta(field);
-        if (!meta.nullable()) {
-            throw new IllegalArgumentException("字段不允许置空(nullable = false): " + meta.fieldName());
-        }
-        assignments.put(meta.fieldName(), new Assignment(meta, null, true));
+        FieldMeta meta = resolveFieldMeta(field.getFieldName());
+        assignments.put(meta.fieldName(), new Assignment(meta, prepareValue(meta, value)));
         return this;
     }
 
@@ -116,92 +61,43 @@ public class UpdateBuilder<T extends JpaEntity> {
 
     public long execute() {
 
-        refreshPredicates();
-
         if (assignments.isEmpty()) {
             throw new IllegalArgumentException("至少设置一个字段");
         }
+        Predicate businessPredicate = RepositoryPredicateSupport.toPredicate(dslQuery, expressions);
         if (RepositoryPredicateSupport.isEmptyPredicate(businessPredicate)) {
             throw new IllegalArgumentException("批量更新必须指定业务条件，防止误更新全表");
         }
 
         ensureAuditAssignments();
 
-        return TransactionHelper.callWithEntityManagerFactory(
-                impl.getEntityManagerFactory(), () -> {
-                    JPAUpdateClause clause = impl.getQueryFactory().update(impl.getPath());
-                    for (Assignment assignment : assignments.values()) {
-                        applyAssignment(clause, assignment);
-                    }
-
-                    long affected = clause.where(predicate).execute();
-                    if (affected > 0) {
-                        impl.getEntityManager().flush();
-                        impl.getEntityManager().clear();
-                    }
-                    return affected;
-                }
-        );
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            return doExecute();
+        }
+        // 无活动事务时自管理一个事务，保证批量更新的原子性（行为与旧版 TransactionHelper 一致）
+        TransactionTemplate template = new TransactionTemplate(new JpaTransactionManager(impl.getEntityManagerFactory()));
+        return template.execute(status -> doExecute());
     }
 
-    private boolean applyIdentityCondition(FieldMeta meta, Object value) {
+    private long doExecute() {
 
-        if (ID_FIELD_NAME.equals(meta.fieldName())) {
-            if (!(value instanceof Long id)) {
-                throw new IllegalArgumentException("id 条件值必须是 Long: " + value.getClass().getName());
-            }
-            identityExpression = impl.getIdPath().eq(id);
-            idIdentityPresent = true;
-            return true;
+        JPAUpdateClause clause = impl.getQueryFactory().update(impl.getPath());
+        for (Assignment assignment : assignments.values()) {
+            applyAssignment(clause, assignment);
         }
-
-        if (BIZ_ID_FIELD_NAME.equals(meta.fieldName())) {
-            if (idIdentityPresent) {
-                return true;
-            }
-            if (!(value instanceof String bizId)) {
-                throw new IllegalArgumentException("bizId 条件值必须是 String: " + value.getClass().getName());
-            }
-            identityExpression = impl.getPathBuilder().getString(BIZ_ID_FIELD_NAME).eq(bizId);
-            return true;
-        }
-        return false;
-    }
-
-    private Object prepareAssignmentValue(FieldMeta meta, Object value) {
-
-        if (!meta.encrypt()) {
-            return value;
-        }
-        if (!(value instanceof String stringValue)) {
-            throw new IllegalArgumentException("@Encrypt 字段只支持 String 类型: " + meta.fieldName());
-        }
-        return EncryptUtil.encrypt(stringValue);
-    }
-
-    private void refreshPredicates() {
-
-        BooleanExpression[] mergedExpressions = mergeIdentityExpression();
-        this.businessPredicate = RepositoryPredicateSupport.toPredicate(dslQuery, mergedExpressions);
-        this.predicate = RepositoryPredicateSupport.buildPredicate(
+        Predicate predicate = RepositoryPredicateSupport.buildPredicate(
                 impl.getPathBuilder(),
                 impl.getPath(),
                 impl.getDeletedPath(),
-                new QueryContext(),
                 dslQuery,
-                mergedExpressions
+                expressions
         );
-    }
-
-    private BooleanExpression[] mergeIdentityExpression() {
-
-        if (identityExpression == null) {
-            return expressions;
+        long affected = clause.where(predicate).execute();
+        if (affected > 0) {
+            impl.getEntityManager().flush();
+            impl.getEntityManager().clear();
         }
-
-        BooleanExpression[] merged = Arrays.copyOf(expressions, expressions.length + 1);
-        merged[expressions.length] = identityExpression;
-        return merged;
+        return affected;
     }
 
     private void ensureAuditAssignments() {
@@ -215,71 +111,63 @@ public class UpdateBuilder<T extends JpaEntity> {
         if (value == null || assignments.containsKey(fieldName)) {
             return;
         }
-
-        FieldMeta meta = resolveFieldMetaMap().get(fieldName);
-        if (meta == null) {
-            return;
+        FieldMeta meta = fieldMetaMap().get(fieldName);
+        if (meta != null) {
+            assignments.put(fieldName, new Assignment(meta, value));
         }
-        assignments.put(fieldName, new Assignment(meta, value, false));
+    }
+
+    private Object prepareValue(FieldMeta meta, Object value) {
+
+        if (!meta.encrypt()) {
+            return value;
+        }
+        if (!(value instanceof String stringValue)) {
+            throw new IllegalArgumentException("@Encrypt 字段只支持 String 类型: " + meta.fieldName());
+        }
+        return EncryptUtil.encrypt(stringValue);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void applyAssignment(JPAUpdateClause clause, Assignment assignment) {
 
         Path path = impl.getPathBuilder().get(assignment.meta().fieldName(), assignment.meta().fieldType());
-        if (assignment.isNull()) {
-            clause.setNull(path);
-            return;
-        }
         clause.set(path, assignment.value());
-    }
-
-    private FieldMeta resolveFieldMeta(SFunction<T, ?> field) {
-
-        return resolveFieldMeta(field.getFieldName());
     }
 
     private FieldMeta resolveFieldMeta(String fieldName) {
 
-        FieldMeta meta = resolveFieldMetaMap().get(fieldName);
+        FieldMeta meta = fieldMetaMap().get(fieldName);
         if (meta == null) {
             throw new IllegalArgumentException("字段不存在: " + fieldName);
         }
         return meta;
     }
 
-    private Map<String, FieldMeta> resolveFieldMetaMap() {
+    private Map<String, FieldMeta> fieldMetaMap() {
 
         return FIELD_META_CACHE.computeIfAbsent(impl.getEntityClass(), UpdateBuilder::scanFieldMeta);
     }
 
     private static Map<String, FieldMeta> scanFieldMeta(Class<?> entityClass) {
 
-        Map<String, FieldMeta> map     = new ConcurrentHashMap<>();
-        Class<?>               current = entityClass;
-        while (current != null && current != Object.class) {
+        Map<String, FieldMeta> map = new ConcurrentHashMap<>();
+        for (Class<?> current = entityClass; current != null && current != Object.class; current = current.getSuperclass()) {
             for (Field field : current.getDeclaredFields()) {
                 ReflectionUtils.makeAccessible(field);
-                Column  column   = field.getAnnotation(Column.class);
-                boolean nullable = column == null ? !field.getType().isPrimitive() : column.nullable();
                 map.putIfAbsent(
-                        field.getName(), new FieldMeta(
-                                field.getName(),
-                                field.getType(),
-                                nullable,
-                                field.isAnnotationPresent(Encrypt.class)
-                        )
+                        field.getName(),
+                        new FieldMeta(field.getName(), field.getType(), field.isAnnotationPresent(Encrypt.class))
                 );
             }
-            current = current.getSuperclass();
         }
         return map;
     }
 
-    private record FieldMeta(String fieldName, Class<?> fieldType, boolean nullable, boolean encrypt) {
+    private record FieldMeta(String fieldName, Class<?> fieldType, boolean encrypt) {
     }
 
-    private record Assignment(FieldMeta meta, Object value, boolean isNull) {
+    private record Assignment(FieldMeta meta, Object value) {
     }
 
 }

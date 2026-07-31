@@ -2,6 +2,7 @@ package com.dev.lib.jpa.entity.dsl;
 
 import com.dev.lib.entity.dsl.QueryType;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.PathBuilder;
 import org.springframework.util.CollectionUtils;
 
@@ -157,7 +158,7 @@ public class ExpressionBuilder {
             throw new IllegalArgumentException("IN 操作要求值必须是 Collection 类型");
         }
         if (CollectionUtils.isEmpty((Collection<?>) value)) {
-            return null;
+            return Expressions.FALSE;
         }
         return path.get(field).in((Collection<?>) value);
     }
@@ -168,7 +169,7 @@ public class ExpressionBuilder {
             throw new IllegalArgumentException("NOT_IN 操作要求值必须是 Collection 类型");
         }
         if (CollectionUtils.isEmpty((Collection<?>) value)) {
-            return null;
+            return Expressions.TRUE;
         }
         return path.get(field).notIn((Collection<?>) value);
     }

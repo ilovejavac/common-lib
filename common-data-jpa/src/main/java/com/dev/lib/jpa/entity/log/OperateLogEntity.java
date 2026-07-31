@@ -5,13 +5,15 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "sys_operate_log")
-@Data
+@Getter
+@Setter
 public class OperateLogEntity extends JpaEntity {
 
     private String module;

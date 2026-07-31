@@ -3,8 +3,6 @@ package com.dev.lib.jpa.entity.delete;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
-import com.dev.lib.jpa.entity.QueryContext;
-import com.dev.lib.jpa.entity.batch.BatchHelper;
 import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.dev.lib.security.util.SecurityContextHolder;
@@ -24,9 +22,9 @@ import jakarta.persistence.OneToOne;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public final class CascadeSoftDeleteSupport {
@@ -37,7 +35,6 @@ public final class CascadeSoftDeleteSupport {
 
     public static <T extends JpaEntity> long delete(
             BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
@@ -45,10 +42,6 @@ public final class CascadeSoftDeleteSupport {
         Predicate businessPredicate = RepositoryPredicateSupport.toPredicate(dslQuery, expressions);
         if (RepositoryPredicateSupport.isEmptyPredicate(businessPredicate)) {
             throw new IllegalArgumentException("批量删除必须指定业务条件，防止误删全表");
-        }
-
-        if (ctx.getDeletedFilter() == QueryContext.DeletedFilter.ONLY_DELETED) {
-            return 0L;
         }
 
         Predicate condition = activeCondition(
@@ -77,101 +70,6 @@ public final class CascadeSoftDeleteSupport {
             return;
         }
         Predicate condition = activeCondition(repository, scopedCondition(repository, identity));
-        cascadeSoftDeleteChildren(
-                repository,
-                repository.getEntityClass(),
-                repository.getPathBuilder(),
-                condition,
-                new HashSet<>()
-        );
-        executeSoftDeleteUpdate(repository, condition);
-    }
-
-    public static <T extends JpaEntity> void deleteById(BaseRepositoryImpl<T> repository, Long id) {
-
-        if (id == null) {
-            return;
-        }
-        softDeleteById(repository, id);
-    }
-
-    public static <T extends JpaEntity> void deleteAll(BaseRepositoryImpl<T> repository, Iterable<? extends T> entities) {
-
-        BatchHelper.forEachBatch(
-                repository,
-                entities,
-                entity -> (entity != null && entity.getId() != null) ? entity.getId() : null,
-                ids -> softDeleteByIds(repository, ids)
-        );
-    }
-
-    public static <T extends JpaEntity> void deleteAllById(BaseRepositoryImpl<T> repository, Iterable<? extends Long> ids) {
-
-        BatchHelper.<T, Long, Long>forEachBatch(
-                repository,
-                ids,
-                id -> id,
-                batch -> softDeleteByIds(repository, batch)
-        );
-    }
-
-    public static <T extends JpaEntity> void deleteAllByBizId(BaseRepositoryImpl<T> repository, Iterable<? extends String> ids) {
-
-        BatchHelper.<T, String, String>forEachBatch(
-                repository,
-                ids,
-                id -> id,
-                batch -> softDeleteByBizIds(repository, batch)
-        );
-    }
-
-    public static <T extends JpaEntity> void deleteAll(BaseRepositoryImpl<T> repository) {
-
-        Predicate scoped = RepositoryPredicateSupport.buildPredicate(
-                repository.getPathBuilder(),
-                repository.getPath(),
-                repository.getDeletedPath(),
-                new QueryContext(),
-                null
-        );
-        Long lastId = null;
-        while (true) {
-            List<Long> ids = BatchHelper.fetchIdsAfter(repository, scoped, lastId);
-            if (ids.isEmpty()) {
-                break;
-            }
-            softDeleteByIds(repository, ids);
-            lastId = ids.getLast();
-        }
-    }
-
-    private static <T extends JpaEntity> void softDeleteById(BaseRepositoryImpl<T> repository, Long id) {
-
-        softDeleteByIds(repository, List.of(id));
-    }
-
-    private static <T extends JpaEntity> void softDeleteByIds(BaseRepositoryImpl<T> repository, Collection<Long> ids) {
-
-        if (ids == null || ids.isEmpty()) {
-            return;
-        }
-        Predicate condition = activeCondition(repository, scopedCondition(repository, repository.getIdPath().in(ids)));
-        cascadeSoftDeleteChildren(
-                repository,
-                repository.getEntityClass(),
-                repository.getPathBuilder(),
-                condition,
-                new HashSet<>()
-        );
-        executeSoftDeleteUpdate(repository, condition);
-    }
-
-    private static <T extends JpaEntity> void softDeleteByBizIds(BaseRepositoryImpl<T> repository, Collection<String> ids) {
-
-        if (ids == null || ids.isEmpty()) {
-            return;
-        }
-        Predicate condition = activeCondition(repository, scopedCondition(repository, repository.getBizIdPath().in(ids)));
         cascadeSoftDeleteChildren(
                 repository,
                 repository.getEntityClass(),
@@ -382,10 +280,20 @@ public final class CascadeSoftDeleteSupport {
             return fieldType;
         }
 
-        Type genericType = field.getGenericType();
-        if (genericType instanceof ParameterizedType parameterizedType) {
-            Type[] typeArguments = parameterizedType.getActualTypeArguments();
-            if (typeArguments.length > 0 && typeArguments[0] instanceof Class<?> targetClass) {
+        if (!(field.getGenericType() instanceof ParameterizedType parameterizedType)) {
+            return null;
+        }
+        Type[] typeArguments = parameterizedType.getActualTypeArguments();
+        if (typeArguments.length == 0) {
+            return null;
+        }
+        Type typeArgument = typeArguments[0];
+        if (typeArgument instanceof Class<?> targetClass) {
+            return targetClass;
+        }
+        if (typeArgument instanceof WildcardType wildcard) {
+            Type[] upperBounds = wildcard.getUpperBounds();
+            if (upperBounds.length > 0 && upperBounds[0] instanceof Class<?> targetClass) {
                 return targetClass;
             }
         }

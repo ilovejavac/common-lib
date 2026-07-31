@@ -1,17 +1,13 @@
 package org.example.commonlib.jpa.batch;
 
+import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityManagerFactory;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
@@ -31,7 +27,6 @@ class SaveAllPersistenceContextIntegrationTest {
                     "spring.jpa.hibernate.ddl-auto=create-drop",
                     "spring.jpa.open-in-view=false",
                     "spring.jpa.properties.hibernate.jdbc.batch_size=1",
-                    "spring.jpa.properties.hibernate.generate_statistics=true",
                     "spring.application.name=batch-save-context-test"
             );
 
@@ -46,88 +41,17 @@ class SaveAllPersistenceContextIntegrationTest {
             AtomicLong trackedId = new AtomicLong();
 
             transactionTemplate.executeWithoutResult(status -> {
-                BatchThing tracked = repo.saveAndFlush(new BatchThing("before"));
+                BatchThing tracked = repo.save(new BatchThing("before"));
                 trackedId.set(tracked.getId());
 
                 tracked.setName("flushed-before-save-all");
                 repo.saveAll(List.of(new BatchThing("batch")));
-
                 tracked.setName("changed-after-save-all");
             });
 
-            assertThat(repo.findById(trackedId.get()))
+            assertThat(repo.load(new BatchThingQuery().setId(trackedId.get())))
                     .map(BatchThing::getName)
                     .contains("changed-after-save-all");
-        });
-    }
-
-    @Test
-    void physicalDeleteByIdShouldNotLeaveDeletedEntityManagedInCurrentTransaction() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            BatchThingRepo repo = context.getBean(BatchThingRepo.class);
-            TransactionTemplate transactionTemplate = context.getBean(TransactionTemplate.class);
-
-            transactionTemplate.executeWithoutResult(status -> {
-                BatchThing tracked = repo.saveAndFlush(new BatchThing("delete-me"));
-
-                repo.physicalDelete().deleteById(tracked.getId());
-
-                assertThat(repo.findById(tracked.getId())).isEmpty();
-            });
-        });
-    }
-
-    @Test
-    void deleteAllWithoutCascadeShouldUseSingleIdScanAndSingleBulkUpdate() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            BatchThingRepo repo = context.getBean(BatchThingRepo.class);
-            repo.saveAll(List.of(
-                    new BatchThing("delete-1"),
-                    new BatchThing("delete-2"),
-                    new BatchThing("delete-3")
-            ));
-
-            Statistics statistics = context.getBean(EntityManagerFactory.class)
-                    .unwrap(SessionFactory.class)
-                    .getStatistics();
-            statistics.clear();
-
-            repo.deleteAll();
-
-            assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
-            assertThat(repo.onlyDeleted().count()).isEqualTo(3);
-        });
-    }
-
-    @Test
-    void deleteAllByIdShouldUseInClauseBatchSizeIndependentFromJdbcBatchSize() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            BatchThingRepo repo = context.getBean(BatchThingRepo.class);
-            List<BatchThing> saved = repo.saveAll(List.of(
-                    new BatchThing("delete-id-1"),
-                    new BatchThing("delete-id-2"),
-                    new BatchThing("delete-id-3"),
-                    new BatchThing("delete-id-4")
-            ));
-
-            Statistics statistics = context.getBean(EntityManagerFactory.class)
-                    .unwrap(SessionFactory.class)
-                    .getStatistics();
-            statistics.clear();
-
-            repo.deleteAllById(saved.stream().map(BatchThing::getId).toList());
-
-            assertThat(repo.onlyDeleted().count()).isEqualTo(4);
-            assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(3);
         });
     }
 
@@ -142,7 +66,7 @@ class BatchThing extends JpaEntity {
 
     private String name;
 
-    public  BatchThing() {
+    public BatchThing() {
     }
 
     BatchThing(String name) {
@@ -159,6 +83,9 @@ class BatchThing extends JpaEntity {
 
         this.name = name;
     }
+}
+
+class BatchThingQuery extends DslQuery<BatchThing> {
 }
 
 interface BatchThingRepo extends BaseRepository<BatchThing> {

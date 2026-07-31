@@ -1,216 +1,52 @@
 package com.dev.lib.jpa.entity;
 
-import com.dev.lib.domain.AggregateRoot;
 import com.dev.lib.entity.dsl.DslQuery;
-import com.dev.lib.jpa.Bo;
-import com.dev.lib.jpa.entity.dsl.FieldSelector;
-import com.dev.lib.jpa.entity.dsl.SFunction;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.data.domain.Page;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.NoRepositoryBean;
+import org.springframework.data.repository.Repository;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 @NoRepositoryBean
-public interface BaseRepository<T extends JpaEntity> extends JpaRepository<T, Long> {
+public interface BaseRepository<T extends JpaEntity> extends Repository<T, Long> {
 
-	String BIZ_ID_FIELD_NAME = "bizId";
+    <S extends T> S save(S entity);
 
-	// ==================== 构建器入口 ====================
+    <S extends T> List<S> saveAll(Iterable<S> entities);
 
-	default QueryBuilder<T> lockForUpdate() {
+    void delete(T entity);
 
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).lockForUpdate();
-	}
+    Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-	default QueryBuilder<T> lockForShare() {
+    default Optional<T> load(BooleanExpression... expressions) {
 
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).lockForShare();
-	}
+        return load((DslQuery<T>) null, expressions);
+    }
 
-	default QueryBuilder<T> withDeleted() {
+    List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).withDeleted();
-	}
+    default List<T> loads(BooleanExpression... expressions) {
 
-	default QueryBuilder<T> onlyDeleted() {
+        return loads(null, expressions);
+    }
 
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).onlyDeleted();
-	}
+    Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-	default QueryBuilder<T> select(SFunction<? super T, ?> field1) {
+    long delete(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1);
-	}
+    default long delete(BooleanExpression... expressions) {
 
-	default QueryBuilder<T> select(SFunction<? super T, ?> field1, SFunction<? super T, ?> field2) {
+        return delete((DslQuery<T>) null, expressions);
+    }
 
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2);
-	}
+    Optional<T> loadForUpdate(DslQuery<T> dslQuery, BooleanExpression... expressions);
 
-	default QueryBuilder<T> select(SFunction<? super T, ?> field1,
-	                               SFunction<? super T, ?> field2,
-	                               SFunction<? super T, ?> field3) {
+    default Optional<T> loadForUpdate(BooleanExpression... expressions) {
 
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2, field3);
-	}
+        return loadForUpdate((DslQuery<T>) null, expressions);
+    }
 
-	default QueryBuilder<T> select(
-			SFunction<? super T, ?> field1,
-			SFunction<? super T, ?> field2,
-			SFunction<? super T, ?> field3,
-			SFunction<? super T, ?> field4
-	                              ) {
-
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2, field3, field4);
-	}
-
-	default QueryBuilder<T> select(
-			SFunction<? super T, ?> field1,
-			SFunction<? super T, ?> field2,
-			SFunction<? super T, ?> field3,
-			SFunction<? super T, ?> field4,
-			SFunction<? super T, ?> field5
-	                              ) {
-
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2, field3, field4, field5);
-	}
-
-	default QueryBuilder<T> select(
-			SFunction<? super T, ?> field1,
-			SFunction<? super T, ?> field2,
-			SFunction<? super T, ?> field3,
-			SFunction<? super T, ?> field4,
-			SFunction<? super T, ?> field5,
-			SFunction<? super T, ?> field6
-	                              ) {
-
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(field1, field2, field3, field4, field5, field6);
-	}
-
-	@SuppressWarnings("unchecked")
-	default QueryBuilder<T> select(FieldSelector<T>... selectors) {
-
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).select(selectors);
-	}
-
-	default QueryBuilder<T> select(String... fieldNames) {
-
-		return new QueryBuilder<>(RepositoryUtils.unwrap(this)).selectByNames(fieldNames);
-	}
-
-	default UpdateBuilder<T> update() {
-
-		return new UpdateBuilder<>(RepositoryUtils.unwrap(this));
-	}
-
-	default EtlSqlBuilder<T> etl(String sqlScript) {
-
-		return new EtlSqlBuilder<>(RepositoryUtils.unwrap(this), sqlScript);
-	}
-
-	default DropTableBuilder<T> drop(String tableName) {
-
-		return new DropTableBuilder<>(RepositoryUtils.unwrap(this), tableName);
-	}
-
-	// ==================== 直接查询 ====================
-
-	Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-	default Optional<T> load(BooleanExpression... expressions) {
-
-		return load(null, expressions);
-	}
-
-	List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-	default List<T> loads(BooleanExpression... expressions) {
-
-		return loads(null, expressions);
-	}
-
-	Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-	@Override
-	default long count() {
-
-		return count(null, new BooleanExpression[0]);
-	}
-
-	default long count(DslQuery<T> dslQuery) {
-
-		return count(dslQuery, new BooleanExpression[0]);
-	}
-
-	long count(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-	default long count(BooleanExpression... expressions) {
-
-		return count((DslQuery<T>) null, expressions);
-	}
-
-	boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-	default boolean exists(BooleanExpression... expressions) {
-
-		return exists(null, expressions);
-	}
-
-	Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-	default Stream<T> stream(BooleanExpression... expressions) {
-
-		return stream(null, expressions);
-	}
-
-	<R> List<R> aggregate(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-	long delete(DslQuery<T> dslQuery, BooleanExpression... expressions);
-
-	default long delete(BooleanExpression... expressions) {
-
-		return delete(null, expressions);
-	}
-
-	boolean deleteRoot(AggregateRoot root);
-
-	long deleteRoots(Collection<? extends AggregateRoot> roots);
-
-	// ==================== 物理删除 ====================
-
-	default PhysicalDeleteRepository<T> physicalDelete() {
-
-		return new PhysicalDeleteRepository<>(this);
-	}
-
-	T ref(Long id);
-
-	default List<T> saveAll(Collection<? extends Bo<T>> bos) {
-
-		return saveAll(bos.stream().map(Bo::getEntity).toList());
-	}
-
-	default void deleteAll(Collection<? extends Bo<T>> bos) {
-
-		deleteAll(bos.stream().map(Bo::getEntity).toList());
-	}
-
-	default T save(Bo<T> bo) {
-
-		T po = save(bo.getEntity());
-		bo.emit();
-		return po;
-	}
-
-	default void delete(Bo<T> bo) {
-
-		bo.takeif(this::delete);
-		bo.emit();
-	}
-
+    UpdateBuilder<T> update();
 }

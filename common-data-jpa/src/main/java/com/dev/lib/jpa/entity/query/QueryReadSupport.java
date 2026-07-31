@@ -3,241 +3,119 @@ package com.dev.lib.jpa.entity.query;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
-import com.dev.lib.jpa.entity.QueryContext;
-import com.dev.lib.jpa.entity.dsl.SelectBuilder;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
+import jakarta.persistence.LockModeType;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Timeouts;
-import org.hibernate.jpa.HibernateHints;
-import org.hibernate.jpa.SpecHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Stream;
 
 @Slf4j
 public final class QueryReadSupport {
 
     private static final int DEFAULT_PAGE_SIZE = 512;
 
-    private static final int MAX_DIRECT_LOAD_SIZE = 512;
+    private static final int MAX_FIND_ALL_SIZE = 10240;
 
     private QueryReadSupport() {
     }
 
-    public static <T extends JpaEntity, D> Optional<D> load(
+    public static <T extends JpaEntity> Optional<T> load(
             BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
+            LockModeType lockMode,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
 
-        if (select == null) {
-            @SuppressWarnings("unchecked")
-            Optional<D> fullEntity = (Optional<D>) loadFullEntity(repository, ctx, dslQuery, expressions);
-            return fullEntity;
-        }
-
-        List<D> results = doQuery(repository, ctx, select, dslQuery, expressions, 1);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+        Predicate predicate = buildPredicate(repository, dslQuery, expressions);
+        JPAQuery<T> query = createEntityQuery(repository, predicate, dslQuery);
+        applyLockMode(query, lockMode);
+        applyDirectOffset(query, dslQuery);
+        return Optional.ofNullable(query.fetchFirst());
     }
 
-    public static <T extends JpaEntity, D> Optional<D> load(
+    public static <T extends JpaEntity> List<T> loads(
             BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            Class<D> resultClass,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
 
-        List<D> results = doQuery(repository, ctx, select, resultClass, dslQuery, expressions, 1);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+        Predicate predicate = buildPredicate(repository, dslQuery, expressions);
+        JPAQuery<T> query = createEntityQuery(repository, predicate, dslQuery);
+        Integer limit = applyLoadsBounds(query, dslQuery, expressions);
+
+        List<T> results = query.fetch();
+        if (limit != null && results.size() == limit) {
+            log.warn(
+                    "loads result reached its limit: entity={}, size={}, limit={}. Use page or narrower conditions to continue loading remaining rows.",
+                    repository.getEntityClass().getName(),
+                    results.size(),
+                    limit
+            );
+        }
+        return results;
     }
 
-    public static <T extends JpaEntity, D> List<D> loads(
+    public static <T extends JpaEntity> Page<T> page(
             BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
 
-        if (select == null) {
-            @SuppressWarnings("unchecked")
-            List<D> fullEntities = (List<D>) loadsFullEntity(repository, ctx, dslQuery, expressions);
-            return fullEntities;
-        }
-
-        return doQuery(repository, ctx, select, dslQuery, expressions, null);
-    }
-
-    public static <T extends JpaEntity, D> List<D> loads(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            Class<D> resultClass,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        return doQuery(repository, ctx, select, resultClass, dslQuery, expressions, null);
-    }
-
-    public static <T extends JpaEntity, D> Page<D> page(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        if (ctx.hasLock()) {
-            throw new UnsupportedOperationException("分页不支持加锁");
-        }
-
-        if (select == null) {
-            @SuppressWarnings("unchecked")
-            Page<D> fullEntityPage = (Page<D>) pageFullEntityWithWindowCount(repository, ctx, dslQuery, expressions);
-            return fullEntityPage;
-        }
-
-        @SuppressWarnings("unchecked")
-        Page<D> result = (Page<D>) pageWithSelect(repository, ctx, select, repository.getEntityClass(), dslQuery, expressions);
-        return result;
-    }
-
-    public static <T extends JpaEntity, D> Page<D> page(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            Class<D> resultClass,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        if (ctx.hasLock()) {
-            throw new UnsupportedOperationException("分页不支持加锁");
-        }
-
-        return pageWithSelect(repository, ctx, select, resultClass, dslQuery, expressions);
-    }
-
-    public static <T extends JpaEntity, D> Stream<D> stream(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        if (ctx.hasLock()) {
-            throw new UnsupportedOperationException("流式查询不支持加锁");
-        }
-
-        if (select == null) {
-            @SuppressWarnings("unchecked")
-            Stream<D> fullEntityStream = (Stream<D>) streamFullEntity(repository, ctx, dslQuery, expressions);
-            return fullEntityStream;
-        }
-
-        @SuppressWarnings("unchecked")
-        Stream<D> result = (Stream<D>) doStreamQuery(repository, ctx, select, repository.getEntityClass(), dslQuery, expressions);
-        return result;
-    }
-
-    public static <T extends JpaEntity, D> Stream<D> stream(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            Class<D> resultClass,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        if (ctx.hasLock()) {
-            throw new UnsupportedOperationException("流式查询不支持加锁");
-        }
-
-        return doStreamQuery(repository, ctx, select, resultClass, dslQuery, expressions);
-    }
-
-    private static <T extends JpaEntity, D> Page<D> pageWithSelect(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            Class<D> resultClass,
-            DslQuery<T> dslQuery,
-            BooleanExpression[] expressions
-    ) {
-
-        Predicate predicate = buildPredicate(repository, ctx, dslQuery, expressions);
+        Predicate predicate = buildPredicate(repository, dslQuery, expressions);
         Pageable pageable = resolvePageable(dslQuery);
 
-        List<D> content;
-        long total;
         try {
-            WindowPageResult<D> pageResult = doQueryWithWindowCount(repository, predicate, select, resultClass, dslQuery, pageable);
-            content = pageResult.content();
-            total = pageResult.total();
-        } catch (RuntimeException ex) {
-            if (!PageQuerySupport.shouldFallbackToLegacyPage(ex)) {
-                throw ex;
+            JPAQuery<Tuple> query = repository.getQueryFactory()
+                    .select(repository.getPath(), PageQuerySupport.WINDOW_TOTAL_EXPRESSION)
+                    .from(repository.getPath());
+            applyPredicate(query, predicate);
+            applySort(query, repository.getPathBuilder(), pageable.getSort());
+            query.offset(pageable.getOffset());
+            query.limit(pageable.getPageSize());
+
+            List<Tuple> tuples = query.fetch();
+            if (tuples.isEmpty()) {
+                return new PageImpl<>(List.of(), pageable, count(repository, predicate));
             }
-            JPAQuery<Tuple> fallbackQuery = createTupleQuery(repository, predicate, select.buildExpressions(repository.getPathBuilder()), dslQuery);
-            if (dslQuery == null) {
-                applySort(fallbackQuery, repository.getPathBuilder(), pageable.getSort());
+
+            List<T> content = tuples.stream()
+                    .map(tuple -> tuple.get(repository.getPath()))
+                    .filter(Objects::nonNull)
+                    .toList();
+            long total = PageQuerySupport.resolveWindowTotalFromTuples(
+                    tuples,
+                    () -> count(repository, predicate)
+            );
+            return new PageImpl<>(content, pageable, total);
+        } catch (RuntimeException exception) {
+            if (!PageQuerySupport.shouldFallbackToLegacyPage(exception)) {
+                throw exception;
             }
-            applyPageBounds(fallbackQuery, dslQuery, pageable);
-            content = mapTuples(repository, fallbackQuery.fetch(), select, resultClass);
-            total = countByPredicate(repository, predicate);
+
+            JPAQuery<T> dataQuery = repository.getQueryFactory().selectFrom(repository.getPath());
+            applyPredicate(dataQuery, predicate);
+            applySort(dataQuery, repository.getPathBuilder(), pageable.getSort());
+            dataQuery.offset(pageable.getOffset());
+            dataQuery.limit(pageable.getPageSize());
+            return new PageImpl<>(dataQuery.fetch(), pageable, count(repository, predicate));
         }
-        return new PageImpl<>(content, pageable, total);
-    }
-
-    public static <T extends JpaEntity> long count(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        return countByPredicate(repository, buildPredicate(repository, ctx, dslQuery, expressions));
-    }
-
-    public static <T extends JpaEntity> boolean exists(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        Predicate predicate = buildPredicate(repository, ctx, dslQuery, expressions);
-        return repository.getQueryFactory().selectOne()
-                .from(repository.getPath())
-                .where(predicate)
-                .fetchFirst() != null;
     }
 
     private static <T extends JpaEntity> Predicate buildPredicate(
             BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
@@ -246,311 +124,90 @@ public final class QueryReadSupport {
                 repository.getPathBuilder(),
                 repository.getPath(),
                 repository.getDeletedPath(),
-                ctx,
                 dslQuery,
                 expressions
         );
     }
 
-    private static <T extends JpaEntity> long countByPredicate(BaseRepositoryImpl<T> repository, Predicate predicate) {
-
-        return repository.getQueryFactory().select(repository.getIdPath())
-                .from(repository.getPath())
-                .where(predicate)
-                .fetchCount();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends JpaEntity, D> List<D> doQuery(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            DslQuery<T> dslQuery,
-            BooleanExpression[] expressions,
-            Integer limit
-    ) {
-
-        return (List<D>) doQuery(repository, ctx, select, repository.getEntityClass(), dslQuery, expressions, limit);
-    }
-
-    private static <T extends JpaEntity, D> List<D> doQuery(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            Class<D> resultClass,
-            DslQuery<T> dslQuery,
-            BooleanExpression[] expressions,
-            Integer limit
-    ) {
-
-        Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
-
-        JPAQuery<Tuple> query = createTupleQuery(repository, ctx, select.buildExpressions(repository.getPathBuilder()), dslQuery, expressions);
-
-        if (limit == null) {
-            applyLoadsLimit(query, dslQuery);
-        } else {
-            query.limit(limit);
-        }
-
-        List<Tuple> tuples = query.fetch();
-        warnIfLoadsResultReachedMax(repository.getEntityClass(), tuples.size());
-        return mapTuples(repository, tuples, select, resultClass);
-    }
-
-    private static <T extends JpaEntity, D> WindowPageResult<D> doQueryWithWindowCount(
+    private static <T extends JpaEntity> JPAQuery<T> createEntityQuery(
             BaseRepositoryImpl<T> repository,
             Predicate predicate,
-            SelectBuilder<T> select,
-            Class<D> resultClass,
-            DslQuery<T> dslQuery,
-            Pageable pageable
-    ) {
-
-        Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
-
-        Expression<?>[] selectExprs = select.buildExpressions(repository.getPathBuilder());
-        Expression<?>[] queryExprs = Arrays.copyOf(selectExprs, selectExprs.length + 1);
-        queryExprs[selectExprs.length] = PageQuerySupport.WINDOW_TOTAL_EXPRESSION;
-
-        JPAQuery<Tuple> query = createTupleQuery(repository, predicate, queryExprs, dslQuery);
-        if (dslQuery == null) {
-            applySort(query, repository.getPathBuilder(), pageable.getSort());
-        }
-        applyPageBounds(query, dslQuery, pageable);
-
-        List<Tuple> tuples = query.fetch();
-
-        if (tuples.isEmpty()) {
-            return new WindowPageResult<>(Collections.emptyList(), countByPredicate(repository, predicate));
-        }
-
-        long total = PageQuerySupport.resolveWindowTotal(
-                tuples,
-                PageQuerySupport.WINDOW_TOTAL_EXPRESSION,
-                () -> countByPredicate(repository, predicate)
-        );
-        return new WindowPageResult<>(mapTuples(repository, tuples, select, resultClass), total);
-    }
-
-    private static <T extends JpaEntity, D> Stream<D> doStreamQuery(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            SelectBuilder<T> select,
-            Class<D> resultClass,
-            DslQuery<T> dslQuery,
-            BooleanExpression[] expressions
-    ) {
-
-        Objects.requireNonNull(select, "部分字段查询必须指定 SelectBuilder");
-
-        JPAQuery<Tuple> query = createTupleQuery(
-                repository,
-                buildPredicate(repository, ctx, dslQuery, expressions),
-                select.buildExpressions(repository.getPathBuilder()),
-                dslQuery
-        );
-        applyStreamFetchSize(query, repository.getInClauseBatchSize());
-        if (dslQuery != null) {
-            applyLimit(query, dslQuery);
-        }
-
-        return mapTupleStream(repository, query.stream(), select, resultClass);
-    }
-
-    private static <T extends JpaEntity> JPAQuery<Tuple> createTupleQuery(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            Expression<?>[] selectExprs,
-            DslQuery<T> dslQuery,
-            BooleanExpression[] expressions
-    ) {
-
-        JPAQuery<Tuple> query = createTupleQuery(repository, buildPredicate(repository, ctx, dslQuery, expressions), selectExprs, dslQuery);
-        applyLockOptions(query, ctx);
-        return query;
-    }
-
-    private static <T extends JpaEntity> JPAQuery<Tuple> createTupleQuery(
-            BaseRepositoryImpl<T> repository,
-            Predicate predicate,
-            Expression<?>[] selectExprs,
             DslQuery<T> dslQuery
     ) {
 
-        JPAQuery<Tuple> query = repository.getQueryFactory().select(selectExprs).from(repository.getPath());
+        JPAQuery<T> query = repository.getQueryFactory().selectFrom(repository.getPath());
+        applyPredicate(query, predicate);
+        if (dslQuery != null) {
+            applySort(query, repository.getPathBuilder(), dslQuery.toSort(
+                    RepositoryPredicateSupport.getAllowFields(dslQuery)
+            ));
+        }
+        return query;
+    }
+
+    private static void applyPredicate(JPAQuery<?> query, Predicate predicate) {
 
         if (predicate != null) {
             query.where(predicate);
         }
-        if (dslQuery != null) {
-            applySort(query, repository.getPathBuilder(), dslQuery);
-        }
-
-        return query;
     }
 
-    private static <T extends JpaEntity, D> List<D> mapTuples(
-            BaseRepositoryImpl<T> repository,
-            List<Tuple> tuples,
-            SelectBuilder<T> select,
-            Class<D> resultClass
-    ) {
+    private static <T extends JpaEntity> long count(BaseRepositoryImpl<T> repository, Predicate predicate) {
 
-        if (resultClass == repository.getEntityClass()) {
-            @SuppressWarnings("unchecked")
-            List<D> entities = (List<D>) tuples.stream().map(select::toEntity).toList();
-            return entities;
-        }
-        return tuples.stream().map(tuple -> select.toDto(tuple, resultClass)).toList();
+        JPAQuery<Long> query = repository.getQueryFactory()
+                .select(repository.getIdPath().count())
+                .from(repository.getPath());
+        applyPredicate(query, predicate);
+        return Optional.ofNullable(query.fetchOne()).orElse(0L);
     }
 
-    private static <T extends JpaEntity, D> Stream<D> mapTupleStream(
-            BaseRepositoryImpl<T> repository,
-            Stream<Tuple> stream,
-            SelectBuilder<T> select,
-            Class<D> resultClass
-    ) {
-
-        if (resultClass == repository.getEntityClass()) {
-            @SuppressWarnings("unchecked")
-            Stream<D> entities = (Stream<D>) stream.map(select::toEntity);
-            return entities;
-        }
-        return stream.map(tuple -> select.toDto(tuple, resultClass));
-    }
-
-    private static <T extends JpaEntity> Optional<T> loadFullEntity(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
+    private static <T extends JpaEntity> Integer applyLoadsBounds(
+            JPAQuery<?> query,
             DslQuery<T> dslQuery,
-            BooleanExpression... expressions
+            BooleanExpression[] expressions
     ) {
 
-        return Optional.ofNullable(
-                createEntityQuery(repository, buildPredicate(repository, ctx, dslQuery, expressions), ctx, dslQuery).fetchFirst()
+        Integer requestedLimit = dslQuery == null ? null : dslQuery.getLimit();
+        Integer limit;
+        if (hasUsableCondition(dslQuery, expressions)) {
+            // 有可用过滤条件：显式 limit 按 limit，否则返回全部匹配数据
+            limit = requestedLimit;
+        } else if (requestedLimit == null) {
+            // 无条件等价 find-all，用上限保护，防止误拉全表
+            limit = MAX_FIND_ALL_SIZE;
+        } else {
+            // find-all 即使设置了 limit，也以 MAX_FIND_ALL_SIZE 封顶
+            limit = Math.min(requestedLimit, MAX_FIND_ALL_SIZE);
+        }
+        if (limit != null) {
+            query.limit(limit);
+        }
+        applyDirectOffset(query, dslQuery);
+        return limit;
+    }
+
+    private static <T extends JpaEntity> boolean hasUsableCondition(
+            DslQuery<T> dslQuery,
+            BooleanExpression[] expressions
+    ) {
+
+        return !RepositoryPredicateSupport.isEmptyPredicate(
+                RepositoryPredicateSupport.toPredicate(dslQuery, expressions)
         );
     }
 
-    private static <T extends JpaEntity> List<T> loadsFullEntity(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
+    private static void applyDirectOffset(JPAQuery<?> query, DslQuery<?> dslQuery) {
+
+        if (dslQuery != null && dslQuery.getOffset() != null) {
+            query.offset(dslQuery.getOffset());
+        }
+    }
+
+    private static <T extends JpaEntity> void applySort(
+            JPAQuery<?> query,
+            com.querydsl.core.types.dsl.PathBuilder<T> pathBuilder,
+            Sort sort
     ) {
-
-        Predicate predicate = buildPredicate(repository, ctx, dslQuery, expressions);
-        JPAQuery<T> query = createEntityQuery(repository, predicate, ctx, dslQuery);
-        applyLoadsLimit(query, dslQuery);
-        List<T> results = query.fetch();
-        warnIfLoadsResultReachedMax(repository.getEntityClass(), results.size());
-        return results;
-    }
-
-    private static void warnIfLoadsResultReachedMax(Class<?> entityClass, int resultSize) {
-
-        if (resultSize != MAX_DIRECT_LOAD_SIZE) {
-            return;
-        }
-        log.warn(
-                "loads result reached max direct load size: entity={}, size={}, max={}. Use page, stream, or cursor conditions to continue loading remaining rows.",
-                entityClass.getName(),
-                resultSize,
-                MAX_DIRECT_LOAD_SIZE
-        );
-    }
-
-    private static <T extends JpaEntity> Page<T> pageFullEntityWithWindowCount(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        Predicate predicate = buildPredicate(repository, ctx, dslQuery, expressions);
-        Pageable pageable = resolvePageable(dslQuery);
-
-        try {
-            JPAQuery<Tuple> query = repository.getQueryFactory().select(repository.getPath(), PageQuerySupport.WINDOW_TOTAL_EXPRESSION).from(repository.getPath());
-            if (predicate != null) {
-                query.where(predicate);
-            }
-            applySort(query, repository.getPathBuilder(), pageable.getSort());
-            query.offset(pageable.getOffset());
-            query.limit(pageable.getPageSize());
-
-            List<Tuple> tuples = query.fetch();
-            if (tuples.isEmpty()) {
-                return new PageImpl<>(List.of(), pageable, countByPredicate(repository, predicate));
-            }
-            List<T> content = tuples.stream()
-                    .map(tuple -> tuple.get(repository.getPath()))
-                    .filter(Objects::nonNull)
-                    .toList();
-            long total = PageQuerySupport.resolveWindowTotalFromTuples(tuples, () -> countByPredicate(repository, predicate));
-            return new PageImpl<>(content, pageable, total);
-        } catch (RuntimeException ex) {
-            if (!PageQuerySupport.shouldFallbackToLegacyPage(ex)) {
-                throw ex;
-            }
-            long total = countByPredicate(repository, predicate);
-            JPAQuery<T> dataQuery = repository.getQueryFactory().selectFrom(repository.getPath()).where(predicate);
-            applySort(dataQuery, repository.getPathBuilder(), pageable.getSort());
-            dataQuery.offset(pageable.getOffset());
-            dataQuery.limit(pageable.getPageSize());
-            List<T> content = dataQuery.fetch();
-            return new PageImpl<>(content, pageable, total);
-        }
-    }
-
-    private static <T extends JpaEntity> Stream<T> streamFullEntity(
-            BaseRepositoryImpl<T> repository,
-            QueryContext ctx,
-            DslQuery<T> dslQuery,
-            BooleanExpression... expressions
-    ) {
-
-        Predicate predicate = buildPredicate(repository, ctx, dslQuery, expressions);
-
-        JPAQuery<T> query = repository.getQueryFactory().selectFrom(repository.getPath()).where(predicate);
-        applyStreamFetchSize(query, repository.getInClauseBatchSize());
-
-        if (dslQuery != null) {
-            applySort(query, repository.getPathBuilder(), dslQuery);
-            applyLimit(query, dslQuery);
-        }
-
-        return query.stream();
-    }
-
-    private static <T extends JpaEntity> JPAQuery<T> createEntityQuery(
-            BaseRepositoryImpl<T> repository,
-            Predicate predicate,
-            QueryContext ctx,
-            DslQuery<T> dslQuery
-    ) {
-
-        JPAQuery<T> query = repository.getQueryFactory().selectFrom(repository.getPath()).where(predicate);
-        applyLockOptions(query, ctx);
-        if (dslQuery != null) {
-            applySort(query, repository.getPathBuilder(), dslQuery);
-            applyLimit(query, dslQuery);
-        }
-
-        return query;
-    }
-
-    private static <T extends JpaEntity> void applySort(JPAQuery<?> query, com.querydsl.core.types.dsl.PathBuilder<T> pathBuilder, DslQuery<T> dslQuery) {
-
-        Sort sort = dslQuery.toSort(RepositoryPredicateSupport.getAllowFields(dslQuery));
-        applySort(query, pathBuilder, sort);
-    }
-
-    private static <T extends JpaEntity> void applySort(JPAQuery<?> query, com.querydsl.core.types.dsl.PathBuilder<T> pathBuilder, Sort sort) {
-
-        if (sort.isUnsorted()) {
-            return;
-        }
 
         for (Sort.Order order : sort) {
             query.orderBy(new OrderSpecifier<>(
@@ -560,49 +217,12 @@ public final class QueryReadSupport {
         }
     }
 
-    private static void applyLimit(JPAQuery<?> query, DslQuery<?> dslQuery) {
+    private static void applyLockMode(JPAQuery<?> query, LockModeType lockMode) {
 
-        if (dslQuery.getLimit() != null) {
-            query.limit(Math.min(dslQuery.getLimit(), MAX_DIRECT_LOAD_SIZE));
-        }
-        if (dslQuery.getOffset() != null) {
-            query.offset(dslQuery.getOffset());
-        }
-    }
-
-    private static void applyLoadsLimit(JPAQuery<?> query, DslQuery<?> dslQuery) {
-
-        Integer requestedLimit = dslQuery == null ? null : dslQuery.getLimit();
-        query.limit(requestedLimit == null ? MAX_DIRECT_LOAD_SIZE : Math.min(requestedLimit, MAX_DIRECT_LOAD_SIZE));
-        if (dslQuery != null && dslQuery.getOffset() != null) {
-            query.offset(dslQuery.getOffset());
-        }
-    }
-
-    private static void applyPageBounds(JPAQuery<?> query, DslQuery<?> dslQuery, Pageable pageable) {
-
-        if (dslQuery != null && (dslQuery.getLimit() != null || dslQuery.getOffset() != null)) {
-            applyLimit(query, dslQuery);
+        if (lockMode == null) {
             return;
         }
-        query.offset(pageable.getOffset());
-        query.limit(pageable.getPageSize());
-    }
-
-    private static void applyLockOptions(JPAQuery<?> query, QueryContext ctx) {
-
-        if (!ctx.hasLock()) {
-            return;
-        }
-        query.setLockMode(ctx.getLockMode());
-        if (ctx.isSkipLocked()) {
-            query.setHint(SpecHints.HINT_SPEC_LOCK_TIMEOUT, Timeouts.SKIP_LOCKED_MILLI);
-        }
-    }
-
-    private static void applyStreamFetchSize(JPAQuery<?> query, int jdbcBatchSize) {
-
-        query.setHint(HibernateHints.HINT_FETCH_SIZE, jdbcBatchSize * 2);
+        query.setLockMode(lockMode);
     }
 
     private static Pageable resolvePageable(DslQuery<?> dslQuery) {
@@ -612,8 +232,5 @@ public final class QueryReadSupport {
         }
         Set<String> allowFields = RepositoryPredicateSupport.getAllowFields(dslQuery);
         return dslQuery.toPageable(allowFields);
-    }
-
-    private record WindowPageResult<D>(List<D> content, long total) {
     }
 }

@@ -2,13 +2,10 @@ package com.dev.lib.aksk.data;
 
 import com.dev.lib.aksk.domain.model.AkskStatus;
 import com.dev.lib.config.properties.AppSecurityProperties;
-import com.dev.lib.jpa.TransactionHelper;
 import com.dev.lib.util.encrypt.EncryptionServiceImpl;
 import com.dev.lib.util.encrypt.factory.EncryptionStrategyFactory;
 import com.dev.lib.util.encrypt.impl.Base64EncryptionStrategy;
 import jakarta.persistence.EntityManager;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.SpringBootConfiguration;
@@ -52,7 +49,7 @@ class AkskCredentialRepositoryIntegrationTest {
             EntityManager entityManager = context.getBean(EntityManager.class);
             JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
 
-            AkskCredential.Entity saved = mapper.saveAndFlush(credential("ak_integration"));
+            AkskCredential.Entity saved = mapper.save(credential("ak_integration"));
             String bizId = saved.getBizId();
             String rawSecretKey = jdbcTemplate.queryForObject(
                     "select secret_key from sys_aksk_credential where id = ?",
@@ -82,73 +79,54 @@ class AkskCredentialRepositoryIntegrationTest {
             assertThat(mapper.findByBizId(bizId)).map(AkskCredential.Entity::getStatus)
                     .contains(AkskStatus.disable);
 
-            AkskCredential.Query query = new AkskCredential.Query();
-            query.setAccessKey("ak_integration");
-            assertThat(mapper.delete(query)).isEqualTo(1L);
-            assertThat(mapper.count(query)).isZero();
-            assertThat(mapper.onlyDeleted().count(query)).isEqualTo(1L);
+            mapper.delete(saved);
+            assertThat(mapper.load(new AkskCredential.Query().setAccessKey("ak_integration"))).isEmpty();
+            assertThat(jdbcTemplate.queryForObject(
+                    "select deleted from sys_aksk_credential where id = ?",
+                    Long.class,
+                    saved.getId()
+            )).isEqualTo(saved.getId());
         });
     }
 
     @Test
-    void lifecycleHelpersShouldUseBulkUpdatesWithoutLoadingCredentialEntities() {
+    void lifecycleHelpersShouldPersistManagedEntityMutations() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
 
             AkskCredential.Mapper mapper = context.getBean(AkskCredential.Mapper.class);
             EntityManager entityManager = context.getBean(EntityManager.class);
-            Statistics statistics = entityManager.getEntityManagerFactory()
-                    .unwrap(SessionFactory.class)
-                    .getStatistics();
-
-            AkskCredential.Entity saved = mapper.saveAndFlush(credential("ak_bulk_update"));
+            AkskCredential.Entity saved = mapper.save(credential("ak_managed_update"));
             String bizId = saved.getBizId();
             entityManager.clear();
 
-            statistics.clear();
             assertThat(mapper.markActive(bizId)).isTrue();
-            assertNoCredentialEntityLoaded(statistics, "markActive");
             entityManager.clear();
             assertThat(mapper.findByBizId(bizId)).map(AkskCredential.Entity::getStatus)
                     .contains(AkskStatus.active);
 
-            statistics.clear();
             assertThat(mapper.markActive(bizId)).isFalse();
-            assertNoCredentialEntityLoaded(statistics, "markActive no-op");
 
-            statistics.clear();
             assertThat(mapper.markDisable(bizId)).isTrue();
-            assertNoCredentialEntityLoaded(statistics, "markDisable");
             entityManager.clear();
             assertThat(mapper.findByBizId(bizId)).map(AkskCredential.Entity::getStatus)
                     .contains(AkskStatus.disable);
 
             LocalDateTime usedAt = LocalDateTime.of(2026, 5, 8, 12, 10);
-            statistics.clear();
             assertThat(mapper.touchLastUsed(bizId, "192.0.2.10", usedAt)).isTrue();
-            assertNoCredentialEntityLoaded(statistics, "touchLastUsed");
             entityManager.clear();
             AkskCredential.Entity touched = mapper.findByBizId(bizId).orElseThrow();
             assertThat(touched.getLastUsedAt()).isEqualTo(usedAt);
             assertThat(touched.getLastUsedIp()).isEqualTo("192.0.2.10");
 
             LocalDateTime laterUsedAt = LocalDateTime.of(2026, 5, 8, 12, 15);
-            statistics.clear();
             assertThat(mapper.touchLastUsed(bizId, null, laterUsedAt)).isTrue();
-            assertNoCredentialEntityLoaded(statistics, "touchLastUsed null ip");
             entityManager.clear();
             AkskCredential.Entity touchedWithoutIp = mapper.findByBizId(bizId).orElseThrow();
             assertThat(touchedWithoutIp.getLastUsedAt()).isEqualTo(laterUsedAt);
             assertThat(touchedWithoutIp.getLastUsedIp()).isEqualTo("192.0.2.10");
         });
-    }
-
-    private void assertNoCredentialEntityLoaded(Statistics statistics, String operation) {
-
-        assertThat(statistics.getEntityLoadCount())
-                .as(operation + " should update without loading AkskCredential.Entity")
-                .isZero();
     }
 
     private AkskCredential.Entity credential(String accessKey) {
@@ -172,7 +150,6 @@ class AkskCredentialRepositoryIntegrationTest {
     @EnableAutoConfiguration
     @EnableConfigurationProperties(AppSecurityProperties.class)
     @Import({
-            TransactionHelper.class,
             EncryptionStrategyFactory.class,
             EncryptionServiceImpl.class,
             Base64EncryptionStrategy.class

@@ -7,9 +7,11 @@ import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.jpa.entity.JpaEntity;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "sys_dict_item", indexes = {
         @Index(name = "idx_item_code", columnList = "item_code", unique = true),

@@ -1,25 +1,31 @@
 package org.example.commonlib.jpa.cascade;
 
-import com.dev.lib.domain.AggregateRoot;
+import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CascadeSoftDeleteIntegrationTest {
 
@@ -32,146 +38,135 @@ class CascadeSoftDeleteIntegrationTest {
                     "spring.datasource.password=",
                     "spring.jpa.hibernate.ddl-auto=create-drop",
                     "spring.jpa.open-in-view=false",
-                    "spring.jpa.show-sql=true",
+                    "spring.jpa.show-sql=false",
                     "spring.application.name=cascade-soft-delete-test"
             );
 
     @Test
-    void deleteAllEntitiesShouldSoftDeleteOneToManyCascadeChildren() {
+    void deleteEntityShouldSoftDeleteOneToManyChildren() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
 
-            CascadeParentRepo parentRepo = context.getBean(CascadeParentRepo.class);
-            CascadeChildRepo childRepo = context.getBean(CascadeChildRepo.class);
+            CascadeParentRepo repository = context.getBean(CascadeParentRepo.class);
             JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
 
             CascadeParent parent = new CascadeParent();
             CascadeChild child = new CascadeChild();
             parent.addChild(child);
+            repository.save(parent);
 
-            parent = parentRepo.saveAndFlush(parent);
+            repository.delete(parent);
 
-            parentRepo.deleteAll(List.of(parent));
-
-            assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1);
-            assertThat(childRepo.onlyDeleted().count()).isEqualTo(1);
+            assertThat(repository.load()).isEmpty();
             assertThat(queryDeleted(jdbcTemplate, "cascade_parent", parent.getId())).isEqualTo(parent.getId());
             assertThat(queryDeleted(jdbcTemplate, "cascade_child", child.getId())).isEqualTo(child.getId());
         });
     }
 
     @Test
-    void deleteEntityShouldSoftDeleteOneToOneCascadeChild() {
+    void deleteEntityShouldSoftDeleteOneToOneChild() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
 
-            SingleParentRepo parentRepo = context.getBean(SingleParentRepo.class);
-            SingleChildRepo childRepo = context.getBean(SingleChildRepo.class);
+            SingleParentRepo repository = context.getBean(SingleParentRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
 
             SingleParent parent = new SingleParent();
-            parent.setChild(new SingleChild());
+            SingleChild child = new SingleChild();
+            parent.setChild(child);
+            repository.save(parent);
 
-            parent = parentRepo.saveAndFlush(parent);
+            repository.delete(parent);
 
-            parentRepo.delete(parent);
-
-            assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1);
-            assertThat(childRepo.onlyDeleted().count()).isEqualTo(1);
+            assertThat(repository.load()).isEmpty();
+            assertThat(queryDeleted(jdbcTemplate, "single_parent", parent.getId())).isEqualTo(parent.getId());
+            assertThat(queryDeleted(jdbcTemplate, "single_child", child.getId())).isEqualTo(child.getId());
         });
     }
 
     @Test
-    void deleteDslQueryShouldSoftDeleteCascadeChildren() {
+    void deleteEntityShouldSoftDeleteManyToManyTargetsWithCascadeRemove() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
 
-            CascadeParentRepo parentRepo = context.getBean(CascadeParentRepo.class);
-            CascadeChildRepo childRepo = context.getBean(CascadeChildRepo.class);
+            ManyOwnerRepo ownerRepository = context.getBean(ManyOwnerRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
 
-            CascadeParent parent = new CascadeParent();
-            parent.addChild(new CascadeChild());
-            parent = parentRepo.saveAndFlush(parent);
+            ManyOwner owner = new ManyOwner();
+            ManyTag tag = new ManyTag();
+            owner.addTag(tag);
+            ownerRepository.save(owner);
 
-            CascadeParentQuery query = new CascadeParentQuery();
-            query.setId(parent.getId());
-            long affected = parentRepo.delete(query);
+            ownerRepository.delete(owner);
+
+            assertThat(ownerRepository.load()).isEmpty();
+            assertThat(queryDeleted(jdbcTemplate, "cascade_many_owner", owner.getId())).isEqualTo(owner.getId());
+            assertThat(queryDeleted(jdbcTemplate, "cascade_many_tag", tag.getId())).isEqualTo(tag.getId());
+        });
+    }
+
+    @Test
+    void deleteByQueryShouldSoftDeleteOnlyMatchingRootsAndTheirChildren() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            CascadeParentRepo repository = context.getBean(CascadeParentRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+
+            CascadeParent first = new CascadeParent();
+            CascadeChild firstChild = new CascadeChild();
+            first.addChild(firstChild);
+            repository.save(first);
+
+            CascadeParent second = new CascadeParent();
+            CascadeChild secondChild = new CascadeChild();
+            second.addChild(secondChild);
+            repository.save(second);
+
+            long affected = repository.delete(new CascadeParentQuery().setBizId(first.getBizId()));
 
             assertThat(affected).isEqualTo(1);
-            assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1);
-            assertThat(childRepo.onlyDeleted().count()).isEqualTo(1);
+            assertThat(repository.load(new CascadeParentQuery().setBizId(first.getBizId()))).isEmpty();
+            assertThat(repository.load(new CascadeParentQuery().setBizId(second.getBizId()))).isPresent();
+            assertThat(queryDeleted(jdbcTemplate, "cascade_parent", first.getId())).isEqualTo(first.getId());
+            assertThat(queryDeleted(jdbcTemplate, "cascade_child", firstChild.getId())).isEqualTo(firstChild.getId());
+            assertThat(queryDeleted(jdbcTemplate, "cascade_child", secondChild.getId())).isZero();
         });
     }
 
     @Test
-    void deleteRootShouldSoftDeleteOneToOneCascadeChild() {
+    void deleteByQueryShouldRejectMissingBusinessCondition() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
 
-            SingleParentRepo parentRepo = context.getBean(SingleParentRepo.class);
-            SingleChildRepo childRepo = context.getBean(SingleChildRepo.class);
+            CascadeParentRepo repository = context.getBean(CascadeParentRepo.class);
 
-            SingleParent parent = new SingleParent();
-            parent.setChild(new SingleChild());
-            parent = parentRepo.saveAndFlush(parent);
-
-            CascadeDeleteRoot root = new CascadeDeleteRoot();
-            root.setBizId(parent.getBizId());
-
-            boolean deleted = parentRepo.deleteRoot(root);
-
-            assertThat(deleted).isTrue();
-            assertThat(parentRepo.onlyDeleted().count()).isEqualTo(1L);
-            assertThat(childRepo.onlyDeleted().count()).isEqualTo(1L);
+            assertThatThrownBy(() -> repository.delete((DslQuery<CascadeParent>) null))
+                    .isInstanceOf(InvalidDataAccessApiUsageException.class)
+                    .hasMessageContaining("业务条件");
+            assertThatThrownBy(() -> repository.delete(new CascadeParentQuery()))
+                    .isInstanceOf(InvalidDataAccessApiUsageException.class)
+                    .hasMessageContaining("业务条件");
         });
     }
 
-    @Test
-    void deleteRootsShouldSoftDeleteOneToManyCascadeChildren() {
+    private static long queryDeleted(JdbcTemplate jdbcTemplate, String tableName, Long id) {
 
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            CascadeParentRepo parentRepo = context.getBean(CascadeParentRepo.class);
-            CascadeChildRepo childRepo = context.getBean(CascadeChildRepo.class);
-
-            CascadeParent parentById = new CascadeParent();
-            parentById.addChild(new CascadeChild());
-            parentById = parentRepo.saveAndFlush(parentById);
-
-            CascadeParent parentByBizId = new CascadeParent();
-            parentByBizId.addChild(new CascadeChild());
-            parentByBizId = parentRepo.saveAndFlush(parentByBizId);
-
-            CascadeDeleteRoot byId = new CascadeDeleteRoot();
-            byId.setId(parentById.getId());
-            CascadeDeleteRoot byBizId = new CascadeDeleteRoot();
-            byBizId.setBizId(parentByBizId.getBizId());
-
-            long affected = parentRepo.deleteRoots(List.of(byId, byBizId));
-
-            assertThat(affected).isEqualTo(2L);
-            assertThat(parentRepo.onlyDeleted().count()).isEqualTo(2L);
-            assertThat(childRepo.onlyDeleted().count()).isEqualTo(2L);
-        });
+        return jdbcTemplate.queryForObject(
+                "select deleted from " + tableName + " where id = ?",
+                Long.class,
+                id
+        );
     }
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
     static class CascadeSoftDeleteApplication {
-    }
-
-    private static long queryDeleted(JdbcTemplate jdbcTemplate, String tableName, Long id) {
-
-        Long deleted = jdbcTemplate.queryForObject(
-                "select deleted from " + tableName + " where id = ?",
-                Long.class,
-                id
-        );
-        return deleted == null ? 0L : deleted;
     }
 }
 
@@ -203,10 +198,16 @@ class CascadeChild extends JpaEntity {
 interface CascadeParentRepo extends BaseRepository<CascadeParent> {
 }
 
-interface CascadeChildRepo extends BaseRepository<CascadeChild> {
-}
-
 class CascadeParentQuery extends DslQuery<CascadeParent> {
+
+    @Condition(field = "bizId")
+    private String bizId;
+
+    public CascadeParentQuery setBizId(String bizId) {
+
+        this.bizId = bizId;
+        return this;
+    }
 }
 
 @Entity
@@ -228,8 +229,37 @@ class SingleChild extends JpaEntity {
 interface SingleParentRepo extends BaseRepository<SingleParent> {
 }
 
-interface SingleChildRepo extends BaseRepository<SingleChild> {
+@Entity
+@Table(name = "cascade_many_owner")
+class ManyOwner extends JpaEntity {
+
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "cascade_many_owner_tag",
+            joinColumns = @JoinColumn(name = "owner_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private List<ManyTag> tags = new ArrayList<>();
+
+    void addTag(ManyTag tag) {
+
+        tags.add(tag);
+        tag.addOwner(this);
+    }
 }
 
-class CascadeDeleteRoot extends AggregateRoot {
+@Entity
+@Table(name = "cascade_many_tag")
+class ManyTag extends JpaEntity {
+
+    @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
+    private List<ManyOwner> owners = new ArrayList<>();
+
+    void addOwner(ManyOwner owner) {
+
+        owners.add(owner);
+    }
+}
+
+interface ManyOwnerRepo extends BaseRepository<ManyOwner> {
 }

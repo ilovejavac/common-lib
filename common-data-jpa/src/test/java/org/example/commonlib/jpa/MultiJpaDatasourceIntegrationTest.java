@@ -1,10 +1,7 @@
 package org.example.commonlib.jpa;
 
-import com.dev.lib.jpa.TransactionHelper;
 import com.dev.lib.jpa.entity.BaseRepository;
-import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
-import com.dev.lib.jpa.entity.RepositoryUtils;
 import com.dev.lib.jpa.entity.write.RepositoryWriteContext;
 import com.dev.lib.jpa.multiple.JpaDialect;
 import com.dev.lib.jpa.multiple.JpaDatasource;
@@ -23,11 +20,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
-import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.lang.reflect.Method;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(OutputCaptureExtension.class)
@@ -42,22 +36,13 @@ class MultiJpaDatasourceIntegrationTest {
             );
 
     @Test
-    void shouldKeepBaseRepositoryImplAndResolveMatchedTransactionManagerInMultiDatasourceMode() throws Exception {
+    void shouldRegisterBaseRepositoryAndTransactionManagersInMultiDatasourceMode() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(MultiOrderRepo.class);
             assertThat(context).hasBean("primaryDsTransactionManager");
             assertThat(context).hasBean("archiveDsTransactionManager");
-            assertThat(context).hasSingleBean(TransactionHelper.class);
-
-            MultiOrderRepo repo = context.getBean(MultiOrderRepo.class);
-            BaseRepositoryImpl<MultiOrder> impl = RepositoryUtils.unwrap(repo);
-            assertThat(impl.getClass()).isEqualTo(BaseRepositoryImpl.class);
-
-            EntityManagerFactory emf = extractEntityManagerFactory(impl);
-            PlatformTransactionManager resolved = resolveTransactionManager(emf);
-            assertThat(resolved).isSameAs(context.getBean("primaryDsTransactionManager"));
         });
     }
 
@@ -272,17 +257,6 @@ class MultiJpaDatasourceIntegrationTest {
         }
     }
 
-    private static EntityManagerFactory extractEntityManagerFactory(BaseRepositoryImpl<?> impl) {
-
-        try {
-            Method getter = BaseRepositoryImpl.class.getDeclaredMethod("getEntityManagerFactory");
-            getter.setAccessible(true);
-            return (EntityManagerFactory) getter.invoke(impl);
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to read EntityManagerFactory from BaseRepositoryImpl", e);
-        }
-    }
-
     private static String resolveDialect(EntityManagerFactory emf) {
 
         return emf.unwrap(SessionFactoryImplementor.class)
@@ -290,17 +264,6 @@ class MultiJpaDatasourceIntegrationTest {
                 .getDialect()
                 .getClass()
                 .getName();
-    }
-
-    private static PlatformTransactionManager resolveTransactionManager(EntityManagerFactory emf) {
-
-        try {
-            Method resolver = TransactionHelper.class.getDeclaredMethod("resolveTransactionManager", EntityManagerFactory.class);
-            resolver.setAccessible(true);
-            return (PlatformTransactionManager) resolver.invoke(null, emf);
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to resolve transaction manager by EntityManagerFactory", e);
-        }
     }
 
     @SpringBootConfiguration

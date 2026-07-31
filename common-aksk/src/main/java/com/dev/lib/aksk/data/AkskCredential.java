@@ -17,6 +17,7 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -84,15 +85,22 @@ public class AkskCredential {
     @Repository
     public interface Mapper extends BaseRepository<Entity> {
 
-        Optional<Entity> findByAccessKey(String accessKey);
+        default Optional<Entity> findByAccessKey(String accessKey) {
 
-        Optional<Entity> findByBizId(String bizId);
+            return load(new Query().setAccessKey(accessKey));
+        }
+
+        default Optional<Entity> findByBizId(String bizId) {
+
+            return load(new Query().setBizId(bizId));
+        }
 
         default Optional<Entity> loadByAccessKey(String accessKey) {
 
             return load(new Query().setAccessKey(accessKey), q.status.eq(AkskStatus.active));
         }
 
+        @Transactional(rollbackFor = Exception.class)
         default boolean markActive(String id) {
 
             if (StringUtils.isBlank(id)) {
@@ -105,6 +113,7 @@ public class AkskCredential {
                     .execute() > 0;
         }
 
+        @Transactional(rollbackFor = Exception.class)
         default boolean markDisable(String id) {
 
             if (StringUtils.isBlank(id)) {
@@ -117,6 +126,7 @@ public class AkskCredential {
                     .execute() > 0;
         }
 
+        @Transactional(rollbackFor = Exception.class)
         default boolean touchLastUsed(String id, String ip, LocalDateTime time) {
 
             if (StringUtils.isBlank(id)) {

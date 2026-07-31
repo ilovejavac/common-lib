@@ -34,7 +34,10 @@ public interface DictItemRepository extends BaseRepository<DictItemEntity> {
         return page(new Query().setType(type).external(request));
     }
 
-    Optional<DictItemEntity> getByBizId(String bizId);
+    default Optional<DictItemEntity> getByBizId(String bizId) {
+
+        return load(new Query().setBizId(bizId));
+    }
 
     //    @org.springframework.data.jpa.repository.Query("select DictItemEntity from DictItemEntity where itemCode = :code")
     default DictItemEntity getItem(String code) {

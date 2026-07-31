@@ -40,9 +40,9 @@ public interface SysFileObjectRepository extends BaseRepository<SysFile> {
             String objectKey
     ) {
 
-        return lockForUpdate().load(new Query()
+        return loadForUpdate(new Query()
                 .setServiceName(serviceName)
                 .setBucketName(bucketName)
                 .setObjectKey(objectKey));
-    }
+}
 }

@@ -9,9 +9,9 @@ import lombok.experimental.Accessors;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Data
 @Builder
@@ -100,7 +100,7 @@ public class UserDetails implements Serializable {
 
 	private String deviceId;          // 设备 ID(可选)
 
-	private Map<String, Object> payload = new HashMap<>();
+	private Map<String, Object> payload = new ConcurrentHashMap<>(16);
 
 	// ===== 工具方法 =====
 

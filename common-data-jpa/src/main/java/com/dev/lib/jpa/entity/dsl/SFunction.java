@@ -7,17 +7,19 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+/**
+ * 可序列化的字段引用，用于把实体 getter 方法引用解析为属性名。
+ */
 @FunctionalInterface
 public interface SFunction<T, R> extends Function<T, R>, Serializable {
 
     Map<SFunction<?, ?>, SerializedLambda> LAMBDA_CACHE = new ConcurrentHashMap<>();
 
-    Map<SFunction<?, ?>, Class<?>> CLASS_CACHE = new ConcurrentHashMap<>();
-
     default SerializedLambda getSerializedLambda() {
 
         return LAMBDA_CACHE.computeIfAbsent(
-                this, fn -> {
+                this,
+                fn -> {
                     try {
                         Method method = fn.getClass().getDeclaredMethod("writeReplace");
                         method.setAccessible(true);
@@ -29,8 +31,8 @@ public interface SFunction<T, R> extends Function<T, R>, Serializable {
         );
     }
 
-    // SFunction.java
     default String getFieldName() {
+
         String methodName = getSerializedLambda().getImplMethodName();
 
         // Java getter: getName -> name
@@ -42,25 +44,11 @@ public interface SFunction<T, R> extends Function<T, R>, Serializable {
         }
 
         // Kotlin 属性访问: 直接就是属性名（如 name, description）
-        // 检查是否是有效的属性名（小写字母开头，不含特殊字符）
         if (Character.isLowerCase(methodName.charAt(0)) && !methodName.contains("$")) {
             return methodName;
         }
 
         throw new IllegalStateException("不是标准 getter: " + methodName);
-    }
-
-    @SuppressWarnings("unchecked")
-    default Class<T> getEntityClass() {
-
-        return (Class<T>) CLASS_CACHE.computeIfAbsent(this, fn -> {
-            try {
-                String className = fn.getSerializedLambda().getImplClass().replace('/', '.');
-                return Class.forName(className);
-            } catch (Exception e) {
-                throw new IllegalStateException("无法解析实体类", e);
-            }
-        });
     }
 
 }

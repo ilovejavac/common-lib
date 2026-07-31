@@ -50,7 +50,7 @@ public interface SysFileBizIdRepository extends BaseRepository<SysFile> {
 
     default Optional<SysFile> findByBizIdForUpdate(String bizId) {
 
-        return lockForUpdate().load(new Query().setBizId(bizId));
+        return loadForUpdate(new Query().setBizId(bizId));
     }
 
     /**
@@ -61,7 +61,6 @@ public interface SysFileBizIdRepository extends BaseRepository<SysFile> {
         if (bizIds == null || bizIds.isEmpty()) {
             return;
         }
-        // 使用 QueryDSL 批量删除
         delete(new Query().setBizIdIn(bizIds));
     }
 
@@ -73,11 +72,13 @@ public interface SysFileBizIdRepository extends BaseRepository<SysFile> {
         delete(new Query().setServiceName(serviceName).setBizIdIn(bizIds));
     }
 
-    Optional<SysFile> findByBizId(String bizId);
+    default Optional<SysFile> findByBizId(String bizId) {
+
+        return load(new Query().setBizId(bizId));
+    }
 
     default List<SysFile> findByIds(Collection<String> ids) {
 
         return loads(new Query().setBizIdIn(ids));
     }
-
 }

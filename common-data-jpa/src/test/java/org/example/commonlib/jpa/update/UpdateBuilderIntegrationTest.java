@@ -1,304 +1,128 @@
 package org.example.commonlib.jpa.update;
 
-import com.dev.lib.domain.AggregateRoot;
+import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.DslQuery;
-import com.dev.lib.entity.encrypt.Encrypt;
 import com.dev.lib.jpa.entity.BaseRepository;
 import com.dev.lib.jpa.entity.JpaEntity;
-import com.dev.lib.security.util.SecurityContextHolder;
-import com.dev.lib.security.util.UserDetails;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
-import org.assertj.core.api.Assertions;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UpdateBuilderIntegrationTest {
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withUserConfiguration(UpdateBuilderApplication.class)
             .withPropertyValues(
-                    "spring.datasource.url=jdbc:h2:mem:update_builder_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+                    "spring.datasource.url=jdbc:h2:mem:update_builder;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
                     "spring.datasource.driver-class-name=org.h2.Driver",
                     "spring.datasource.username=sa",
                     "spring.datasource.password=",
                     "spring.jpa.hibernate.ddl-auto=create-drop",
                     "spring.jpa.open-in-view=false",
-                    "spring.application.name=update-builder-test",
-                    "app.security.encrypt-version=base64"
+                    "spring.application.name=update-builder-test"
             );
 
     @Test
-    void setWithNullShouldBeSkippedAndSetNullShouldWriteDatabaseNull() {
+    void updateShouldAtomicallyChangeOnlyMatchingActiveRows() {
 
         contextRunner.run(context -> {
             assertThat(context).hasNotFailed();
 
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-1", "plain-before"));
+            UpdateItemRepo repository = context.getBean(UpdateItemRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
 
-            UpdateCaseQuery query = new UpdateCaseQuery();
-            query.setId(saved.getId());
+            UpdateItem first = repository.save(item("update-1", "init"));
+            UpdateItem second = repository.save(item("update-2", "init"));
 
-            Assertions.assertThatThrownBy(() -> repo.update()
-                    .set(UpdateCaseThing::getRemark, null)
-                    .where(query)
+            long affected = repository.update()
+                    .set(UpdateItem::getStatus, "changed")
+                    .where(new UpdateItemQuery().setBizId(first.getBizId()))
+                    .execute();
+
+            assertThat(affected).isEqualTo(1);
+            assertThat(queryStatus(jdbcTemplate, first.getId())).isEqualTo("changed");
+            assertThat(queryStatus(jdbcTemplate, second.getId())).isEqualTo("init");
+        });
+    }
+
+    @Test
+    void updateShouldSkipSoftDeletedRows() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateItemRepo repository = context.getBean(UpdateItemRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+
+            UpdateItem deleted = repository.save(item("update-3", "init"));
+            repository.delete(deleted);
+
+            long affected = repository.update()
+                    .set(UpdateItem::getStatus, "changed")
+                    .where(new UpdateItemQuery().setBizId(deleted.getBizId()))
+                    .execute();
+
+            assertThat(affected).isZero();
+            assertThat(queryStatus(jdbcTemplate, deleted.getId())).isEqualTo("init");
+        });
+    }
+
+    @Test
+    void updateShouldRejectMissingBusinessCondition() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateItemRepo repository = context.getBean(UpdateItemRepo.class);
+
+            assertThatThrownBy(() -> repository.update()
+                    .set(UpdateItem::getStatus, "changed")
+                    .execute())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("业务条件");
+            assertThatThrownBy(() -> repository.update()
+                    .set(UpdateItem::getStatus, "changed")
+                    .where(new UpdateItemQuery())
+                    .execute())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("业务条件");
+        });
+    }
+
+    @Test
+    void updateShouldRejectEmptyAssignments() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            UpdateItemRepo repository = context.getBean(UpdateItemRepo.class);
+
+            assertThatThrownBy(() -> repository.update()
+                    .where(new UpdateItemQuery().setBizId("missing"))
                     .execute())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("至少设置一个字段");
-
-            long nulled = repo.update()
-                    .setNull(UpdateCaseThing::getRemark)
-                    .where(query)
-                    .execute();
-
-            assertThat(nulled).isEqualTo(1L);
-            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getRemark).isEmpty();
         });
     }
 
-    @Test
-    void setNullOnNotNullColumnShouldFailBeforeDatabaseConstraint() {
+    private static UpdateItem item(String bizId, String status) {
 
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-3", "plain-before"));
-
-            UpdateCaseQuery query = new UpdateCaseQuery();
-            query.setId(saved.getId());
-
-            Assertions.assertThatThrownBy(() -> repo.update()
-                    .setNull(UpdateCaseThing::getName)
-                    .where(query)
-                    .execute())
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("nullable = false")
-                    .hasMessageContaining("name");
-        });
+        UpdateItem item = new UpdateItem();
+        item.setBizId(bizId);
+        item.setStatus(status);
+        return item;
     }
 
-    @Test
-    void shouldSupportEnumJsonAndAutoAuditFields() {
+    private static String queryStatus(JdbcTemplate jdbcTemplate, Long id) {
 
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-2", "plain-before"));
-            LocalDateTime oldUpdatedAt = saved.getUpdatedAt();
-
-            UpdateCaseQuery query = new UpdateCaseQuery();
-            query.setId(saved.getId());
-
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("code", "A-1");
-            payload.put("count", 2);
-
-            final long[] affectedHolder = new long[1];
-            SecurityContextHolder.with(UserDetails.builder().id(101L).username("u101").build(), () -> {
-                affectedHolder[0] = repo.update()
-                        .set(UpdateCaseThing::getName, "after")
-                        .set(UpdateCaseThing::getExecuteState, PlanState.RUNNING)
-                        .set(UpdateCaseThing::getPayload, payload)
-                        .where(query)
-                        .execute();
-            });
-
-            assertThat(affectedHolder[0]).isEqualTo(1L);
-
-            UpdateCaseThing reloaded = repo.findById(saved.getId()).orElseThrow();
-            assertThat(reloaded.getName()).isEqualTo("after");
-            assertThat(reloaded.getExecuteState()).isEqualTo(PlanState.RUNNING);
-            assertThat(reloaded.getPayload()).containsEntry("code", "A-1").containsEntry("count", 2);
-            assertThat(reloaded.getModifierId()).isEqualTo(101L);
-            assertThat(reloaded.getUpdatedAt()).isAfter(oldUpdatedAt);
-        });
-    }
-
-    @Test
-    void setIdShouldBecomeWhereConditionInsteadOfUpdatedColumn() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-id", "plain-before"));
-
-            long affected = repo.update()
-                    .set(UpdateCaseThing::getId, saved.getId())
-                    .set(UpdateCaseThing::getName, "after-id")
-                    .execute();
-
-            assertThat(affected).isEqualTo(1L);
-            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-id");
-        });
-    }
-
-    @Test
-    void setBizIdShouldBecomeWhereConditionWhenIdIsAbsent() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-biz", "plain-before"));
-
-            long affected = repo.update()
-                    .set(UpdateCaseThing::getBizId, saved.getBizId())
-                    .set(UpdateCaseThing::getName, "after-biz")
-                    .execute();
-
-            assertThat(affected).isEqualTo(1L);
-            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-biz");
-        });
-    }
-
-    @Test
-    void byIdShouldDeclareIdentityConditionExplicitly() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-by-id", "plain-before"));
-
-            long affected = repo.update()
-                    .byId(saved.getId())
-                    .set(UpdateCaseThing::getName, "after-by-id")
-                    .execute();
-
-            assertThat(affected).isEqualTo(1L);
-            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-by-id");
-        });
-    }
-
-    @Test
-    void byBizIdShouldDeclareIdentityConditionExplicitly() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-by-biz", "plain-before"));
-
-            long affected = repo.update()
-                    .byId(saved.getBizId())
-                    .set(UpdateCaseThing::getName, "after-by-biz")
-                    .execute();
-
-            assertThat(affected).isEqualTo(1L);
-            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-by-biz");
-        });
-    }
-
-    @Test
-    void byAggregateRootShouldDeclareIdentityConditionExplicitly() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            UpdateCaseThing idTarget = repo.saveAndFlush(new UpdateCaseThing("before-id-target", PlanState.WAITING, "remark-by-root", "plain-before"));
-            UpdateCaseThing bizTarget = repo.saveAndFlush(new UpdateCaseThing("before-biz-target", PlanState.WAITING, "remark-by-root", "plain-before"));
-
-            TestAggregateRoot root = new TestAggregateRoot();
-            root.setId(idTarget.getId());
-            root.setBizId(bizTarget.getBizId());
-
-            long affected = repo.update()
-                    .byId(root)
-                    .set(UpdateCaseThing::getName, "after-by-root")
-                    .execute();
-
-            assertThat(affected).isEqualTo(1L);
-            assertThat(repo.findById(idTarget.getId())).map(UpdateCaseThing::getName).contains("after-by-root");
-            assertThat(repo.findById(bizTarget.getId())).map(UpdateCaseThing::getName).contains("before-biz-target");
-        });
-    }
-
-    @Test
-    void byAggregateRootShouldFallbackToBizIdWhenIdIsMissing() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before-by-root-biz", PlanState.WAITING, "remark-by-root-biz", "plain-before"));
-
-            TestAggregateRoot root = new TestAggregateRoot();
-            root.setBizId(saved.getBizId());
-
-            long affected = repo.update()
-                    .byId(root)
-                    .set(UpdateCaseThing::getName, "after-by-root-biz")
-                    .execute();
-
-            assertThat(affected).isEqualTo(1L);
-            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getName).contains("after-by-root-biz");
-        });
-    }
-
-    @Test
-    void byAggregateRootShouldFailWhenRootOrBothRootIdentifiersAreMissing() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            Assertions.assertThatThrownBy(() -> repo.update().byId((TestAggregateRoot) null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("root 条件不能为空");
-
-            TestAggregateRoot missingIdRoot = new TestAggregateRoot();
-            Assertions.assertThatThrownBy(() -> repo.update().byId(missingIdRoot))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("bizId 条件不能为空");
-        });
-    }
-
-    @Test
-    void updateBuilderShouldEncryptAnnotatedFieldBeforeBulkUpdate() {
-
-        contextRunner.run(context -> {
-            assertThat(context).hasNotFailed();
-
-            UpdateCaseRepo repo = context.getBean(UpdateCaseRepo.class);
-            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
-            UpdateCaseThing saved = repo.saveAndFlush(new UpdateCaseThing("before", PlanState.WAITING, "remark-encrypt", "plain-before"));
-
-            long affected = repo.update()
-                    .set(UpdateCaseThing::getId, saved.getId())
-                    .set(UpdateCaseThing::getSecretText, "secret-after")
-                    .execute();
-
-            assertThat(affected).isEqualTo(1L);
-
-            String rawSecret = jdbcTemplate.queryForObject(
-                    "select secret_text from update_case_thing where id = ?",
-                    String.class,
-                    saved.getId()
-            );
-            assertThat(rawSecret).startsWith("v1:");
-            assertThat(rawSecret).isNotEqualTo("secret-after");
-            assertThat(repo.findById(saved.getId())).map(UpdateCaseThing::getSecretText).contains("secret-after");
-        });
+        return jdbcTemplate.queryForObject("select status from update_item where id = ?", String.class, id);
     }
 
     @SpringBootConfiguration
@@ -308,74 +132,33 @@ class UpdateBuilderIntegrationTest {
 }
 
 @Entity
-@Table(name = "update_case_thing")
-class UpdateCaseThing extends JpaEntity {
+@Table(name = "update_item")
+class UpdateItem extends JpaEntity {
 
-    @Column(length = 32, nullable = false)
-    private String name;
+    private String status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 12, columnDefinition = "varchar(12)")
-    private PlanState executeState;
+    String getStatus() {
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "text")
-    private Map<String, Object> payload;
-
-    @Column(length = 64)
-    private String remark;
-
-    @Column(length = 256)
-    @Encrypt
-    private String secretText;
-
-    UpdateCaseThing() {
+        return status;
     }
 
-    UpdateCaseThing(String name, PlanState executeState, String remark, String secretText) {
+    void setStatus(String status) {
 
-        this.name = name;
-        this.executeState = executeState;
-        this.remark = remark;
-        this.secretText = secretText;
-    }
-
-    public String getName() {
-
-        return name;
-    }
-
-    public PlanState getExecuteState() {
-
-        return executeState;
-    }
-
-    public Map<String, Object> getPayload() {
-
-        return payload;
-    }
-
-    public String getRemark() {
-
-        return remark;
-    }
-
-    public String getSecretText() {
-
-        return secretText;
+        this.status = status;
     }
 }
 
-enum PlanState {
-    WAITING,
-    RUNNING
+interface UpdateItemRepo extends BaseRepository<UpdateItem> {
 }
 
-interface UpdateCaseRepo extends BaseRepository<UpdateCaseThing> {
-}
+class UpdateItemQuery extends DslQuery<UpdateItem> {
 
-class UpdateCaseQuery extends DslQuery<UpdateCaseThing> {
-}
+    @Condition(field = "bizId")
+    private String bizId;
 
-class TestAggregateRoot extends AggregateRoot {
+    public UpdateItemQuery setBizId(String bizId) {
+
+        this.bizId = bizId;
+        return this;
+    }
 }

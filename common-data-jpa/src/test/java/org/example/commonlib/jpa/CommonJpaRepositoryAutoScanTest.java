@@ -1,6 +1,5 @@
 package org.example.commonlib.jpa;
 
-import com.dev.lib.jpa.TransactionHelper;
 import com.dev.lib.jpa.entity.log.OperateLogRepo;
 import com.dev.lib.testsupport.repository.CommonLibNestedLedger;
 import jakarta.persistence.Entity;
@@ -39,7 +38,6 @@ class CommonJpaRepositoryAutoScanTest {
             assertThat(context).hasSingleBean(OperateLogRepo.class);
             assertThat(context).hasSingleBean(CommonLibNestedLedger.Mapper.class);
             assertThat(context).hasSingleBean(BusinessOrderRepo.class);
-            assertThat(context).hasSingleBean(TransactionHelper.class);
         });
     }
 
