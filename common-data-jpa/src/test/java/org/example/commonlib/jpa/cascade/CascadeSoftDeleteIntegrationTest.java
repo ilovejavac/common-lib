@@ -155,6 +155,71 @@ class CascadeSoftDeleteIntegrationTest {
         });
     }
 
+    @Test
+    void physicalDeleteShouldRemoveSoftDeletedAggregate() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            CascadeParentRepo repository = context.getBean(CascadeParentRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            CascadeParent parent = new CascadeParent();
+            CascadeChild child = new CascadeChild();
+            parent.addChild(child);
+            repository.save(parent);
+            repository.delete(parent);
+
+            repository.physicalDelete().deleteById(parent.getId());
+
+            assertThat(countRows(jdbcTemplate, "cascade_parent")).isZero();
+            assertThat(countRows(jdbcTemplate, "cascade_child")).isZero();
+        });
+    }
+
+    @Test
+    void physicalDeleteByQueryShouldIncludeActiveAndSoftDeletedRows() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            CascadeParentRepo repository = context.getBean(CascadeParentRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            CascadeParent active = repository.save(new CascadeParent());
+            CascadeParent deleted = repository.save(new CascadeParent());
+            repository.delete(deleted);
+
+            assertThat(repository.physicalDelete().delete(
+                    new CascadeParentQuery().setBizId(active.getBizId())
+            )).isEqualTo(1);
+            repository.physicalDelete().deleteById(deleted.getId());
+
+            assertThat(countRows(jdbcTemplate, "cascade_parent")).isZero();
+        });
+    }
+
+    @Test
+    void physicalDeleteConvenienceMethodsShouldDeleteRequestedRows() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            CascadeParentRepo repository = context.getBean(CascadeParentRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            CascadeParent first = repository.save(new CascadeParent());
+            CascadeParent second = repository.save(new CascadeParent());
+            CascadeParent third = repository.save(new CascadeParent());
+            repository.save(new CascadeParent());
+
+            repository.physicalDelete().delete(first);
+            repository.physicalDelete().deleteAll(List.of(second));
+            repository.physicalDelete().deleteAllById(List.of(third.getId()));
+
+            assertThat(countRows(jdbcTemplate, "cascade_parent")).isEqualTo(1);
+            assertThat(repository.physicalDelete().delete()).isEqualTo(1);
+            assertThat(countRows(jdbcTemplate, "cascade_parent")).isZero();
+        });
+    }
+
     private static long queryDeleted(JdbcTemplate jdbcTemplate, String tableName, Long id) {
 
         return jdbcTemplate.queryForObject(
@@ -162,6 +227,11 @@ class CascadeSoftDeleteIntegrationTest {
                 Long.class,
                 id
         );
+    }
+
+    private static long countRows(JdbcTemplate jdbcTemplate, String tableName) {
+
+        return jdbcTemplate.queryForObject("select count(*) from " + tableName, Long.class);
     }
 
     @SpringBootConfiguration

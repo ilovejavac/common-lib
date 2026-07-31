@@ -5,6 +5,7 @@ import com.dev.lib.entity.dsl.core.DslQueryFieldResolver;
 import com.dev.lib.entity.dsl.core.FieldMetaCache;
 import com.dev.lib.entity.dsl.core.QueryFieldMerger;
 import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.jpa.entity.QueryContext;
 import com.dev.lib.jpa.entity.dsl.PredicateAssembler;
 import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.querydsl.core.BooleanBuilder;
@@ -31,7 +32,25 @@ public final class RepositoryPredicateSupport {
             BooleanExpression... expressions
     ) {
 
-        BooleanBuilder builder = new BooleanBuilder(deletedPath.eq(0L));
+        return buildPredicate(pathBuilder, path, deletedPath, new QueryContext(), dslQuery, expressions);
+    }
+
+    public static <T extends JpaEntity> Predicate buildPredicate(
+            PathBuilder<T> pathBuilder,
+            EntityPath<T> path,
+            NumberPath<Long> deletedPath,
+            QueryContext context,
+            DslQuery<T> dslQuery,
+            BooleanExpression... expressions
+    ) {
+
+        BooleanBuilder builder = new BooleanBuilder();
+        switch (context.getDeletedFilter()) {
+            case EXCLUDE_DELETED -> builder.and(deletedPath.eq(0L));
+            case ONLY_DELETED -> builder.and(deletedPath.gt(0L));
+            case INCLUDE_DELETED -> {
+            }
+        }
 
         Predicate scopedPredicate = buildPluginAndBusinessPredicate(pathBuilder, path, dslQuery, expressions);
         if (scopedPredicate != null) {

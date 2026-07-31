@@ -3,6 +3,7 @@ package com.dev.lib.jpa.entity.delete;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.jpa.entity.QueryContext;
 import com.dev.lib.jpa.entity.dsl.plugin.QueryPluginChain;
 import com.dev.lib.jpa.entity.query.RepositoryPredicateSupport;
 import com.dev.lib.security.util.SecurityContextHolder;
@@ -39,9 +40,25 @@ public final class CascadeSoftDeleteSupport {
             BooleanExpression... expressions
     ) {
 
+        return delete(repository, new QueryContext(), dslQuery, expressions);
+    }
+
+    public static <T extends JpaEntity> long delete(
+            BaseRepositoryImpl<T> repository,
+            QueryContext context,
+            DslQuery<T> dslQuery,
+            BooleanExpression... expressions
+    ) {
+
         Predicate businessPredicate = RepositoryPredicateSupport.toPredicate(dslQuery, expressions);
         if (RepositoryPredicateSupport.isEmptyPredicate(businessPredicate)) {
             throw new IllegalArgumentException("批量删除必须指定业务条件，防止误删全表");
+        }
+        if (context.hasLock()) {
+            throw new IllegalStateException("delete 不支持锁查询，锁仅适用于 load/loads");
+        }
+        if (context.getDeletedFilter() == QueryContext.DeletedFilter.ONLY_DELETED) {
+            return 0L;
         }
 
         Predicate condition = activeCondition(

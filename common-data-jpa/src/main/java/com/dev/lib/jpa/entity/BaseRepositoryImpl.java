@@ -12,7 +12,6 @@ import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.LockModeType;
 import lombok.Getter;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
@@ -25,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Getter
 public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository<T, Long>
@@ -70,29 +70,43 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     @Override
     public Optional<T> load(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        ensureNonAggregateQuery(dslQuery, "load");
-        return QueryReadSupport.load(this, null, dslQuery, expressions);
+        return load(new QueryContext(), dslQuery, expressions);
     }
 
     @Override
     public List<T> loads(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        ensureNonAggregateQuery(dslQuery, "loads");
-        return QueryReadSupport.loads(this, dslQuery, expressions);
+        return loads(new QueryContext(), dslQuery, expressions);
     }
 
     @Override
     public Page<T> page(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        ensureNonAggregateQuery(dslQuery, "page");
-        return QueryReadSupport.page(this, dslQuery, expressions);
+        return page(new QueryContext(), dslQuery, expressions);
+    }
+
+    @Override
+    public Stream<T> stream(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        return stream(new QueryContext(), dslQuery, expressions);
+    }
+
+    @Override
+    public long count(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        return count(new QueryContext(), dslQuery, expressions);
+    }
+
+    @Override
+    public boolean exists(DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        return exists(new QueryContext(), dslQuery, expressions);
     }
 
     @Override
     public Optional<T> loadForUpdate(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        ensureNonAggregateQuery(dslQuery, "load");
-        return QueryReadSupport.load(this, LockModeType.PESSIMISTIC_WRITE, dslQuery, expressions);
+        return load(new QueryContext().lockForUpdate(), dslQuery, expressions);
     }
 
     @Override
@@ -105,8 +119,7 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     @Transactional(rollbackFor = Exception.class)
     public long delete(DslQuery<T> dslQuery, BooleanExpression... expressions) {
 
-        ensureNonAggregateQuery(dslQuery, "delete");
-        return CascadeSoftDeleteSupport.delete(this, dslQuery, expressions);
+        return deleteInternal(new QueryContext(), dslQuery, expressions);
     }
 
     @Override
@@ -136,6 +149,51 @@ public class BaseRepositoryImpl<T extends JpaEntity> extends SimpleJpaRepository
     public void delete(@NonNull T entity) {
 
         CascadeSoftDeleteSupport.deleteEntity(this, entity);
+    }
+
+    Optional<T> load(QueryContext context, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        ensureNonAggregateQuery(dslQuery, "load");
+        return QueryReadSupport.load(this, context, dslQuery, expressions);
+    }
+
+    List<T> loads(QueryContext context, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        ensureNonAggregateQuery(dslQuery, "loads");
+        return QueryReadSupport.loads(this, context, dslQuery, expressions);
+    }
+
+    Page<T> page(QueryContext context, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        ensureNonAggregateQuery(dslQuery, "page");
+        return QueryReadSupport.page(this, context, dslQuery, expressions);
+    }
+
+    Stream<T> stream(QueryContext context, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        ensureNonAggregateQuery(dslQuery, "stream");
+        return QueryReadSupport.stream(this, context, dslQuery, expressions);
+    }
+
+    long count(QueryContext context, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        ensureNonAggregateQuery(dslQuery, "count");
+        return QueryReadSupport.count(this, context, dslQuery, expressions);
+    }
+
+    boolean exists(QueryContext context, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        ensureNonAggregateQuery(dslQuery, "exists");
+        return QueryReadSupport.exists(this, context, dslQuery, expressions);
+    }
+
+    long deleteInternal(QueryContext context, DslQuery<T> dslQuery, BooleanExpression... expressions) {
+
+        ensureNonAggregateQuery(dslQuery, "delete");
+        return RepositoryTransactionSupport.call(
+                this,
+                () -> CascadeSoftDeleteSupport.delete(this, context, dslQuery, expressions)
+        );
     }
 
     private <S extends T> List<S> saveAllInBatches(Iterable<S> entities) {

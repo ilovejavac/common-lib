@@ -63,6 +63,23 @@ class ScopedWriteProtectionIntegrationTest {
         });
     }
 
+    @Test
+    void physicalDeleteShouldRespectQueryPluginScope() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+            ScopedWriteThingRepo repo = context.getBean(ScopedWriteThingRepo.class);
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            ScopedWriteThing victim = saveAs(repo, 4004L, "hard-victim");
+
+            runAsVoid(1001L, () -> repo.physicalDelete().deleteById(victim.getId()));
+            assertThat(countRows(jdbcTemplate, victim.getId())).isEqualTo(1);
+
+            runAsVoid(4004L, () -> repo.physicalDelete().deleteById(victim.getId()));
+            assertThat(countRows(jdbcTemplate, victim.getId())).isZero();
+        });
+    }
+
     private static ScopedWriteThing saveAs(ScopedWriteThingRepo repo, long ownerId, String name) {
 
         return runAs(ownerId, () -> repo.save(new ScopedWriteThing(ownerId, name)));
@@ -94,6 +111,15 @@ class ScopedWriteProtectionIntegrationTest {
 
         return jdbcTemplate.queryForObject(
                 "select deleted from scoped_write_thing where id = ?",
+                Long.class,
+                id
+        );
+    }
+
+    private static long countRows(JdbcTemplate jdbcTemplate, Long id) {
+
+        return jdbcTemplate.queryForObject(
+                "select count(*) from scoped_write_thing where id = ?",
                 Long.class,
                 id
         );

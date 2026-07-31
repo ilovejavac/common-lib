@@ -3,14 +3,15 @@ package com.dev.lib.jpa.entity.query;
 import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
+import com.dev.lib.jpa.entity.QueryContext;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
-import jakarta.persistence.LockModeType;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.jpa.HibernateHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 @Slf4j
 public final class QueryReadSupport {
@@ -34,26 +36,26 @@ public final class QueryReadSupport {
 
     public static <T extends JpaEntity> Optional<T> load(
             BaseRepositoryImpl<T> repository,
-            LockModeType lockMode,
+            QueryContext context,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
 
-        Predicate predicate = buildPredicate(repository, dslQuery, expressions);
-        JPAQuery<T> query = createEntityQuery(repository, predicate, dslQuery);
-        applyLockMode(query, lockMode);
+        Predicate predicate = buildPredicate(repository, context, dslQuery, expressions);
+        JPAQuery<T> query = createEntityQuery(repository, predicate, context, dslQuery);
         applyDirectOffset(query, dslQuery);
         return Optional.ofNullable(query.fetchFirst());
     }
 
     public static <T extends JpaEntity> List<T> loads(
             BaseRepositoryImpl<T> repository,
+            QueryContext context,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
 
-        Predicate predicate = buildPredicate(repository, dslQuery, expressions);
-        JPAQuery<T> query = createEntityQuery(repository, predicate, dslQuery);
+        Predicate predicate = buildPredicate(repository, context, dslQuery, expressions);
+        JPAQuery<T> query = createEntityQuery(repository, predicate, context, dslQuery);
         Integer limit = applyLoadsBounds(query, dslQuery, expressions);
         if (limit == null) {
             return query.fetch();
@@ -74,11 +76,13 @@ public final class QueryReadSupport {
 
     public static <T extends JpaEntity> Page<T> page(
             BaseRepositoryImpl<T> repository,
+            QueryContext context,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
 
-        Predicate predicate = buildPredicate(repository, dslQuery, expressions);
+        rejectLock(context, "page");
+        Predicate predicate = buildPredicate(repository, context, dslQuery, expressions);
         Pageable pageable = resolvePageable(dslQuery);
 
         try {
@@ -92,7 +96,7 @@ public final class QueryReadSupport {
 
             List<Tuple> tuples = query.fetch();
             if (tuples.isEmpty()) {
-                return new PageImpl<>(List.of(), pageable, count(repository, predicate));
+                return new PageImpl<>(List.of(), pageable, countByPredicate(repository, predicate));
             }
 
             List<T> content = tuples.stream()
@@ -101,7 +105,7 @@ public final class QueryReadSupport {
                     .toList();
             long total = PageQuerySupport.resolveWindowTotalFromTuples(
                     tuples,
-                    () -> count(repository, predicate)
+                    () -> countByPredicate(repository, predicate)
             );
             return new PageImpl<>(content, pageable, total);
         } catch (RuntimeException exception) {
@@ -114,12 +118,56 @@ public final class QueryReadSupport {
             applySort(dataQuery, repository.getPathBuilder(), pageable.getSort());
             dataQuery.offset(pageable.getOffset());
             dataQuery.limit(pageable.getPageSize());
-            return new PageImpl<>(dataQuery.fetch(), pageable, count(repository, predicate));
+            return new PageImpl<>(dataQuery.fetch(), pageable, countByPredicate(repository, predicate));
         }
+    }
+
+    public static <T extends JpaEntity> Stream<T> stream(
+            BaseRepositoryImpl<T> repository,
+            QueryContext context,
+            DslQuery<T> dslQuery,
+            BooleanExpression... expressions
+    ) {
+
+        rejectLock(context, "stream");
+        Predicate predicate = buildPredicate(repository, context, dslQuery, expressions);
+        JPAQuery<T> query = createEntityQuery(repository, predicate, context, dslQuery);
+        query.setHint(HibernateHints.HINT_FETCH_SIZE, repository.getJdbcBatchSize() * 2);
+        if (dslQuery != null && dslQuery.getLimit() != null) {
+            query.limit(dslQuery.getLimit());
+        }
+        applyDirectOffset(query, dslQuery);
+        return query.stream();
+    }
+
+    public static <T extends JpaEntity> long count(
+            BaseRepositoryImpl<T> repository,
+            QueryContext context,
+            DslQuery<T> dslQuery,
+            BooleanExpression... expressions
+    ) {
+
+        return countByPredicate(repository, buildPredicate(repository, context, dslQuery, expressions));
+    }
+
+    public static <T extends JpaEntity> boolean exists(
+            BaseRepositoryImpl<T> repository,
+            QueryContext context,
+            DslQuery<T> dslQuery,
+            BooleanExpression... expressions
+    ) {
+
+        Predicate predicate = buildPredicate(repository, context, dslQuery, expressions);
+        JPAQuery<Integer> query = repository.getQueryFactory()
+                .selectOne()
+                .from(repository.getPath());
+        applyPredicate(query, predicate);
+        return query.fetchFirst() != null;
     }
 
     private static <T extends JpaEntity> Predicate buildPredicate(
             BaseRepositoryImpl<T> repository,
+            QueryContext context,
             DslQuery<T> dslQuery,
             BooleanExpression... expressions
     ) {
@@ -128,6 +176,7 @@ public final class QueryReadSupport {
                 repository.getPathBuilder(),
                 repository.getPath(),
                 repository.getDeletedPath(),
+                context,
                 dslQuery,
                 expressions
         );
@@ -136,11 +185,13 @@ public final class QueryReadSupport {
     private static <T extends JpaEntity> JPAQuery<T> createEntityQuery(
             BaseRepositoryImpl<T> repository,
             Predicate predicate,
+            QueryContext context,
             DslQuery<T> dslQuery
     ) {
 
         JPAQuery<T> query = repository.getQueryFactory().selectFrom(repository.getPath());
         applyPredicate(query, predicate);
+        applyLockMode(query, context.getLockMode());
         if (dslQuery != null) {
             applySort(query, repository.getPathBuilder(), dslQuery.toSort(
                     RepositoryPredicateSupport.getAllowFields(dslQuery)
@@ -156,7 +207,7 @@ public final class QueryReadSupport {
         }
     }
 
-    private static <T extends JpaEntity> long count(BaseRepositoryImpl<T> repository, Predicate predicate) {
+    private static <T extends JpaEntity> long countByPredicate(BaseRepositoryImpl<T> repository, Predicate predicate) {
 
         JPAQuery<Long> query = repository.getQueryFactory()
                 .select(repository.getIdPath().count())
@@ -221,12 +272,19 @@ public final class QueryReadSupport {
         }
     }
 
-    private static void applyLockMode(JPAQuery<?> query, LockModeType lockMode) {
+    private static void applyLockMode(JPAQuery<?> query, jakarta.persistence.LockModeType lockMode) {
 
         if (lockMode == null) {
             return;
         }
         query.setLockMode(lockMode);
+    }
+
+    private static void rejectLock(QueryContext context, String operation) {
+
+        if (context.hasLock()) {
+            throw new IllegalStateException(operation + " 不支持锁查询，锁仅适用于 load/loads");
+        }
     }
 
     private static Pageable resolvePageable(DslQuery<?> dslQuery) {
