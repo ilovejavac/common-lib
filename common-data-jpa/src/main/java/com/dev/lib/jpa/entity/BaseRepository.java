@@ -1,11 +1,13 @@
 package com.dev.lib.jpa.entity;
 
 import com.dev.lib.entity.dsl.DslQuery;
+import com.dev.lib.jpa.Bo;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.data.domain.Page;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,7 +16,19 @@ public interface BaseRepository<T extends JpaEntity> extends Repository<T, Long>
 
     <S extends T> S save(S entity);
 
+    default T save(Bo<T> bo) {
+
+        T po = save(bo.getEntity());
+        bo.emit();
+        return po;
+    }
+
     <S extends T> List<S> saveAll(Iterable<S> entities);
+
+    default List<T> saveAll(Collection<? extends Bo<T>> bos) {
+
+        return saveAll(bos.stream().map(Bo::getEntity).toList());
+    }
 
     void delete(T entity);
 
