@@ -1,12 +1,12 @@
 package com.dev.lib.storage.serialize;
 
-import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
 public class FileItem {
 
-    @JSONField(name = "id")
+    @JsonProperty("id")
     private String bizId;
 
     private String originalName;    // 原始文件名

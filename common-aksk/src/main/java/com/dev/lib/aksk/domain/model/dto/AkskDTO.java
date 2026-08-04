@@ -1,6 +1,6 @@
 package com.dev.lib.aksk.domain.model.dto;
 
-import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.dev.lib.aksk.domain.model.AkskStatus;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.QueryType;
@@ -47,7 +47,7 @@ public class AkskDTO {
     public static class Update {
 
         @NotBlank(message = "凭证 ID 不能为空")
-        @JSONField(name = "id")
+        @JsonProperty("id")
         private String bizId;
 
         private String subjectName;

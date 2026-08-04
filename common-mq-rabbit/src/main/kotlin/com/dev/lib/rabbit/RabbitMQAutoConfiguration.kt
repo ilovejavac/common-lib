@@ -5,7 +5,6 @@ import org.springframework.amqp.core.AcknowledgeMode
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory
 import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.amqp.support.converter.MessageConverter
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
@@ -14,16 +13,11 @@ import org.springframework.context.annotation.Bean
 class RabbitMQAutoConfiguration {
 
     @Bean
-    fun messageConverter(): MessageConverter = FastJsonMessageConverter()
-
-    @Bean
     fun rabbitListenerContainerFactory(
-        connectionFactory: ConnectionFactory,
-        messageConverter: MessageConverter
+        connectionFactory: ConnectionFactory
     ): SimpleRabbitListenerContainerFactory {
         return SimpleRabbitListenerContainerFactory().apply {
             setConnectionFactory(connectionFactory)
-            setMessageConverter(messageConverter)
             setAcknowledgeMode(AcknowledgeMode.MANUAL)
         }
     }
@@ -31,19 +25,16 @@ class RabbitMQAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     fun mqTemplateInitializer(
-        template: RabbitTemplate,
-        messageConverter: MessageConverter
+        template: RabbitTemplate
     ): MQTemplateInitializer {
-        return MQTemplateInitializer(template, messageConverter)
+        return MQTemplateInitializer(template)
     }
 }
 
 class MQTemplateInitializer(
-    template: RabbitTemplate,
-    messageConverter: MessageConverter
+    template: RabbitTemplate
 ) {
     init {
-        template.messageConverter = messageConverter
         MQ.init(RabbitMQTemplate(template))
     }
 }

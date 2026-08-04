@@ -1,22 +1,48 @@
 package com.dev.lib.jpa.config;
 
+import com.dev.lib.config.JacksonSupport;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.hibernate.type.descriptor.WrapperOptions;
+import org.hibernate.type.format.FormatMapper;
+import org.hibernate.type.format.jackson.Jackson3JsonFormatMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
+import tools.jackson.databind.json.JsonMapper;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class HibernateJsonConfigTest {
 
     @Test
-    void shouldRoundTripJsonUsingSharedFastJsonRules() {
+    void shouldInstallJackson3MapperUsingSpringManagedJsonMapper() throws Exception {
 
-        HibernateJsonConfig.FastJsonFormatMapper formatMapper = new HibernateJsonConfig.FastJsonFormatMapper();
+        JsonMapper jsonMapper = JacksonSupport.mapper();
+        Method factoryMethod = Arrays.stream(HibernateJsonConfig.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals("hibernatePropertiesCustomizer"))
+                .filter(method -> Arrays.equals(method.getParameterTypes(), new Class<?>[]{JsonMapper.class}))
+                .findFirst()
+                .orElse(null);
+
+        assertThat(factoryMethod).isNotNull();
+        HibernatePropertiesCustomizer customizer = (HibernatePropertiesCustomizer) factoryMethod.invoke(
+                new HibernateJsonConfig(),
+                jsonMapper
+        );
+        Map<String, Object> properties = new HashMap<>();
+        customizer.customize(properties);
+        Object configuredMapper = properties.get("hibernate.type.json_format_mapper");
+
+        assertThat(configuredMapper).isInstanceOf(Jackson3JsonFormatMapper.class);
+        FormatMapper formatMapper = (FormatMapper) configuredMapper;
         JavaType<Payload> javaType = new PayloadJavaType();
 
         Payload payload = new Payload();

@@ -3,11 +3,7 @@ spring:
     consumer:
       auto-offset-reset: earliest
       enable-auto-commit: false
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: com.dev.lib.kafka.FastJsonKafkaDeserializer
     producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: com.dev.lib.kafka.FastJsonKafkaSerializer
       acks: all
     listener:
       ack-mode: manual

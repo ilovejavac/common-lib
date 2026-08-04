@@ -1,6 +1,5 @@
 package com.dev.lib.config;
 
-import com.alibaba.fastjson2.support.spring6.http.converter.FastJsonHttpMessageConverter;
 import com.dev.lib.web.model.ServerResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,37 +8,44 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.mock.http.MockHttpOutputMessage;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
-        classes = ServerResponseFastJsonNullExclusionTest.TestApplication.class,
-        properties = "spring.application.name=starter-fastjson-test"
+        classes = ServerResponseJacksonNullExclusionTest.TestApplication.class,
+        properties = "spring.application.name=starter-jackson-test"
 )
-class ServerResponseFastJsonNullExclusionTest {
+class ServerResponseJacksonNullExclusionTest {
 
     @Autowired
     private RequestMappingHandlerAdapter requestMappingHandlerAdapter;
 
     @Autowired
-    private FastJsonHttpMessageConverter commonFastJsonHttpMessageConverter;
+    private JsonMapper jsonMapper;
 
     @Test
-    void shouldUseCommonCoreFastJsonSupportForMvcJsonSerialization() throws Exception {
+    void shouldUseSpringJacksonConverterWithCommonJsonMapper() throws Exception {
 
         List<HttpMessageConverter<?>> converters = requestMappingHandlerAdapter.getMessageConverters();
+        JacksonJsonHttpMessageConverter converter = converters.stream()
+                .filter(JacksonJsonHttpMessageConverter.class::isInstance)
+                .map(JacksonJsonHttpMessageConverter.class::cast)
+                .findFirst()
+                .orElse(null);
 
         assertThat(converters).isNotEmpty();
-        assertThat(converters.getFirst()).isSameAs(commonFastJsonHttpMessageConverter);
-        assertThat(converters).anyMatch(FastJsonHttpMessageConverter.class::isInstance);
-        assertThat(converters).noneMatch(converter -> converter.getClass().getName().contains("Jackson"));
+        assertThat(converter).isNotNull();
+        assertThat(converter.getMapper()).isSameAs(jsonMapper);
+        assertThat(converters).noneMatch(item -> item.getClass().getName().contains("FastJson"));
 
         ServerResponse<String> response = ServerResponse.success("welcome, here is discount-server server!");
-        String json = writeJson(response);
+        String json = writeJson(converter, response);
 
         assertThat(json).contains("\"code\":200");
         assertThat(json).contains("\"message\":\"success\"");
@@ -53,17 +59,26 @@ class ServerResponseFastJsonNullExclusionTest {
     void shouldSerializeFailureMessageIntoMessageField() throws Exception {
 
         ServerResponse<Void> response = ServerResponse.fail(4101, "参数校验失败");
-        String json = writeJson(response);
+        String json = writeJson(jacksonConverter(), response);
 
         assertThat(json).contains("\"code\":4101");
         assertThat(json).contains("\"message\":\"response failed\"");
         assertThat(json).contains("\"error\":\"参数校验失败\"");
     }
 
-    private String writeJson(Object value) throws Exception {
+    private JacksonJsonHttpMessageConverter jacksonConverter() {
+
+        return requestMappingHandlerAdapter.getMessageConverters().stream()
+                .filter(JacksonJsonHttpMessageConverter.class::isInstance)
+                .map(JacksonJsonHttpMessageConverter.class::cast)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private String writeJson(JacksonJsonHttpMessageConverter converter, Object value) throws Exception {
 
         MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
-        commonFastJsonHttpMessageConverter.write(value, MediaType.APPLICATION_JSON, outputMessage);
+        converter.write(value, MediaType.APPLICATION_JSON, outputMessage);
         return outputMessage.getBodyAsString();
     }
 

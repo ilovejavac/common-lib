@@ -9,7 +9,7 @@ public class DubboJsonFrameworkEnvironmentPostProcessor implements EnvironmentPo
 
     static final String PREFER_JSON_FRAMEWORK_KEY = "dubbo.json-framework.prefer";
 
-    private static final String DEFAULT_JSON_FRAMEWORK = "fastjson2";
+    private static final String DEFAULT_JSON_FRAMEWORK = "jackson3";
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {

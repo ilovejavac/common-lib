@@ -1,6 +1,6 @@
 package com.dev.lib.storage.domain.model;
 
-import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.dev.lib.storage.serialize.FileItem;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.persistence.Column;
@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AutoMapper(target = FileItem.class)
 public class StorageFile {
 
-    @JSONField(name = "id")
+    @JsonProperty("id")
     private String bizId;
 
     private String originalName;    // 原始文件名

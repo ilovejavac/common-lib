@@ -1,6 +1,6 @@
 package com.dev.lib.dict.domain.model.dto;
 
-import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.dev.lib.entity.EntityStatus;
 import com.dev.lib.entity.dsl.Condition;
 import com.dev.lib.entity.dsl.QueryType;
@@ -28,7 +28,7 @@ public class DictTypeDTO {
     @Data
     public static class UpdateType extends CreateType {
 
-        @JSONField(name = "id")
+        @JsonProperty("id")
         private String bizId;
 
     }

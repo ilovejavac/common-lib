@@ -1,6 +1,6 @@
 package com.dev.lib.entity.dsl;
 
-import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.dev.lib.entity.CoreEntity;
 import com.dev.lib.entity.dsl.agg.AggregateBuilder;
 import com.dev.lib.entity.dsl.agg.AggregateSpec;
@@ -63,19 +63,19 @@ public abstract class DslQuery<E extends CoreEntity> {
     @ConditionIgnore
     private QueryRequest<?> pageRequest;
 
-    @JSONField(serialize = false, deserialize = false)
+    @JsonIgnore
     @ConditionIgnore
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<QueryFieldMerger.FieldMetaValue> externalFields = new ArrayList<>();
 
-    @JSONField(serialize = false, deserialize = false)
+    @JsonIgnore
     @ConditionIgnore
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private final QueryWhere<E> where = new QueryWhere<>();
 
-    @JSONField(serialize = false, deserialize = false)
+    @JsonIgnore
     @ConditionIgnore
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

@@ -1,24 +1,23 @@
 package com.dev.lib.config;
 
-import com.alibaba.fastjson2.JSONObject;
-import com.alibaba.fastjson2.TypeReference;
 import com.dev.lib.util.Jsons;
 import com.dev.lib.web.sensitive.Sensitive;
 import com.dev.lib.web.sensitive.SensitiveType;
 import com.dev.lib.web.serialize.PopulateContextHolder;
 import com.dev.lib.web.serialize.PopulateField;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class FastJsonSupportTest {
+class JacksonSupportTest {
 
     @Test
     void shouldSerializeUsingExpectedCommonRules() {
@@ -33,6 +32,7 @@ class FastJsonSupportTest {
         assertThat(json).contains("\"largeId\":\"9007199254740992\"");
         assertThat(json).contains("\"status\":\"enabled\"");
         assertThat(json).contains("\"phone\":\"138****5678\"");
+        assertThat(json).contains("\"emptyName\":\"\"");
         assertThat(json).contains("\"ownerIdInfo\":{\"name\":\"Ada\"}");
         assertThat(json).doesNotContain("13812345678");
         assertThat(json).doesNotContain("optionalNote");
@@ -42,7 +42,7 @@ class FastJsonSupportTest {
     }
 
     @Test
-    void shouldParseFastJsonTypeReference() {
+    void shouldParseJacksonTypeReference() {
 
         String json = "{\"demo\":{\"amount\":12.300000,\"createdAt\":\"2026-03-11 12:05:06\"}}";
 
@@ -54,24 +54,39 @@ class FastJsonSupportTest {
     }
 
     @Test
-    void shouldReadTreeAsFastJsonObject() {
+    void shouldReadTreeAsJacksonNode() {
 
-        JSONObject tree = Jsons.readTree("{\"code\":200}");
+        JsonNode tree = Jsons.readTree("{\"code\":200}");
 
-        assertThat(tree.getIntValue("code")).isEqualTo(200);
+        assertThat(tree.get("code").asInt()).isEqualTo(200);
     }
 
     @Test
-    void shouldRoundTripPolymorphicPayloadThroughFastJsonFeatures() throws Exception {
+    void shouldNotExposeOrActivatePolymorphicTypeLoadingInJsonUtility() {
 
-        Payload payload = payload();
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        String json = "{\"@class\":\"" + Payload.class.getName() + "\",\"largeId\":7}";
 
-        Jsons.writeWithType(outputStream, payload);
-        Object restored = Jsons.parseWithType(new ByteArrayInputStream(outputStream.toByteArray()), Object.class);
+        Object restored = Jsons.parse(json);
+        boolean exposesTypeLoadingApi = Arrays.stream(Jsons.class.getDeclaredMethods())
+                .map(method -> method.getName())
+                .anyMatch(name -> name.equals("writeWithType") || name.equals("parseWithType"));
+        boolean exposesPolymorphicMapper = Arrays.stream(JacksonSupport.class.getDeclaredMethods())
+                .map(method -> method.getName())
+                .anyMatch(name -> name.equals("polymorphicMapper"));
 
-        assertThat(restored).isInstanceOf(Payload.class);
-        assertThat(((Payload) restored).largeId).isEqualTo(payload.largeId);
+        assertThat(restored).isInstanceOf(Map.class);
+        assertThat(((Map<?, ?>) restored).get("@class")).isEqualTo(Payload.class.getName());
+        assertThat(exposesTypeLoadingApi).isFalse();
+        assertThat(exposesPolymorphicMapper).isFalse();
+    }
+
+    @Test
+    void shouldSmartMatchPropertyNamesAndTreatEmptyTemporalStringsAsNull() {
+
+        Payload restored = Jsons.parse("{\"created_at\":\"\",\"STATUS\":\"enabled\"}", Payload.class);
+
+        assertThat(restored.createdAt).isNull();
+        assertThat(restored.status).isEqualTo(Status.ENABLED);
     }
 
     private Payload payload() {
@@ -108,6 +123,9 @@ class FastJsonSupportTest {
 
         @Sensitive(type = SensitiveType.PHONE)
         public String phone = "13812345678";
+
+        @Sensitive(type = SensitiveType.NAME)
+        public String emptyName = "";
 
         @PopulateField(loader = "testUserLoader")
         public Long ownerId;
