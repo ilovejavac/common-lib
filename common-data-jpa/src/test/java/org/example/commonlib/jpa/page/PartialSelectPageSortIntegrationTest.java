@@ -17,6 +17,7 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.data.domain.Page;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @ExtendWith(OutputCaptureExtension.class)
 class PartialSelectPageSortIntegrationTest {
@@ -285,6 +287,77 @@ class PartialSelectPageSortIntegrationTest {
     }
 
     @Test
+    void pageWithQueryRequestShouldIsolateFrontendVisibleRange() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            int maxTotalRecords = QueryRequest.getMaxTotalRecords();
+            JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+            insertUsers(jdbcTemplate, maxTotalRecords + 1);
+
+            QueryRequest<PageSortUserQuery> request = new QueryRequest<>();
+            request.setQuery(new PageSortUserQuery());
+            request.setPage(66);
+            request.setSize(1000);
+            PageSortUserQuery query = new PageSortUserQuery();
+            query.external(request);
+
+            Page<PageSortUser> page = context.getBean(PageSortUserRepo.class).page(query);
+
+            assertSoftly(softly -> {
+                softly.assertThat(page.getContent()).hasSize(536);
+                softly.assertThat(page.getTotalElements()).isEqualTo(maxTotalRecords);
+                softly.assertThat(page.hasNext()).isFalse();
+            });
+        });
+    }
+
+    @Test
+    void pageWithQueryRequestOutsideVisibleRangeShouldReturnEmptyPage() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            int maxTotalRecords = QueryRequest.getMaxTotalRecords();
+            insertUsers(context.getBean(JdbcTemplate.class), maxTotalRecords + 1);
+
+            QueryRequest<PageSortUserQuery> outsideRequest = new QueryRequest<>();
+            outsideRequest.setQuery(new PageSortUserQuery());
+            outsideRequest.setPage(67);
+            outsideRequest.setSize(1000);
+            PageSortUserQuery outsideQuery = new PageSortUserQuery();
+            outsideQuery.external(outsideRequest);
+
+            Page<PageSortUser> outsidePage = context.getBean(PageSortUserRepo.class).page(outsideQuery);
+
+            assertThat(outsidePage.getContent()).isEmpty();
+            assertThat(outsidePage.getTotalElements()).isEqualTo(maxTotalRecords);
+            assertThat(outsidePage.hasNext()).isFalse();
+        });
+    }
+
+    @Test
+    void pageWithoutQueryRequestShouldNotApplyFrontendVisibleRange() {
+
+        contextRunner.run(context -> {
+            assertThat(context).hasNotFailed();
+
+            int maxTotalRecords = QueryRequest.getMaxTotalRecords();
+            insertUsers(context.getBean(JdbcTemplate.class), maxTotalRecords + 1);
+
+            PageSortUserQuery directQuery = new PageSortUserQuery();
+            directQuery.setOffset(129);
+            directQuery.setLimit(512);
+
+            Page<PageSortUser> directPage = context.getBean(PageSortUserRepo.class).page(directQuery);
+
+            assertThat(directPage.getContent()).hasSize(1);
+            assertThat(directPage.getTotalElements()).isEqualTo(maxTotalRecords + 1L);
+        });
+    }
+
+    @Test
     void pageShouldKeepExistingOneBasedOffsetSemantics() {
 
         contextRunner.run(context -> {
@@ -338,6 +411,15 @@ class PartialSelectPageSortIntegrationTest {
             users.add(new PageSortUser(prefix + i));
         }
         return users;
+    }
+
+    private static void insertUsers(JdbcTemplate jdbcTemplate, int size) {
+
+        jdbcTemplate.update("""
+                insert into page_sort_user (id, biz_id, deleted, created_at, updated_at, name)
+                select x, concat('b', x), 0, current_timestamp, current_timestamp, concat('bounded-', x)
+                from system_range(1, ?)
+                """, size);
     }
 
     @SpringBootConfiguration

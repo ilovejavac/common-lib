@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.io.IOException;
 import java.io.Serial;
@@ -72,12 +73,18 @@ public class ServerResponse<T> implements Serializable {
 
     private static PageResult pager(Page<?> page) {
 
+        long visibleTotal = QueryRequest.limitTotal(page.getTotalElements());
         PageResult pager = new PageResult();
         pager.setPage(page.getPageable().getPageNumber() + 1);
         pager.setSize(page.getPageable().getPageSize());
-        pager.setTotal(page.getTotalElements());
-        pager.setHasNext(page.hasNext());
+        pager.setTotal(visibleTotal);
+        pager.setHasNext(hasNext(page.getPageable(), visibleTotal));
         return pager;
+    }
+
+    private static boolean hasNext(Pageable pageable, long total) {
+
+        return pageable.isPaged() && pageable.getOffset() + pageable.getPageSize() < total;
     }
 
     public static ServerResponse<Void> fail(CodeEnums codeEnums) {

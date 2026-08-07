@@ -34,12 +34,12 @@ public class QueryRequest<T> {
 
     private static final int DEFAULT_SIZE = 20;
 
-    private static final int MAX_SIZE = 256;
+    private static final int MAX_SIZE = 1024;
 
     /**
-     * 最大可查询的总记录数（防止深度翻页）
+     * 前端分页最大可见记录数
      */
-    private static final int MAX_TOTAL_RECORDS = 50000;
+    private static final int MAX_TOTAL_RECORDS = 65536;
 
     /**
      * 查询条件
@@ -88,7 +88,6 @@ public class QueryRequest<T> {
      *
      * @param allowFields 允许排序的字段白名单
      * @return 分页对象
-     * @throws IllegalArgumentException 如果偏移量超过最大限制
      */
     public Pageable toPageable(Set<String> allowFields) {
 
@@ -101,15 +100,13 @@ public class QueryRequest<T> {
      * @param allowFields 允许排序的字段白名单
      * @param defaultSort 默认排序
      * @return 分页对象
-     * @throws IllegalArgumentException 如果偏移量超过最大限制
      */
     public Pageable toPageable(Set<String> allowFields, Sort defaultSort) {
 
         int normalizedPage = normalizePage();
         int normalizedSize = normalizeSize();
 
-        // 🔒 检查总偏移量是否超过限制
-        validateTotalRecords(
+        logPageRange(
                 normalizedPage,
                 normalizedSize
         );
@@ -122,30 +119,26 @@ public class QueryRequest<T> {
     }
 
     /**
-     * 验证总记录数限制
-     *
-     * @throws IllegalArgumentException 如果超过限制
+     * 记录超出前端可见范围的分页请求
      */
-    private void validateTotalRecords(int page, int size) {
+    private void logPageRange(int page, int size) {
         // 计算偏移量：offset = (page - 1) * size
         long offset = (long) (page - 1) * size;
 
         if (offset >= MAX_TOTAL_RECORDS) {
-            String message = String.format(
-                    "查询范围超出限制：最多只能查看前 %d 条数据，当前请求偏移量为 %d (page=%d, size=%d)",
+            log.info(
+                    "查询范围超出前端可见上限，将返回空页：maxRecords={}, offset={}, page={}, size={}",
                     MAX_TOTAL_RECORDS,
                     offset,
                     page,
                     size
             );
-            log.warn(message);
-            throw new IllegalArgumentException(message);
+            return;
         }
 
-        // 可选：也记录接近限制的情况
         if (offset + size > MAX_TOTAL_RECORDS) {
             log.info(
-                    "查询接近限制：offset={}, size={}, maxRecords={}",
+                    "查询到达前端可见范围末尾：offset={}, size={}, maxRecords={}",
                     offset,
                     size,
                     MAX_TOTAL_RECORDS
@@ -205,11 +198,38 @@ public class QueryRequest<T> {
     }
 
     /**
-     * 获取最大可查询记录数（用于前端提示）
+     * 获取前端分页最大可见记录数
      */
     public static int getMaxTotalRecords() {
 
         return MAX_TOTAL_RECORDS;
+    }
+
+    /**
+     * 根据分页偏移量限制当前页对前端可见的记录数
+     */
+    public static int limitPageSize(long offset, int pageSize) {
+
+        if (offset < 0) {
+            throw new IllegalArgumentException("分页偏移量不能小于 0");
+        }
+        if (pageSize < 0) {
+            throw new IllegalArgumentException("分页大小不能小于 0");
+        }
+
+        long remaining = Math.max(0L, MAX_TOTAL_RECORDS - offset);
+        return (int) Math.min(pageSize, remaining);
+    }
+
+    /**
+     * 限制前端分页返回的总记录数
+     */
+    public static long limitTotal(long total) {
+
+        if (total < 0) {
+            throw new IllegalArgumentException("总记录数不能小于 0");
+        }
+        return Math.min(total, MAX_TOTAL_RECORDS);
     }
 
 	public <R> QueryRequest<R> map(Function<T, R> convert) {

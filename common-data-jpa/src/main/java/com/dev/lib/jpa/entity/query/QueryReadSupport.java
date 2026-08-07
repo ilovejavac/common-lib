@@ -4,6 +4,7 @@ import com.dev.lib.entity.dsl.DslQuery;
 import com.dev.lib.jpa.entity.BaseRepositoryImpl;
 import com.dev.lib.jpa.entity.JpaEntity;
 import com.dev.lib.jpa.entity.QueryContext;
+import com.dev.lib.web.model.QueryRequest;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
@@ -84,6 +85,14 @@ public final class QueryReadSupport {
         rejectLock(context, "page");
         Predicate predicate = buildPredicate(repository, context, dslQuery, expressions);
         Pageable pageable = resolvePageable(dslQuery);
+        QueryRequest<?> pageRequest = dslQuery == null ? null : dslQuery.getPageRequest();
+        int pageLimit = pageRequest == null
+                        ? pageable.getPageSize()
+                        : QueryRequest.limitPageSize(pageable.getOffset(), pageable.getPageSize());
+
+        if (pageLimit == 0) {
+            return page(List.of(), pageable, countByPredicate(repository, predicate), pageRequest);
+        }
 
         try {
             JPAQuery<Tuple> query = repository.getQueryFactory()
@@ -92,11 +101,11 @@ public final class QueryReadSupport {
             applyPredicate(query, predicate);
             applySort(query, repository.getPathBuilder(), pageable.getSort());
             query.offset(pageable.getOffset());
-            query.limit(pageable.getPageSize());
+            query.limit(pageLimit);
 
             List<Tuple> tuples = query.fetch();
             if (tuples.isEmpty()) {
-                return new PageImpl<>(List.of(), pageable, countByPredicate(repository, predicate));
+                return page(List.of(), pageable, countByPredicate(repository, predicate), pageRequest);
             }
 
             List<T> content = tuples.stream()
@@ -107,7 +116,7 @@ public final class QueryReadSupport {
                     tuples,
                     () -> countByPredicate(repository, predicate)
             );
-            return new PageImpl<>(content, pageable, total);
+            return page(content, pageable, total, pageRequest);
         } catch (RuntimeException exception) {
             if (!PageQuerySupport.shouldFallbackToLegacyPage(exception)) {
                 throw exception;
@@ -117,9 +126,20 @@ public final class QueryReadSupport {
             applyPredicate(dataQuery, predicate);
             applySort(dataQuery, repository.getPathBuilder(), pageable.getSort());
             dataQuery.offset(pageable.getOffset());
-            dataQuery.limit(pageable.getPageSize());
-            return new PageImpl<>(dataQuery.fetch(), pageable, countByPredicate(repository, predicate));
+            dataQuery.limit(pageLimit);
+            return page(dataQuery.fetch(), pageable, countByPredicate(repository, predicate), pageRequest);
         }
+    }
+
+    private static <T> Page<T> page(
+            List<T> content,
+            Pageable pageable,
+            long total,
+            QueryRequest<?> pageRequest
+    ) {
+
+        long visibleTotal = pageRequest == null ? total : QueryRequest.limitTotal(total);
+        return new PageImpl<>(content, pageable, visibleTotal);
     }
 
     public static <T extends JpaEntity> Stream<T> stream(
