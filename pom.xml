@@ -8,13 +8,13 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
     <groupId>io.github.ilovejavac</groupId>
     <artifactId>common-lib</artifactId>
-    <version>1.8.0</version>
+    <version>1.8.1</version>
     <packaging>pom</packaging>
 
     <name>common-lib</name>
@@ -69,7 +69,6 @@
         <module>common-mq-rabbit</module>
         <module>common-mq-kafka</module>
         <module>common-mq-rocketmq</module>
-        <module>common-agent</module>
         <module>common-user</module>
         <module>common-aksk</module>
         <module>common-cloud-gateway</module>
@@ -83,14 +82,13 @@
 
         <!-- Internal coordinates -->
         <lib.groupId>io.github.ilovejavac</lib.groupId>
-        <lib.version>1.8.0</lib.version>
+        <lib.version>1.8.1</lib.version>
 
         <!-- Spring ecosystem -->
-        <spring-boot.version>4.1.0</spring-boot.version>
-        <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <spring-boot.version>4.1.1</spring-boot.version>
+        <spring-cloud.version>2025.1.3</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
-        <spring-ai.version>2.0.0-M6</spring-ai.version>
-        <spring-ai-alibaba.version>1.1.2.3</spring-ai-alibaba.version>
+
         <tomcat.version>11.0.21</tomcat.version>
         <jackson-bom.version>3.1.2</jackson-bom.version>
 
